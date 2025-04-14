@@ -1,0 +1,29 @@
+{
+  "name": "be_mathforkids",
+  "version": "1.0.0",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "nodemon --inspect src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Math-For-Kids/BE_MathForKids.git"
+  },
+  "author": "SEP490-04",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Math-For-Kids/BE_MathForKids/issues"
+  },
+  "homepage": "https://github.com/Math-For-Kids/BE_MathForKids#readme",
+  "description": "",
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "firebase": "^11.6.0"
+  },
+  "devDependencies": {
+    "morgan": "^1.10.0",
+    "nodemon": "^3.1.9"
+  }
+}
