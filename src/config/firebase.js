@@ -1,5 +1,4 @@
-const { initializeApp, FirebaseError } = require("firebase/app");
-const { getFirestore, doc, setDoc } = require("firebase/firestore");
+const { initializeApp } = require("firebase/app");
 
 const {
   FIREBASE_API_KEY,
@@ -22,38 +21,16 @@ const firebaseConfig = {
 };
 
 let app;
-let firestoreDb;
 
 const initializeFirebaseApp = () => {
   try {
     app = initializeApp(firebaseConfig);
-    firestoreDb = getFirestore();
     console.log("Initialize firebase successfully!");
-    return app;
   } catch (error) {
     console.log("Initialize Firebase Error: ", error);
   }
 };
 
-const uploadProcessData = async () => {
-  const dataToUpload = {
-    key1: "test",
-    key2: 123,
-  };
-
-  try {
-    const document = doc(firestoreDb, "students", "some-testing-unique-id");
-    let dataUpdated = await setDoc(document, dataToUpload);
-    return dataUpdated;
-  } catch (error) {
-    console.log("Firebase Upload Data Error: ", error);
-  }
-};
-
-const getFirebaseApp = () => app;
-
 module.exports = {
   initializeFirebaseApp,
-  getFirebaseApp,
-  uploadProcessData,
 };
