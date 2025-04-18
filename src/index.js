@@ -1,32 +1,24 @@
+// Dotenv
 const dotenv = require("dotenv");
 dotenv.config();
 
+// Initialize Firebase
+const { initializeFirebaseApp } = require("./config/firebase");
+initializeFirebaseApp();
+
 const express = require("express");
 const morgan = require("morgan");
+const cors = require("cors");
 const route = require("./routes");
-const {
-  initializeFirebaseApp,
-  getFirebaseApp,
-  uploadProcessData,
-} = require("./config/firebase");
 
 const app = express();
 
+app.use(morgan("combined"));
+app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(morgan("combined"));
 
 route(app);
-initializeFirebaseApp();
-
-app.get("/test", async (req, res) => {
-  try {
-    const data = await uploadProcessData();
-    res.json({ message: "Success!", data: data });
-  } catch (error) {
-    res.status(500).json({ message: "Failed to upload", error: error.message });
-  }
-});
 
 app.listen(process.env.PORT, () =>
   console.log(`Math for kids: http://localhost:${process.env.PORT}`)
