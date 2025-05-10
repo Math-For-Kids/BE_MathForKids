@@ -35,6 +35,8 @@ class UserNotificationController {
       res.status(400).send({ message: error.message });
     }
   };
+
+
   getAll = async (req, res, next) => {
     try {
       const notificationSnapshot = await getDocs(
@@ -48,6 +50,7 @@ class UserNotificationController {
       res.status(400).send({ message: error.message });
     }
   };
+  
   getByUserId = async (req, res, next) => {
     try {
       const userId = req.params.userId;
