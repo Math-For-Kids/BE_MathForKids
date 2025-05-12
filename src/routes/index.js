@@ -7,6 +7,9 @@ const ownedrewardRouter = require("../routes/OwnedRewardRouter");
 const rankedpointsRouter = require("../routes/RankedPointRouter");
 const completedexercisesRouter = require("../routes/CompletedExerciseRouter");
 const testsRouter = require("../routes/TestRouter");
+const pupilRouter = require("../routes/PupilRouter");
+const notificationRouter = require("../routes/NotificationRouter");
+const assessmentRouter = require("../routes/AssessmentRouter");
 
 function route(app) {
   app.use("/lesson", lessonRouter);
@@ -18,6 +21,10 @@ function route(app) {
   app.use("/rankedpoints", rankedpointsRouter);
   app.use("/completedexercises", completedexercisesRouter);
   app.use("/tests", testsRouter);
+  app.use("/pupil", pupilRouter);
+  app.use("/notification", notificationRouter);
+  app.use("/assessment", assessmentRouter)
+
 }
 
 module.exports = route;
