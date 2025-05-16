@@ -10,6 +10,10 @@ const testsRouter = require("../routes/TestRouter");
 const pupilRouter = require("../routes/PupilRouter");
 const notificationRouter = require("../routes/NotificationRouter");
 const assessmentRouter = require("../routes/AssessmentRouter");
+const levelRouter = require("../routes/LevelRouter");
+const testquestionRouter = require("../routes/TestQuestionRouter");
+const generalnotificationRouter = require("../routes/GeneralNotificationRouter");
+
 
 function route(app) {
   app.use("/lesson", lessonRouter);
@@ -23,7 +27,11 @@ function route(app) {
   app.use("/tests", testsRouter);
   app.use("/pupil", pupilRouter);
   app.use("/notification", notificationRouter);
-  app.use("/assessment", assessmentRouter)
+  app.use("/assessment", assessmentRouter);
+  app.use("/level", levelRouter);
+  app.use("/testquestion", testquestionRouter);
+   app.use("/generalnotification", generalnotificationRouter);
+
 
 }
 
