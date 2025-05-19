@@ -71,7 +71,7 @@ class LessonController {
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const data = req.body;
+      const { createdAt, ...data } = req.body;
       const lesson = doc(db, "lessons", id);
       await updateDoc(lesson, { ...data, updatedAt: serverTimestamp() });
       res.status(200).send({ message: "Lesson updated successfully!" });
