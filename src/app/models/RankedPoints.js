@@ -1,7 +1,7 @@
 class RankedPoints {
-    constructor(id, studentId, lessonId, point, time_completed, createAt, updateAt) {
+    constructor(id, pupilId, lessonId, point, time_completed, createAt, updateAt) {
         (this.id = id),
-            (this.studentId = studentId),
+            (this.pupilId = pupilId),
             (this.lessonId = lessonId),
             (this.point = point),
             (this.time_completed = time_completed),
@@ -12,7 +12,7 @@ class RankedPoints {
         const data = doc.data();
         return new RankedPoints(
             doc.id,
-            data.studentId,
+            data.pupilId,
             data.lessonId,
             data.point,
             data.time_completed,

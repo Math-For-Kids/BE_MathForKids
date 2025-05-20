@@ -1,7 +1,7 @@
 class Goal {
-    constructor(id, studentID, dateStart, dateEnd, type, lessonId,exerciseId,rewardId, createdAt, updatedAt) {
+    constructor(id, pupilId, dateStart, dateEnd, type, lessonId,exerciseId,rewardId, createdAt, updatedAt) {
       (this.id = id),
-        (this.studentID = studentID),
+        (this.pupilId = pupilId),
         (this.dateStart = dateStart),
         (this.dateEnd = dateEnd),
         (this.type = type),
@@ -16,7 +16,7 @@ class Goal {
       const data = doc.data();
       return new Goal(
         doc.id,
-        data.studentID, 
+        data.pupilId, 
         data.dateStart,
         data.dateEnd,
         data.type,

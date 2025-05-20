@@ -1,8 +1,10 @@
 class Exercise {
-    constructor(id, lessonId, name, createdAt, updatedAt) {
+    constructor(id, lessonId, question, option, answer, createdAt, updatedAt) {
       (this.id = id),
         (this.lessonId = lessonId),
-        (this.name = name),
+        (this.question = question),
+        (this.option = option),
+        (this.answer = answer),
         (this.createdAt = createdAt),
         (this.updatedAt = updatedAt);
     }
@@ -12,7 +14,9 @@ class Exercise {
       return new Exercise(
         doc.id,
         data.lessonId,
-        data.name,
+        data.question,
+        data.option,
+        data.answer,
         data.createdAt?.toDate().toLocaleString("vi-VN"),
         data.updatedAt?.toDate().toLocaleString("vi-VN")
       );
