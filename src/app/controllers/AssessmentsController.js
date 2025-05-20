@@ -9,6 +9,8 @@ const {
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  query,
+  where
 } = require("firebase/firestore");
 
 const db = getFirestore();
@@ -34,6 +36,18 @@ class AssessmentController {
       const assessments = await getDocs(collection(db, "assessments"));
       const assessmentArray = assessments.docs.map((doc) => Assessment.fromFirestore(doc));
       res.status(200).send(assessmentArray);
+    } catch (error) {
+      res.status(400).send({ message: error.message });
+    }
+  };
+
+  getEnabledAssessment = async (req, res) => {
+    try {
+      const assessmentsRef = collection(db, "assessments");
+      const q = query(assessmentsRef, where("isDisabled", "==", false));
+      const snapshot = await getDocs(q);
+      const assessments = snapshot.docs.map(doc => Assessment.fromFirestore(doc));
+      res.status(200).send(assessments);
     } catch (error) {
       res.status(400).send({ message: error.message });
     }

@@ -23,7 +23,7 @@ function route(app) {
   app.use("/ownereward", ownedrewardRouter);
   app.use("/rankedpoints", rankedpointsRouter);
   app.use("/completedexercises", completedexercisesRouter);
-  app.use("/tests", testsRouter);
+  app.use("/test", testsRouter);
   app.use("/auth", authRouter);
   app.use("/user", userRouter);
   app.use("/pupil", pupilRouter);

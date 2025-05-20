@@ -1,7 +1,14 @@
 class Notification {
-  constructor(id, userId, title, content, isRead, createdAt) {
+  constructor(
+    id, 
+    pupilId, 
+    title, 
+    content, 
+    isRead, 
+    createdAt
+  ) {
     this.id = id;
-    this.userId = userId;
+    this.pupilId = pupilId;
     this.title = title;       
     this.content = content;   
     this.isRead = isRead;
@@ -12,7 +19,7 @@ class Notification {
     const data = doc.data();
     return new Notification(
       doc.id,
-      data.userId ?? '',
+      data.pupilId ?? '',
       data.title ?? {},               
       data.content ?? {},             
       data.isRead ?? false,         
