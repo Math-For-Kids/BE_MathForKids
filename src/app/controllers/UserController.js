@@ -11,6 +11,7 @@ const {
   serverTimestamp,
   query,
   where,
+  Timestamp,
 } = require("firebase/firestore");
 
 const db = getFirestore();
@@ -19,8 +20,11 @@ class UserController {
   create = async (req, res, next) => {
     try {
       const data = req.body;
+      const date = new Date(data.dateOfBirth); // Chuyển chuỗi sang Date
+      const dateOfBirthTimestamp = Timestamp.fromDate(date); // Chuyển sang Timestamp
       await addDoc(collection(db, "users"), {
         ...data,
+        dateOfBirth: dateOfBirthTimestamp,
         role: "user",
         isVerify: false,
         otpCode: "",
@@ -32,7 +36,7 @@ class UserController {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-      next();
+      res.status(200).send({ message: "User created successfully!" });
     } catch (error) {
       res.status(400).send({ message: error.message });
     }
