@@ -1,7 +1,7 @@
 class CompletedExercises {
-    constructor(id, studentId, exerciseId, point, isCompleted, createAt, updateAt) {
+    constructor(id, pupilId, exerciseId, point, isCompleted, createAt, updateAt) {
         (this.id = id),
-            (this.studentId = studentId),
+            (this.pupilId = pupilId),
             (this.exerciseId = exerciseId),
             (this.point = point),
             (this.isCompleted = isCompleted),
@@ -12,7 +12,7 @@ class CompletedExercises {
         const data = doc.data();
         return new CompletedExercises(
             doc.id,
-            data.studentId,
+            data.pupilId,
             data.lessonId,
             data.point,
             data.isCompleted,
