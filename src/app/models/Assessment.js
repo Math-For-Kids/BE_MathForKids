@@ -1,9 +1,9 @@
 class Assessment {
   constructor(
     id,
+    levelId,
     grade,
     type,
-    level,
     question,
     image,
     option,
@@ -13,9 +13,9 @@ class Assessment {
     updatedAt
   ) {
     this.id = id;
+    this.levelId = levelId;
     this.grade = grade;
     this.type = type;
-    this.level = level;
     this.question = question;
     this.image = image;
     this.option = option;
@@ -29,14 +29,14 @@ class Assessment {
     const data = doc.data();
     return new Assessment(
       doc.id,
+      data.levelId ?? '',
       data.grade ?? 0,
       data.type ?? '',
-      data.level ?? {}, 
-      data.question ?? {}, 
-      data.image ?? [], 
-      data.option ?? [], 
-      data.answer ?? '', 
-      data.isDisabled ?? false, 
+      data.question ?? {},
+      data.image ?? [],
+      data.option ?? [],
+      data.answer ?? '',
+      data.isDisabled ?? false,
       data.createdAt?.toDate().toLocaleString("vi-VN") ?? '',
       data.updatedAt?.toDate().toLocaleString("vi-VN") ?? ''
     );
