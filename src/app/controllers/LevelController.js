@@ -9,6 +9,8 @@ const {
     updateDoc,
     deleteDoc,
     serverTimestamp,
+    query,
+    where
 } = require("firebase/firestore");
 
 const db = getFirestore();
@@ -41,6 +43,19 @@ class LevelController {
             res.status(400).send({ message: error.message });
         }
     };
+
+    getEnabledLevels = async (req, res) => {
+        try {
+            const levelsRef = collection(db, "levels");
+            const q = query(levelsRef, where("isDisabled", "==", false));
+            const snapshot = await getDocs(q);
+            const levels = snapshot.docs.map(doc => Level.fromFirestore(doc));
+            res.status(200).send(levels);
+        } catch (error) {
+            res.status(400).send({ message: error.message });
+        }
+    };
+
 
     getById = async (req, res) => {
         try {
