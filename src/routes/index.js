@@ -8,6 +8,12 @@ const completedexercisesRouter = require("../routes/CompletedExerciseRouter");
 const testsRouter = require("../routes/TestRouter");
 const authRouter = require("../routes/AuthRouter");
 const userRouter = require("../routes/UserRouter");
+const pupilRouter = require("../routes/PupilRouter");
+const notificationRouter = require("../routes/NotificationRouter");
+const assessmentRouter = require("../routes/AssessmentRouter");
+const levelRouter = require("../routes/LevelRouter");
+const testquestionRouter = require("../routes/TestQuestionRouter");
+const generalnotificationRouter = require("../routes/GeneralNotificationRouter");
 
 function route(app) {
   app.use("/lesson", lessonRouter);
@@ -20,6 +26,12 @@ function route(app) {
   app.use("/tests", testsRouter);
   app.use("/auth", authRouter);
   app.use("/user", userRouter);
+  app.use("/pupil", pupilRouter);
+  app.use("/notification", notificationRouter);
+  app.use("/assessment", assessmentRouter);
+  app.use("/level", levelRouter);
+  app.use("/testquestion", testquestionRouter);
+  app.use("/generalnotification", generalnotificationRouter);
 }
 
 module.exports = route;

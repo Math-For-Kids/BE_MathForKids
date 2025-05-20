@@ -1,0 +1,11 @@
+const express = require("express");
+const testquestionController = require("../app/controllers/TestQuestionController");
+const router = express.Router();
+
+router.post("/", testquestionController.create);
+router.get("/:id", testquestionController.getById);
+router.get("/",testquestionController.getAll);
+router.put("/:id",testquestionController.update);
+router.delete("/:id", testquestionController.delete);
+
+module.exports = router;
