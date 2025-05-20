@@ -8,7 +8,9 @@ const {
   getDocs,
   updateDoc,
   deleteDoc,
-  serverTimestamp
+  serverTimestamp,
+  query,
+  where
 } = require("firebase/firestore");
 
 const db = getFirestore();
@@ -83,6 +85,20 @@ class TestQuestionController {
       res.status(400).send({ message: error.message });
     }
   };
+
+  getEnabledTestQuestion = async (req, res) => {
+    try {
+      const testQuestionsRef = collection(db, "testquestions");
+      const q = query(testQuestionsRef, where("isDisabled", "==", false));
+      const snapshot = await getDocs(q);
+      const testQuestions = snapshot.docs.map(doc => TestQuestion.fromFirestore(doc));
+      res.status(200).send(testQuestions);
+    } catch (error) {
+      res.status(400).send({ message: error.message });
+    }
+  };
 }
+
+
 
 module.exports = new TestQuestionController();
