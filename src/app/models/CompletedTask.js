@@ -1,7 +1,7 @@
 class CompleteTask {
-  constructor(id, studentId, taskId, isCompleted, createdAt, updatedAt) {
+  constructor(id, pupilId, taskId, isCompleted, createdAt, updatedAt) {
     this.id = id;
-    this.studentId = studentId;
+    this.pupilId = pupilId;
     this.taskId = taskId;
     this.isCompleted = isCompleted;
     this.createdAt = createdAt;
@@ -12,7 +12,7 @@ class CompleteTask {
     const data = doc.data();
     return new CompleteTask(
       doc.id,
-      data.studentId,
+      data.pupilId,
       data.taskId,
       data.isCompleted,
       data.createdAt?.toDate().toLocaleString("vi-VN"),

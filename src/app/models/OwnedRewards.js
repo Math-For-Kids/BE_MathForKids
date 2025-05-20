@@ -1,7 +1,7 @@
 class OwnedRewards {
-    constructor(id, studentId  , rewardId, number, createdAt, updatedAt) {
+    constructor(id, pupilId  , rewardId, number, createdAt, updatedAt) {
       (this.id = id),
-        (this.studentId = studentId),
+        (this.pupilId = pupilId),
         (this.rewardId = rewardId),
         (this.number = number),
         (this.createdAt = createdAt),
@@ -12,7 +12,7 @@ class OwnedRewards {
       const data = doc.data();
       return new OwnedRewards(
         doc.id,
-        data.studentId , 
+        data.pupilId , 
         data.rewardId,
         data.number, 
         data.createdAt?.toDate().toLocaleString("vi-VN"),

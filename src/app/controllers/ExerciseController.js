@@ -21,6 +21,7 @@ class ExerciseController {
       const data = req.body;
       await addDoc(collection(db, "exercises"), {
         ...data,
+        isDisabled: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
