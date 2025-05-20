@@ -3,26 +3,20 @@ class Tests {
     id,
     lessonId,
     exerciseId,
-    level,
-    question,
-    image,
-    option,
-    answer,
-    time,
-    isDisabled,
-    createdAt
+    levelId,
+    point,
+    duration,
+    createdAt,
+    updateAt,
   ) {
     this.id = id;
     this.lessonId = lessonId;
     this.exerciseId = exerciseId;
-    this.level = level;
-    this.question = question;
-    this.image = image;
-    this.option = option;
-    this.answer = answer;
-    this.time = time;
-    this.isDisabled = isDisabled;
+    this.levelId = levelId;
+    this.point = point;
+    this.duration = duration;
     this.createdAt = createdAt;
+    this.updateAt = updateAt;
   }
 
   static fromFirestore(doc) {
@@ -31,14 +25,11 @@ class Tests {
       doc.id,
       data.lessonId ?? '',
       data.exerciseId ?? '',
-      data.level ?? {},
-      data.question ?? {},
-      data.image ?? [],
-      data.option ?? [],
-      data.answer ?? '',
-      data.time ?? 0,
-      data.isDisabled ?? false,
-      data.createdAt?.toDate().toLocaleString("vi-VN") ?? ''
+      data.levelId ?? '',
+      data.point ?? {},
+      data.duration ?? {},
+      data.createdAt?.toDate().toLocaleString("vi-VN") ?? '',
+      data.updateAt?.toDate().toLocaleString("vi-VN") ?? ''
     );
   }
 }

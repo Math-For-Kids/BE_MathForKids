@@ -1,8 +1,8 @@
 class CompletedExercises {
-    constructor(id, pupilId, exerciseId, point, isCompleted, createAt, updateAt) {
+    constructor(id, pupilId, lessonId, point, isCompleted, createAt, updateAt) {
         (this.id = id),
             (this.pupilId = pupilId),
-            (this.exerciseId = exerciseId),
+            (this.lessonId = lessonId),
             (this.point = point),
             (this.isCompleted = isCompleted),
             (this.createAt = createAt),

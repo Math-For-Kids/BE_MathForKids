@@ -20,7 +20,6 @@ class TestController {
             const data = req.body;
             await addDoc(collection(db, "tests"), {
                 ...data,
-                isDisabled: true,
                 createAt: serverTimestamp(),
                 updateAt: serverTimestamp(),
             });
@@ -47,8 +46,7 @@ class TestController {
             const lessonId = req.params.lessonId;
             const q = query(
                 collection(db, "tests"),
-                where("lessonId", "==", lessonId),
-                where("isDisabled", "==", false)
+                where("lessonId", "==", lessonId)
             );
             const test = await getDocs(q);
             const testArray = test.docs.map((doc) =>
@@ -64,8 +62,7 @@ class TestController {
             const exerciseId = req.params.exerciseId;
             const q = query(
                 collection(db, "tests"),
-                where("exerciseId", "==", exerciseId),
-                where("isDisabled", "==", false)
+                where("exerciseId", "==", exerciseId)
             );
             const test = await getDocs(q);
             const testArray = test.docs.map((doc) =>
@@ -81,7 +78,7 @@ class TestController {
             const id = req.params.id;
             const test = doc(db, "tests", id);
             const data = await getDoc(test);
-            if (data.exists() && !data.data().isDisabled) {
+            if (data.exists()) {
                 const testData = Tests.fromFirestore(data);
                 res.status(200).send(testData);
             } else {
@@ -103,18 +100,5 @@ class TestController {
         }
     };
 
-    delete = async (req, res, next) => {
-        try {
-            const id = req.params.id;
-            const test = doc(db, "tests", id);
-            await updateDoc(test, {
-                isDisabled: true,
-                updateAt: serverTimestamp(),
-            });
-            res.status(200).send({ message: "Test deleted successfully!" });
-        } catch (error) {
-            res.status(400).send({ message: error.message });
-        }
-    };
 }
 module.exports = new TestController();

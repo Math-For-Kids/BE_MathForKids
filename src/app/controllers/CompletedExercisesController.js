@@ -41,12 +41,12 @@ class CompletedExercisesController {
             res.status(400).send({ message: error.message });
         }
     };
-    getByExerciseId = async (req, res, next) => {
+    getByLessonId = async (req, res, next) => {
         try {
-            const exerciseId = req.params.exerciseId;
+            const lessonId = req.params.exerciseId;
             const q = query(
                 collection(db, "completed_exercises"),
-                where("exerciseId", "==", exerciseId)
+                where("lessonId", "==", lessonId)
             );
             const questions = await getDocs(q);
             const questionArray = questions.docs.map((doc) =>
