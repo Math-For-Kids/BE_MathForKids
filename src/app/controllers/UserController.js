@@ -17,6 +17,19 @@ const {
 const db = getFirestore();
 
 class UserController {
+  getAll = async (req, res, next) => {
+    try {
+      const usersSnapshot = await getDocs(collection(db, "users"));
+      const users = usersSnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      res.status(200).send(users);
+    } catch (error) {
+      res.status(400).send({ message: error.message });
+    }
+  };
+
   create = async (req, res, next) => {
     try {
       const data = req.body;
@@ -45,14 +58,26 @@ class UserController {
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const data = req.body;
-      const user = doc(db, "users", id);
-      await updateDoc(user, { ...data, updatedAt: serverTimestamp() });
+      const { createdAt, dateOfBirth, ...data } = req.body;
+
+      // Nếu có trường dateOfBirth thì chuyển thành Timestamp
+      if (dateOfBirth) {
+        const date = new Date(dateOfBirth);
+        data.dateOfBirth = Timestamp.fromDate(date);
+      }
+
+      const userRef = doc(db, "users", id);
+      await updateDoc(userRef, {
+        ...data,
+        updatedAt: serverTimestamp(),
+      });
+
       res.status(200).send({ message: "User updated successfully!" });
     } catch (error) {
       res.status(400).send({ message: error.message });
     }
   };
+
 }
 
 module.exports = new UserController();

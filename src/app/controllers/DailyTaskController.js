@@ -72,7 +72,7 @@ class DailyTaskController {
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const data = req.body;
+      const { createdAt, ...data } = req.body;
       const ref = doc(db, "daily_tasks", id);
       await updateDoc(ref, { ...data, updatedAt: serverTimestamp() });
       res.status(200).send({ message: "DailyTask updated successfully!" });
@@ -84,6 +84,9 @@ class DailyTaskController {
     try {
       const id = req.params.id;
       await deleteDoc(doc(db, "daily_tasks", id));
+      await updateDoc(deleteDoc, {
+        isDisabled: true,  // Đánh dấu là đã xóa
+      });
       res.status(200).send({ message: "DailyTask deleted successfully!" });
     } catch (error) {
       res.status(400).send({ message: error.message });

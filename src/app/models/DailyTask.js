@@ -3,10 +3,8 @@ class DailyTask {
     id,
     title,
     description,
-    lessonId,
-    exerciseId,
     rewardId,
-    numberReward,
+    quantityReward,
     isDisabled,
     createdAt,
     updatedAt
@@ -14,10 +12,8 @@ class DailyTask {
     this.id = id;
     this.title = title;
     this.description = description;
-    this.lessonId = lessonId;
-    this.exerciseId = exerciseId;
     this.rewardId = rewardId;
-    this.numberReward = numberReward;
+    this.quantityReward = quantityReward;
     this.isDisabled = isDisabled;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
@@ -29,10 +25,8 @@ class DailyTask {
       doc.id,
       data.title,
       data.description,
-      data.lessonId,
-      data.exerciseId,
       data.rewardId,
-      data.numberReward,
+      data.quantityReward,
       data.isDisabled,
       data.createdAt?.toDate().toLocaleString("vi-VN"),
       data.updatedAt?.toDate().toLocaleString("vi-VN")

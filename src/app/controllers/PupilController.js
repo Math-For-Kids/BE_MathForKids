@@ -20,8 +20,12 @@ class PupilController {
   create = async (req, res, next) => {
     try {
       const data = req.body;
+      const date = new Date(data.dateOfBirth);
+      const dateOfBirthTimestamp = Timestamp.fromDate(date);
       await addDoc(collection(db, "pupils"), {
         ...data,
+        isDisabled:false,
+        dateOfBirth: dateOfBirthTimestamp,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -42,18 +46,18 @@ class PupilController {
   };
 
   getEnabledPupil = async (req, res) => {
-        try {
-            const pupilsRef = collection(db, "pupils");
-            const q = query(pupilsRef, where("isDisabled", "==", false));
-            const snapshot = await getDocs(q);
-            const pupils = snapshot.docs.map(doc => Pupil.fromFirestore(doc));
-            res.status(200).send(pupils);
-        } catch (error) {
-            res.status(400).send({ message: error.message });
-        }
-    };
+    try {
+      const pupilsRef = collection(db, "pupils");
+      const q = query(pupilsRef, where("isDisabled", "==", false));
+      const snapshot = await getDocs(q);
+      const pupils = snapshot.docs.map(doc => Pupil.fromFirestore(doc));
+      res.status(200).send(pupils);
+    } catch (error) {
+      res.status(400).send({ message: error.message });
+    }
+  };
 
- 
+
   getById = async (req, res, next) => {
     try {
       const id = req.params.id;
@@ -73,7 +77,7 @@ class PupilController {
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const data = req.body;
+      const { createdAt, ...data } = req.body;
       const pupilRef = doc(db, "pupils", id);
       await updateDoc(pupilRef, {
         ...data,

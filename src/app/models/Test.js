@@ -1,17 +1,17 @@
-class Tests {
+class Test {
   constructor(
     id,
+    pupilId,
     lessonId,
-    exerciseId,
     levelId,
     point,
     duration,
     createdAt,
-    updateAt,
+    updateAt
   ) {
     this.id = id;
+    this.pupilId = pupilId;
     this.lessonId = lessonId;
-    this.exerciseId = exerciseId;
     this.levelId = levelId;
     this.point = point;
     this.duration = duration;
@@ -21,17 +21,17 @@ class Tests {
 
   static fromFirestore(doc) {
     const data = doc.data();
-    return new Tests(
+    return new Test(
       doc.id,
+      data.pupilId ?? '',
       data.lessonId ?? '',
-      data.exerciseId ?? '',
       data.levelId ?? '',
-      data.point ?? {},
-      data.duration ?? {},
+      data.point ?? 0,
+      data.duration ?? 0,
       data.createdAt?.toDate().toLocaleString("vi-VN") ?? '',
-      data.updateAt?.toDate().toLocaleString("vi-VN") ?? ''
+      data.updatedAt?.toDate().toLocaleString('vi-VN') ?? ''
     );
   }
 }
 
-module.exports = Tests;
+module.exports = Test;
