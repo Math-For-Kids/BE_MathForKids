@@ -63,16 +63,17 @@ const updateUserData = async (phoneNumber, email, otp) => {
 class AuthController {
   sendOTPByPhoneNumber = async (req, res, next) => {
     try {
-      const userDoc = checkUserExist(phoneNumber, email);
+       const phoneNumber = req.params.phoneNumber;
+      const userDoc = checkUserExist(phoneNumber, null);
       if (userDoc && userDoc.data().isVerify) {
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
         await smsService(
-          req.params.phoneNumber,
+          phoneNumber,
           `Your OTP is ${otp}. Please do not send this to anyone.`,
           2,
           "5087a0dcd4ccd3a2"
         );
-        updateUserData(req.params.phoneNumber, null, otp);
+        updateUserData(phoneNumber, null, otp);
         return res.status(200).json({
           message: "OTP send successfully!",
           userId: userDoc.data().id,
@@ -92,12 +93,13 @@ class AuthController {
 
   sendOTPByEmail = async (req, res, next) => {
     try {
-      const userDoc = checkUserExist(phoneNumber, email);
+      const email = req.params.email;
+      const userDoc = checkUserExist(null, email);
       if (userDoc && userDoc.data().isVerify) {
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
-        const response = await mailService(req.params.email, otp);
+        const response = await mailService(email, otp);
         if (response.status == 200) {
-          updateUserData(null, req.params.email, otp);
+          updateUserData(null, email, otp);
           return res.status(200).json({
             message: response.message,
             userId: userDoc.data().id,
