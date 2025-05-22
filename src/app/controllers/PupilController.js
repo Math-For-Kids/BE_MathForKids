@@ -25,6 +25,7 @@ class PupilController {
       await addDoc(collection(db, "pupils"), {
         ...data,
         dateOfBirth: dateOfBirthTimestamp,
+        isDisabled: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
