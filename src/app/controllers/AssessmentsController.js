@@ -22,6 +22,7 @@ class AssessmentController {
       const data = req.body;
       await addDoc(collection(db, "assessments"), {
         ...data,
+        isDisabled: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });

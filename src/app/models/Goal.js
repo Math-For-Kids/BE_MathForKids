@@ -1,5 +1,5 @@
 class Goal {
-    constructor(id, pupilId, dateStart, dateEnd, type, lessonId,exerciseId,rewardId, createdAt, updatedAt) {
+    constructor(id, pupilId, dateStart, dateEnd, type, lessonId, exerciseId, rewardId, isCompleted, createdAt, updatedAt) {
       (this.id = id),
         (this.pupilId = pupilId),
         (this.dateStart = dateStart),
@@ -8,6 +8,7 @@ class Goal {
         (this.lessonId = lessonId),
         (this.exerciseId = exerciseId),
         (this.rewardId = rewardId),
+        (this.isCompleted = isCompleted),
         (this.createdAt = createdAt),
         (this.updatedAt = updatedAt);
     }
@@ -23,6 +24,7 @@ class Goal {
         data.lessonId,
         data.exerciseId,
         data.rewardId,
+        data.isCompleted,
         data.createdAt?.toDate().toLocaleString("vi-VN"),
         data.updatedAt?.toDate().toLocaleString("vi-VN")
       );

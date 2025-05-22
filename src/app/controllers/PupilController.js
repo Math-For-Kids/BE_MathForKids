@@ -22,6 +22,7 @@ class PupilController {
       const data = req.body;
       await addDoc(collection(db, "pupils"), {
         ...data,
+        isDisabled: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
