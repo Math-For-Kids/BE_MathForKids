@@ -25,6 +25,7 @@ create = async (req, res, next) => {
         dateStart,
         dateEnd,
         type,
+        isCompleted: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };

@@ -20,7 +20,7 @@ class LevelController {
             const data = req.body;
             const newDocRef = await addDoc(collection(db, "levels"), {
                 ...data,
-                isDisabled: data.isDisabled ?? false,
+                isDisabled: false,
                 createdAt: serverTimestamp(),
                 updatedAt: serverTimestamp(),
             });
