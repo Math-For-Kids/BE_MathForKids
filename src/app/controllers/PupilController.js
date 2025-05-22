@@ -21,17 +21,11 @@ class PupilController {
   create = async (req, res, next) => {
     try {
       const data = req.body;
-      const date = new Date(data.dateOfBirth);
+      const date = new Date(data.dateOfBirth); 
       const dateOfBirthTimestamp = Timestamp.fromDate(date);
       await addDoc(collection(db, "pupils"), {
         ...data,
         dateOfBirth: dateOfBirthTimestamp,
-        point: 0,
-        volume: 100,
-        language: "en",
-        mode: "light",
-        imgae: '',
-        theme: 1,
         isDisabled: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),

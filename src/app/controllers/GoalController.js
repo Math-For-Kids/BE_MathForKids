@@ -25,6 +25,7 @@ class GoalController {
         dateStart,
         dateEnd,
         type,
+        isCompleted: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };

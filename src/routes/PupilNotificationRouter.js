@@ -1,5 +1,5 @@
 const express = require("express");
-const notificationController = require("../app/controllers/NotificationController");
+const notificationController = require("../app/controllers/PupilNotificationController");
 const router = express.Router();
 
 

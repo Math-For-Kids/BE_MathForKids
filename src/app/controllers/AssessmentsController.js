@@ -51,14 +51,7 @@ class AssessmentController {
         finalAnswer = uploadedFiles["answer"] || uploadedFiles["answerImage"];
       }
       await addDoc(collection(db, "assessments"), {
-        id: uuidv4(),
-        levelId,
-        grade,
-        type,
-        question: JSON.parse(question), // Parse question if sent as JSON string
-        image,
-        option: parsedOption,
-        answer: finalAnswer,
+        ...data,
         isDisabled: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
