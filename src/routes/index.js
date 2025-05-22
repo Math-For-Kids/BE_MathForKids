@@ -9,7 +9,7 @@ const testsRouter = require("../routes/TestRouter");
 const authRouter = require("../routes/AuthRouter");
 const userRouter = require("../routes/UserRouter");
 const pupilRouter = require("../routes/PupilRouter");
-const notificationRouter = require("../routes/NotificationRouter");
+const pupilnotificationRouter = require("../routes/PupilNotificationRouter");
 const assessmentRouter = require("../routes/AssessmentRouter");
 const levelRouter = require("../routes/LevelRouter");
 const testquestionRouter = require("../routes/TestQuestionRouter");
@@ -27,7 +27,7 @@ function route(app) {
   app.use("/auth", authRouter);
   app.use("/user", userRouter);
   app.use("/pupil", pupilRouter);
-  app.use("/notification", notificationRouter);
+  app.use("/pupilnotification", pupilnotificationRouter);
   app.use("/assessment", assessmentRouter);
   app.use("/level", levelRouter);
   app.use("/testquestion", testquestionRouter);
