@@ -1,4 +1,4 @@
-class Notification {
+class PupilNotification {
   constructor(
     id, 
     pupilId, 
@@ -17,7 +17,7 @@ class Notification {
 
   static fromFirestore(doc) {
     const data = doc.data();
-    return new Notification(
+    return new PupilNotification(
       doc.id,
       data.pupilId ?? '',
       data.title ?? {},               
@@ -28,4 +28,4 @@ class Notification {
   }
 }
 
-module.exports = Notification;
+module.exports = PupilNotification;

@@ -1,4 +1,4 @@
-const Notification = require("../models/Notification");
+const Notification = require("../models/PupilNotification");
 const {
   getFirestore,
   collection,
@@ -12,12 +12,12 @@ const {
 
 const db = getFirestore();
 
-class NotificationController {
+class PupilNotificationController {
   
   create = async (req, res, next) => {
     try {
       const data = req.body;
-      await addDoc(collection(db, "notifications"), {
+      await addDoc(collection(db, "pupil_notifications"), {
         ...data,
         isRead: data.isRead ?? false,
         createdAt: serverTimestamp(),
@@ -31,8 +31,8 @@ class NotificationController {
 
   getAll = async (req, res, next) => {
     try {
-      const notifications = await getDocs(collection(db, "notifications"));
-      const notificationArray = notifications.docs.map((doc) =>
+      const pupil_notifications = await getDocs(collection(db, "pupil_notifications"));
+      const notificationArray = pupil_notifications.docs.map((doc) =>
         Notification.fromFirestore(doc)
       );
       res.status(200).send(notificationArray);
@@ -45,7 +45,7 @@ class NotificationController {
   getById = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const notificationRef = doc(db, "notifications", id);
+      const notificationRef = doc(db, "pupil_notifications", id);
       const data = await getDoc(notificationRef);
       if (data.exists()) {
         const notification = Notification.fromFirestore(data);
@@ -61,7 +61,7 @@ class NotificationController {
   delete = async (req, res, next) => {
     try {
       const id = req.params.id;
-      await deleteDoc(doc(db, "notifications", id));
+      await deleteDoc(doc(db, "pupil_notifications", id));
       res.status(200).send({ message: "Notification deleted successfully!" });
     } catch (error) {
       res.status(400).send({ message: error.message });
@@ -69,4 +69,4 @@ class NotificationController {
   };
 }
 
-module.exports = new NotificationController();
+module.exports = new PupilNotificationController();
