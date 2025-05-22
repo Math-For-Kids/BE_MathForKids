@@ -10,7 +10,8 @@ const {
   deleteDoc,
   serverTimestamp,
   query,
-  where
+  where,
+  Timestamp,
 } = require("firebase/firestore");
 
 const db = getFirestore();
@@ -24,8 +25,14 @@ class PupilController {
       const dateOfBirthTimestamp = Timestamp.fromDate(date);
       await addDoc(collection(db, "pupils"), {
         ...data,
-        isDisabled:false,
         dateOfBirth: dateOfBirthTimestamp,
+        point: 0,
+        volume: 100,
+        language: "en",
+        mode: "light",
+        imgae: '',
+        theme: 1,
+        isDisabled: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -77,7 +84,13 @@ class PupilController {
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const { createdAt, ...data } = req.body;
+      const { createdAt, dateOfBirth, ...data } = req.body;
+
+      // Nếu có trường dateOfBirth thì chuyển thành Timestamp
+      if (dateOfBirth) {
+        const date = new Date(dateOfBirth);
+        data.dateOfBirth = Timestamp.fromDate(date);
+      }
       const pupilRef = doc(db, "pupils", id);
       await updateDoc(pupilRef, {
         ...data,
@@ -93,12 +106,24 @@ class PupilController {
   delete = async (req, res, next) => {
     try {
       const id = req.params.id;
-      await deleteDoc(doc(db, "pupils", id));
-      res.status(200).send({ message: "Pupil deleted successfully!" });
+      const { createdAt, dateOfBirth, ...data } = req.body;
+      const pupilRef = doc(db, "pupils", id);
+      await updateDoc(pupilRef, { ...data, updatedAt: serverTimestamp() });
+      res.status(200).send({ message: "Pupil disabled successfully!" });
     } catch (error) {
       res.status(400).send({ message: error.message });
     }
   };
+  countPupils = async (req, res, next) => {
+    try {
+      const pupilSnapshot = await getDocs(collection(db, "pupils"));
+      const pupilCount = pupilSnapshot.size;
+      res.status(200).send({ count: pupilCount });
+    } catch (error) {
+      res.status(400).send({ message: error.message });
+    }
+  };
+
 }
 
 module.exports = new PupilController();

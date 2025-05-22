@@ -52,7 +52,7 @@ const updateUserData = async (phoneNumber, email, otp) => {
   // Tính thời gian hết hạn (hiện tại + 5 phút)
   const now = new Date();
   const expiration = new Date(now.getTime() + 5 * 60 * 1000); // 5 phút
-  const userDoc = checkUserExist(phoneNumber, email);
+  const userDoc = await checkUserExist(phoneNumber, email);
   const userRef = doc(db, "users", userDoc.id);
   await updateDoc(userRef, {
     otpCode: otp,
@@ -63,8 +63,8 @@ const updateUserData = async (phoneNumber, email, otp) => {
 class AuthController {
   sendOTPByPhoneNumber = async (req, res, next) => {
     try {
-       const phoneNumber = req.params.phoneNumber;
-      const userDoc = checkUserExist(phoneNumber, null);
+      const phoneNumber = req.params.phoneNumber;
+      const userDoc = await checkUserExist(phoneNumber, null);
       if (userDoc && userDoc.data().isVerify) {
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
         await smsService(
@@ -94,7 +94,7 @@ class AuthController {
   sendOTPByEmail = async (req, res, next) => {
     try {
       const email = req.params.email;
-      const userDoc = checkUserExist(null, email);
+      const userDoc = await checkUserExist(null, email);
       if (userDoc && userDoc.data().isVerify) {
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
         const response = await mailService(email, otp);
@@ -102,7 +102,7 @@ class AuthController {
           updateUserData(null, email, otp);
           return res.status(200).json({
             message: response.message,
-            userId: userDoc.data().id,
+            userId: userDoc.id,
           });
         } else {
           return res.status(500).json({
@@ -133,7 +133,8 @@ class AuthController {
           .json({ success: false, message: "User not found" });
       }
 
-      const userData = User.fromFirestore(userSnap);
+      // const userData = User.fromFirestore(userSnap);
+      const userData = userSnap.data(); // lấy trực tiếp data từ Firestore
 
       // Kiểm tra OTP có khớp không
       if (userData.otpCode !== otp) {

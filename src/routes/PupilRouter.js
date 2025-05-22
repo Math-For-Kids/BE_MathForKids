@@ -7,7 +7,8 @@ router.get("/enabled", pupilController.getEnabledPupil);
 router.get("/", pupilController.getAll);
 router.get("/:id", pupilController.getById);
 router.put("/:id", pupilController.update);
-router.delete("/:id", pupilController.delete);
+router.put("/disable/:id", pupilController.delete);
+router.get("/countpupil", pupilController.countPupils);
 
 module.exports = router;
 
