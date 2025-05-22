@@ -14,18 +14,57 @@ const {
 } = require("firebase/firestore");
 
 const db = getFirestore();
+const { uploadMultipleFiles } = require("./fileController");
 
 class AssessmentController {
 
+
   create = async (req, res, next) => {
     try {
-      const data = req.body;
+      const {
+        levelId,
+        grade,
+        type,
+        question,
+        option,
+        answer,
+      } = req.body;
+
+      const uploadedFiles = req.files ? await uploadMultipleFiles(req.files) : {};
+
+      const image = uploadedFiles["image"] || null;
+      let parsedOption = Array.isArray(option)
+        ? option
+        : JSON.parse(option); // Nếu front-end gửi dạng JSON string
+
+      parsedOption = parsedOption.map((opt, index) => {
+        // Nếu option là image thì gán URL ảnh
+        if (opt === "__image__" && uploadedFiles[`option_${index}`]) {
+          return uploadedFiles[`option_${index}`];
+        }
+        return opt;
+      });
+
+      // Xử lý answer – có thể là text hoặc ảnh
+      let finalAnswer = answer;
+      if (answer === "__image__" && (uploadedFiles["answer"] || uploadedFiles["answerImage"])) {
+        finalAnswer = uploadedFiles["answer"] || uploadedFiles["answerImage"];
+      }
       await addDoc(collection(db, "assessments"), {
-        ...data,
+        id: uuidv4(),
+        levelId,
+        grade,
+        type,
+        question: JSON.parse(question), // Parse question if sent as JSON string
+        image,
+        option: parsedOption,
+        answer: finalAnswer,
+        isDisabled: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-      res.status(200).send({ message: "Assessment created successfully!" });
+
+      res.status(201).send({ message: "Assessment created successfully!" });
     } catch (error) {
       res.status(400).send({ message: error.message });
     }

@@ -114,6 +114,7 @@ class PupilController {
       res.status(400).send({ message: error.message });
     }
   };
+  
   countPupils = async (req, res, next) => {
     try {
       const pupilSnapshot = await getDocs(collection(db, "pupils"));

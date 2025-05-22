@@ -1,5 +1,5 @@
 const { Upload } = require("@aws-sdk/lib-storage");
-const { s3 } = require("../config/awsConfig");
+const { s3 } = require("../../config/awsConfig");
 
 class FileController {
   uploadFile = async (file, key) => {
