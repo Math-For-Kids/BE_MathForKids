@@ -9,6 +9,8 @@ const {
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  query,
+  where
 } = require("firebase/firestore");
 
 const db = getFirestore();
@@ -39,6 +41,18 @@ class PupilController {
       res.status(400).send({ message: error.message });
     }
   };
+
+  getEnabledPupil = async (req, res) => {
+        try {
+            const pupilsRef = collection(db, "pupils");
+            const q = query(pupilsRef, where("isDisabled", "==", false));
+            const snapshot = await getDocs(q);
+            const pupils = snapshot.docs.map(doc => Pupil.fromFirestore(doc));
+            res.status(200).send(pupils);
+        } catch (error) {
+            res.status(400).send({ message: error.message });
+        }
+    };
 
  
   getById = async (req, res, next) => {

@@ -39,20 +39,21 @@ class Pupil {
     const data = doc.data();
     return new Pupil(
       doc.id,
-      data.fullName ?? "",
-      data.nickName ?? "",
-      data.image ?? "",
-      data.gender ?? "",
-      data.dateOfBirth?.toDate().toLocaleDateString("vi-VN") ?? "",
-      data.grade ?? "",
+      data.userId ?? '',
+      data.fullName ?? '',
+      data.nickName ?? '',
+      data.image ?? '',
+      data.gender ?? '',
+      data.dateOfBirth?.toDate().toLocaleDateString("vi-VN") ?? '',
+      data.grade ?? '',
       data.point ?? 0,
       data.volume ?? 0,
-      data.language ?? "",
+      data.language ?? '',
       data.mode ?? false,
-      data.theme ?? "",
+      data.theme ?? '',
       data.isDisabled ?? false,
-      data.createdAt?.toDate().toLocaleString("vi-VN") ?? "",
-      data.updatedAt?.toDate().toLocaleString("vi-VN") ?? ""
+      data.createdAt?.toDate().toLocaleString("vi-VN") ?? '',
+      data.updatedAt?.toDate().toLocaleString("vi-VN") ?? ''
     );
   }
 }

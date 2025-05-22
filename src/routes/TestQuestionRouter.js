@@ -3,8 +3,9 @@ const testquestionController = require("../app/controllers/TestQuestionControlle
 const router = express.Router();
 
 router.post("/", testquestionController.create);
-router.get("/:id", testquestionController.getById);
+router.get("/enabled",testquestionController.getEnabledTestQuestion);
 router.get("/",testquestionController.getAll);
+router.get("/:id", testquestionController.getById);
 router.put("/:id",testquestionController.update);
 router.delete("/:id", testquestionController.delete);
 

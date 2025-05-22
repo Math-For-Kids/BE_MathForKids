@@ -1,4 +1,4 @@
-const Tests = require("../models/Tests");
+const Tests = require("../models/Test");
 const {
     getFirestore,
     collection,
