@@ -56,7 +56,6 @@ class Pupil {
       data.updatedAt?.toDate().toLocaleString("vi-VN") ?? ''
     );
   }
-
 }
 
 module.exports = Pupil;

@@ -20,7 +20,6 @@ class TestController {
             const data = req.body;
             await addDoc(collection(db, "tests"), {
                 ...data,
-                isDisabled: true,
                 createAt: serverTimestamp(),
                 updateAt: serverTimestamp(),
             });

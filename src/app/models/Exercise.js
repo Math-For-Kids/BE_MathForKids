@@ -1,26 +1,43 @@
 class Exercise {
-    constructor(id, lessonId, question, option, answer, createdAt, updatedAt) {
-      (this.id = id),
-        (this.lessonId = lessonId),
-        (this.question = question),
-        (this.option = option),
-        (this.answer = answer),
-        (this.createdAt = createdAt),
-        (this.updatedAt = updatedAt);
-    }
-
-    static fromFirestore(doc) {
-      const data = doc.data();
-      return new Exercise(
-        doc.id,
-        data.lessonId,
-        data.question,
-        data.option,
-        data.answer,
-        data.createdAt?.toDate().toLocaleString("vi-VN"),
-        data.updatedAt?.toDate().toLocaleString("vi-VN")
-      );
-    }
+  constructor(
+    id,
+    lessonId,
+    levelId,
+    question,
+    image,
+    option,
+    answer,
+    isDisabled,
+    createdAt,
+    updatedAt
+  ) {
+    (this.id = id),
+      (this.lessonId = lessonId),
+      (this.levelId = levelId),
+      (this.question = question),
+      (this.image = image),
+      (this.option = option),
+      (this.answer = answer),
+      (this.isDisabled = isDisabled),
+      (this.createdAt = createdAt),
+      (this.updatedAt = updatedAt);
   }
-  
-  module.exports = Exercise;
+
+  static fromFirestore(doc) {
+    const data = doc.data();
+    return new Exercise(
+      doc.id,
+      data.lessonId,
+      data.levelId,
+      data.question,
+      data.image,
+      data.option,
+      data.answer,
+      data.isDisabled,
+      data.createdAt?.toDate().toLocaleString("vi-VN"),
+      data.updatedAt?.toDate().toLocaleString("vi-VN")
+    );
+  }
+}
+
+module.exports = Exercise;
