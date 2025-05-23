@@ -114,31 +114,53 @@ class UserController {
       res.status(400).send({ message: error.message });
     }
   };
+  
   countUsersByMonth = async (req, res, next) => {
     try {
+      const { month } = req.query; // ví dụ: "05"
+      if (!month || !/^\d{2}$/.test(month)) {
+        return res.status(400).send({ message: "Invalid month format. Use MM" });
+      }
+
+      const now = new Date();
+      const year = now.getFullYear();
+      const monthIndex = parseInt(month) - 1;
+
+      const currentStart = new Date(year, monthIndex, 1);
+      const currentEnd = new Date(year, monthIndex + 1, 1);
+
+      const prevMonthIndex = (monthIndex - 1 + 12) % 12;
+      const prevYear = monthIndex === 0 ? year - 1 : year;
+      const prevStart = new Date(prevYear, prevMonthIndex, 1);
+      const prevEnd = new Date(prevYear, prevMonthIndex + 1, 1);
+
       const usersSnapshot = await getDocs(collection(db, "users"));
-      const monthlyCount = {};
+      let currentCount = 0;
+      let previousCount = 0;
 
       usersSnapshot.forEach(docSnap => {
         const data = docSnap.data();
-        const createdAt = data.createdAt;
-
-        if (createdAt && createdAt.toDate) {
-          const date = createdAt.toDate(); // Convert Timestamp to JS Date
-          const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-
-          if (!monthlyCount[yearMonth]) {
-            monthlyCount[yearMonth] = 0;
+        if (data.createdAt && data.createdAt.toDate) {
+          const createdAt = data.createdAt.toDate();
+          if (createdAt >= currentStart && createdAt < currentEnd) {
+            currentCount++;
+          } else if (createdAt >= prevStart && createdAt < prevEnd) {
+            previousCount++;
           }
-          monthlyCount[yearMonth]++;
         }
       });
 
-      res.status(200).send(monthlyCount);
+      res.status(200).send({
+        month,
+        currentMonthCount: currentCount,
+        previousMonthCount: previousCount,
+      });
     } catch (error) {
       res.status(400).send({ message: error.message });
     }
   };
+
+
 }
 
 module.exports = new UserController();

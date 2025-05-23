@@ -90,6 +90,18 @@ class LessonController {
       res.status(400).send({ message: error.message });
     }
   };
+ countLessons = async (req, res, next) => {
+  try {
+    const q = query(collection(db, "lessons"), where("isDisabled", "==", false));
+    const snapshot = await getDocs(q);
+    const count = snapshot.size;
+
+    res.status(200).send({ count: count });
+  } catch (error) {
+    res.status(400).send({ message: error.message });
+  }
+};
+
 }
 
 module.exports = new LessonController();
