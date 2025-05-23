@@ -1,3 +1,5 @@
+const jwt = require("jsonwebtoken");
+
 class User {
   constructor(
     id,
@@ -58,6 +60,12 @@ class User {
       data.createdAt?.toDate().toLocaleString("vi-VN"),
       data.updatedAt?.toDate().toLocaleString("vi-VN")
     );
+  }
+
+  getSignedJwtToken() {
+    return jwt.sign({ id: this.id }, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRE || "1d", // ví dụ: 1d = 1 ngày
+    });
   }
 }
 
