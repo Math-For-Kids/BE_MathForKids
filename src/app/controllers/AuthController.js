@@ -14,7 +14,6 @@ const {
 } = require("firebase/firestore");
 const { smsService } = require("../services/SmsService");
 const { mailService } = require("../services/MailService");
-const userController = require("./UserController");
 
 const db = getFirestore();
 
@@ -31,7 +30,12 @@ const sendTokenResponse = (user, statusCode, res) => {
 
   res.status(statusCode).cookie("token", token, options).json({
     success: true,
-    user: user,
+    id: user.id,
+    fullName: user.fullName,
+    role: user.role,
+    volume: user.volume,
+    language: user.language,
+    mode: user.mode,
     token,
   });
 };
@@ -48,11 +52,10 @@ const checkUserExist = async (phoneNumber, email) => {
   else return querySnapshot.docs[0];
 };
 
-const updateUserData = async (phoneNumber, email, otp) => {
+const updateUserData = async (userDoc, otp) => {
   // Tính thời gian hết hạn (hiện tại + 5 phút)
   const now = new Date();
   const expiration = new Date(now.getTime() + 5 * 60 * 1000); // 5 phút
-  const userDoc = checkUserExist(phoneNumber, email);
   const userRef = doc(db, "users", userDoc.id);
   await updateDoc(userRef, {
     otpCode: otp,
@@ -63,8 +66,8 @@ const updateUserData = async (phoneNumber, email, otp) => {
 class AuthController {
   sendOTPByPhoneNumber = async (req, res, next) => {
     try {
-       const phoneNumber = req.params.phoneNumber;
-      const userDoc = checkUserExist(phoneNumber, null);
+      const phoneNumber = req.params.phoneNumber;
+      const userDoc = await checkUserExist(phoneNumber, null);
       if (userDoc && userDoc.data().isVerify) {
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
         await smsService(
@@ -73,7 +76,7 @@ class AuthController {
           2,
           "5087a0dcd4ccd3a2"
         );
-        updateUserData(phoneNumber, null, otp);
+        await updateUserData(userDoc, otp);
         return res.status(200).json({
           message: "OTP send successfully!",
           userId: userDoc.data().id,
@@ -94,12 +97,12 @@ class AuthController {
   sendOTPByEmail = async (req, res, next) => {
     try {
       const email = req.params.email;
-      const userDoc = checkUserExist(null, email);
+      const userDoc = await checkUserExist(null, email);
       if (userDoc && userDoc.data().isVerify) {
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
         const response = await mailService(email, otp);
         if (response.status == 200) {
-          updateUserData(null, email, otp);
+          await updateUserData(userDoc, otp);
           return res.status(200).json({
             message: response.message,
             userId: userDoc.data().id,
@@ -122,7 +125,7 @@ class AuthController {
   verify = async (req, res, next) => {
     try {
       const { id } = req.params; // ID của document
-      const { otp } = req.body;
+      const { otpCode } = req.body;
 
       const userRef = doc(db, "users", id);
       const userSnap = await getDoc(userRef);
@@ -136,7 +139,7 @@ class AuthController {
       const userData = User.fromFirestore(userSnap);
 
       // Kiểm tra OTP có khớp không
-      if (userData.otpCode !== otp) {
+      if (userData.otpCode !== otpCode) {
         return res
           .status(400)
           .json({ success: false, message: "OTP is invalid!" });
@@ -144,9 +147,22 @@ class AuthController {
 
       // Kiểm tra thời gian hết hạn
       const now = new Date();
-      const expiration = new Date(
-        userData.otpExpiration?.toDate?.() || userData.otpExpiration
-      );
+
+      let expiration;
+      if (userData.otpExpiration?.toDate) {
+        expiration = userData.otpExpiration.toDate();
+      } else if (
+        typeof userData.otpExpiration === "string" ||
+        typeof userData.otpExpiration === "number"
+      ) {
+        expiration = new Date(userData.otpExpiration);
+      } else {
+        return res.status(500).json({
+          success: false,
+          message: "OTP expiration is invalid",
+        });
+      }
+
       if (now > expiration) {
         return res
           .status(400)
