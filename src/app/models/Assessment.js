@@ -33,7 +33,7 @@ class Assessment {
       data.grade ?? 0,
       data.type ?? '',
       data.question ?? {},
-      data.image ?? [],
+      data.image ?? '',
       data.option ?? [],
       data.answer ?? '',
       data.isDisabled ?? false,

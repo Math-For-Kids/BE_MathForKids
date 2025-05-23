@@ -44,7 +44,7 @@ class Pupil {
       data.nickName ?? '',
       data.image ?? '',
       data.gender ?? '',
-      data.dateOfBirth?.toDate().toLocaleDateString("vi-VN") ?? '',
+      data.dateOfBirth ?? '',
       data.grade ?? '',
       data.point ?? 0,
       data.volume ?? 0,

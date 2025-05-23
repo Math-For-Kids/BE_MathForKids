@@ -4,7 +4,7 @@ const router = express.Router();
 
 router.post("/", CompletedExercisesController.create);
 router.get("/", CompletedExercisesController.getAll);
-router.get("/getByExerciseId/:id", CompletedExercisesController.getByExerciseId);
+router.get("/getByExerciseId/:id", CompletedExercisesController.getByLessonId);
 router.get("/:id", CompletedExercisesController.getById);
 router.put("/:id", CompletedExercisesController.update);
 router.delete("/:id", CompletedExercisesController.delete);

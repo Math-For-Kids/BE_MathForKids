@@ -72,7 +72,7 @@ class LessonController {
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const data = req.body;
+      const { createdAt, ...data } = req.body;
       const lesson = doc(db, "lessons", id);
       await updateDoc(lesson, { ...data, updatedAt: serverTimestamp() });
       res.status(200).send({ message: "Lesson updated successfully!" });
@@ -90,6 +90,18 @@ class LessonController {
       res.status(400).send({ message: error.message });
     }
   };
+ countLessons = async (req, res, next) => {
+  try {
+    const q = query(collection(db, "lessons"), where("isDisabled", "==", false));
+    const snapshot = await getDocs(q);
+    const count = snapshot.size;
+
+    res.status(200).send({ count: count });
+  } catch (error) {
+    res.status(400).send({ message: error.message });
+  }
+};
+
 }
 
 module.exports = new LessonController();

@@ -8,6 +8,5 @@ router.get("/getByLessonId/:id", TestController.getByLessonId);
 router.get("/getByExerciseId/:id", TestController.getByExerciseId);
 router.get("/:id", TestController.getById);
 router.put("/:id", TestController.update);
-router.delete("/:id", TestController.delete);
 
 module.exports = router;

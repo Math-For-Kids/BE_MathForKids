@@ -105,7 +105,7 @@ class AuthController {
           await updateUserData(userDoc, otp);
           return res.status(200).json({
             message: response.message,
-            userId: userDoc.data().id,
+            userId: userDoc.id,
           });
         } else {
           return res.status(500).json({
@@ -136,7 +136,8 @@ class AuthController {
           .json({ success: false, message: "User not found" });
       }
 
-      const userData = User.fromFirestore(userSnap);
+      // const userData = User.fromFirestore(userSnap);
+      const userData = userSnap.data(); // lấy trực tiếp data từ Firestore
 
       // Kiểm tra OTP có khớp không
       if (userData.otpCode !== otpCode) {

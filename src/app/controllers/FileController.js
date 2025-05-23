@@ -1,5 +1,5 @@
 const { Upload } = require("@aws-sdk/lib-storage");
-const { s3 } = require("../config/awsConfig");
+const { s3 } = require("../../config/awsConfig");
 
 class FileController {
   uploadFile = async (file, key) => {
@@ -33,22 +33,89 @@ class FileController {
     }
   };
 
-  uploadMultipleFiles = async (files) => {
-    const uploadedFiles = {};
+  // uploadMultipleFiles = async (files) => {
+  //   const uploadedFiles = {};
 
-    for (const file of files) {
+  //   for (const file of files) {
+  //     const fileName = Date.now().toString() + "-" + file.originalname;
+  //     console.log("Upload file: " + fileName);
+  //     try {
+  //       const uploadedFile = await this.uploadFile(file, fileName);
+  //       uploadedFiles[file.fieldname] = process.env.CLOUD_FRONT + fileName;
+  //     } catch (error) {
+  //       console.error("Error during file upload:", error);
+  //       throw error;
+  //     }
+  //   }
+
+  //   return uploadedFiles;
+  // };
+  uploadMultipleFiles = async (files, textOption,textAnswer) => {
+    const result = {
+      image: null,
+      option: [],
+      answer: null,
+    };
+
+    // Handle image file
+    if (files.image && files.image.length > 0) {
+      const file = files.image[0];
       const fileName = Date.now().toString() + "-" + file.originalname;
       console.log("Upload file: " + fileName);
       try {
-        const uploadedFile = await this.uploadFile(file, fileName);
-        uploadedFiles[file.fieldname] = process.env.CLOUD_FRONT + fileName;
+        await this.uploadFile(file, fileName);
+        result.image = `${process.env.CLOUD_FRONT}${fileName}`;
       } catch (error) {
-        console.error("Error during file upload:", error);
+        console.error("Error during image upload:", error);
         throw error;
       }
     }
 
-    return uploadedFiles;
+    if (textOption) {
+      try {
+        const parsedTextOptions = JSON.parse(textOption);
+        result.option.push(...parsedTextOptions); // Add text options to the array
+      } catch (error) {
+        console.error("Error parsing textOption:", error);
+        throw new Error("Invalid textOption format");
+      }
+    }
+
+    // Handle option files
+    if (files.option && files.option.length > 0) {
+      for (const file of files.option) {
+        const fileName = Date.now().toString() + "-" + file.originalname;
+        console.log("Upload file: " + fileName);
+        try {
+          await this.uploadFile(file, fileName);
+          result.option.push(`${process.env.CLOUD_FRONT}${fileName}`); // Add image URLs to the array
+        } catch (error) {
+          console.error("Error during options upload:", error);
+          throw error;
+        }
+      }
+    }
+    // Handle answer (text or image)
+    if (textAnswer) {
+      try {
+        result.answer = textAnswer; // Store text answer directly
+      } catch (error) {
+        console.error("Error processing textAnswer:", error);
+        throw new Error("Invalid textAnswer format");
+      }
+    } else if (files.answer && files.answer.length > 0) {
+      const file = files.answer[0];
+      const fileName = Date.now().toString() + "-" + file.originalname;
+      console.log("Upload file: " + fileName);
+      try {
+        await this.uploadFile(file, fileName);
+        result.answer = `${process.env.CLOUD_FRONT}${fileName}`; // Store image URL
+      } catch (error) {
+        console.error("Error during answer upload:", error);
+        throw error;
+      }
+    }
+    return result;
   };
 }
 

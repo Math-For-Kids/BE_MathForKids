@@ -1,12 +1,13 @@
 const express = require("express");
-const lessonContrller = require("../app/controllers/LessonController");
+const lessonController = require("../app/controllers/LessonController");
 const router = express.Router();
 
-router.post("/", lessonContrller.create);
-router.get("/", lessonContrller.getAll);
-router.get("/:id", lessonContrller.getById);
-router.get("/getByGrade/:grade", lessonContrller.getByGrade);
-router.put("/:id", lessonContrller.update);
-router.delete("/:id", lessonContrller.delete);
+router.post("/", lessonController.create);
+router.get("/", lessonController.getAll);
+router.get("/countlesson", lessonController.countLessons);
+router.get("/:id", lessonController.getById);
+router.get("/getByGrade/:grade", lessonController.getByGrade);
+router.put("/:id", lessonController.update);
+router.delete("/:id", lessonController.delete);
 
 module.exports = router;

@@ -12,25 +12,50 @@ const {
   query,
   where,
 } = require("firebase/firestore");
+const { uploadMultipleFiles } = require("./fileController");
 
 const db = getFirestore();
 
 class ExerciseController {
   create = async (req, res, next) => {
     try {
-      const data = req.body;
-      await addDoc(collection(db, "exercises"), {
-        ...data,
+      const { levelId, lessonId, question, option: textOption, answer: textAnswer } = req.body;
+      // Parse JSON fields
+      const parsedQuestion = JSON.parse(question);
+      // Upload files and get image, option, and answer
+      const { image, option, answer } = await uploadMultipleFiles(req.files, textOption, textAnswer);
+
+      // Prepare assessment data
+      const exercisesRef = await addDoc(collection(db, "exercises"), {
+        levelId,
+        lessonId,
+        question: parsedQuestion,
+        option, // Array of text or image URLs
+        answer,
+        image,
         isDisabled: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-      res.status(200).send({ message: "Exercise created successfully!" });
+
+      res.status(201).send({
+        message: "Exercises created successfully!",
+        data: exercisesRef.id,
+      });
+    } catch (error) {
+      console.error("Error in create:", error.message);
+      res.status(400).send({ message: error.message });
+    }
+  };
+  getAll = async (req, res, next) => {
+    try {
+      const exercises = await getDocs(collection(db, "exercises"));
+      const exerciseArray = exercises.docs.map((doc) => Exercise.fromFirestore(doc));
+      res.status(200).send(exerciseArray);
     } catch (error) {
       res.status(400).send({ message: error.message });
     }
   };
-
   getByLesson = async (req, res, next) => {
     try {
       const lessonId = req.params.lessonId;
@@ -67,11 +92,49 @@ class ExerciseController {
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const data = req.body;
-      const exercise = doc(db, "exercises", id);
-      await updateDoc(exercise, { ...data, updatedAt: serverTimestamp() });
-      res.status(200).send({ message: "Exercise updated successfully!" });
+      const exercisesRef = doc(db, "exercises", id);
+      const docSnapshot = await getDoc(exercisesRef);
+
+      if (!docSnapshot.exists()) {
+        return res.status(404).send({ message: "Exercises not found!" });
+      }
+      const oldData = docSnapshot.data();
+      const { levelId, lessonId, question, option: textOption, answer: textAnswer } = req.body;
+      let parsedQuestion, parsedOption, parsedAnswer;
+      try {
+        parsedQuestion = JSON.parse(question);
+        parsedOption = textOption ? JSON.parse(textOption) : null;
+        parsedAnswer = textAnswer || null;
+      } catch (error) {
+        return res.status(400).send({ message: "Invalid JSON format for type, question, option, or answer!" });
+      }
+      const { image, option: uploadedOption, answer: uploadedAnswer } = await uploadMultipleFiles(
+        req.files,
+        parsedOption,
+        parsedAnswer
+      );
+
+      const finalOption =
+        (uploadedOption && uploadedOption.length > 0) ? uploadedOption :
+          (parsedOption && parsedOption.length > 0) ? parsedOption :
+            oldData.option;
+
+      const finalAnswer = uploadedAnswer ?? parsedAnswer ?? oldData.answer;
+      const finalImage = image ?? oldData.image;
+
+      const updateData = {
+        levelId,
+        lessonId,
+        question: parsedQuestion,
+        option: finalOption,
+        answer: finalAnswer,
+        image: finalImage,
+        updatedAt: serverTimestamp(),
+      };
+      await updateDoc(exercisesRef, updateData);
+      res.status(200).send({ message: "Exercises updated successfully!" });
     } catch (error) {
+      console.error("Error in update:", error.message);
       res.status(400).send({ message: error.message });
     }
   };
@@ -79,8 +142,10 @@ class ExerciseController {
   delete = async (req, res, next) => {
     try {
       const id = req.params.id;
-      await deleteDoc(doc(db, "exercises", id));
-      res.status(200).send({ message: "Exercise deleted successfully!" });
+      const { createdAt, ...data } = req.body;
+      const exercisesRef = doc(db, "exercises", id);
+      await updateDoc(exercisesRef, { ...data, updatedAt: serverTimestamp() });
+      res.status(200).send({ message: "Exercises disabled successfully!" });
     } catch (error) {
       res.status(400).send({ message: error.message });
     }

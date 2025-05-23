@@ -14,6 +14,7 @@ const assessmentRouter = require("../routes/AssessmentRouter");
 const levelRouter = require("../routes/LevelRouter");
 const testquestionRouter = require("../routes/TestQuestionRouter");
 const generalnotificationRouter = require("../routes/GeneralNotificationRouter");
+const dailytaskRouter = require("../routes/DailyTaskRouter");
 
 function route(app) {
   app.use("/lesson", lessonRouter);
@@ -32,6 +33,8 @@ function route(app) {
   app.use("/level", levelRouter);
   app.use("/testquestion", testquestionRouter);
   app.use("/generalnotification", generalnotificationRouter);
+  app.use("/dailytask", dailytaskRouter);
+
 }
 
 module.exports = route;
