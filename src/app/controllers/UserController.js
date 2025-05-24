@@ -17,6 +17,18 @@ const {
 
 const db = getFirestore();
 
+const checkUserExist = async (phoneNumber, email) => {
+  let q;
+  if (phoneNumber) {
+    q = query(collection(db, "users"), where("phoneNumber", "==", phoneNumber));
+  } else if (email) {
+    q = query(collection(db, "users"), where("email", "==", email));
+  }
+  const querySnapshot = await getDocs(q);
+  if (querySnapshot.empty) return null;
+  else return querySnapshot.docs[0];
+};
+
 class UserController {
   getAll = async (req, res, next) => {
     try {
