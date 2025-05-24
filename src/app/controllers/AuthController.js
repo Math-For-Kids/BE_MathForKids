@@ -81,6 +81,10 @@ class AuthController {
           message: "OTP send successfully!",
           userId: userDoc.data().id,
         });
+      } else if (!userDoc.data().isVerify) {
+        return res.status(403).json({
+          message: "User account is not verified. Please sign up again.",
+        });
       } else {
         return res.status(404).json({
           message: "User is not found!",
@@ -106,6 +110,10 @@ class AuthController {
           return res.status(200).json({
             message: response.message,
             userId: userDoc.data().id,
+          });
+        } else if (!userDoc.data().isVerify) {
+          return res.status(403).json({
+            message: "User account is not verified. Please sign up again.",
           });
         } else {
           return res.status(500).json({
