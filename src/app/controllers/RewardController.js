@@ -116,7 +116,7 @@ class RewardController {
       const { createdAt, ...data } = req.body;
       const rewardRef = doc(db, "reward", id);
       await updateDoc(rewardRef, { ...data, updatedAt: serverTimestamp() });
-      res.status(200).send({ message: "Pupil disabled successfully!" });
+      res.status(200).send({ message: "Reward disabled successfully!" });
     } catch (error) {
       res.status(400).send({ message: error.message });
     }

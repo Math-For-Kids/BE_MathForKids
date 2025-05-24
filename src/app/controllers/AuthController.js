@@ -144,8 +144,7 @@ class AuthController {
           .json({ success: false, message: "User not found" });
       }
 
-      // const userData = User.fromFirestore(userSnap);
-      const userData = userSnap.data(); // lấy trực tiếp data từ Firestore
+      const userData = User.fromFirestore(userSnap);
 
       // Kiểm tra OTP có khớp không
       if (userData.otpCode !== otpCode) {

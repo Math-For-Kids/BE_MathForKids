@@ -40,34 +40,47 @@ class UserController {
       res.status(200).send(users);
     } catch (error) {
       res.status(400).send({ message: error.message });
+    } 
+  };
+  getById = async (req, res, next) => {
+    try {
+      const id = req.params.id;
+      const usersRef = doc(db, "users", id);
+      const data = await getDoc(usersRef);
+      if (data.exists()) {
+        const userData = User.fromFirestore(data);
+        res.status(200).send(userData);
+      } else {
+        res.status(404).send({ message: "User not found!" });
+      }
+    } catch (error) {
+      res.status(400).send({ message: error.message });
     }
   };
-
   create = async (req, res, next) => {
     try {
       const data = req.body;
-      const existUser = await checkUserExist(data.phoneNumber, null);
-      if (existUser) {
-        res.status(200).send({ message: "User created successfully!" });
-      } else {
-        const date = new Date(data.dateOfBirth); // Chuyển chuỗi sang Date
-        const dateOfBirthTimestamp = Timestamp.fromDate(date); // Chuyển sang Timestamp
-        await addDoc(collection(db, "users"), {
-          ...data,
-          dateOfBirth: dateOfBirthTimestamp,
-          role: "user",
-          isVerify: false,
-          otpCode: "",
-          otpExpiration: null,
-          volume: 100,
-          language: "en",
-          mode: "light",
-          isDisabled: false,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-        res.status(200).send({ message: "User created successfully!" });
-      }
+      const date = new Date(data.dateOfBirth); // Chuyển chuỗi sang Date
+      const dateOfBirthTimestamp = Timestamp.fromDate(date); // Chuyển sang Timestamp
+      const userData = {
+        ...data,
+        dateOfBirth: dateOfBirthTimestamp,
+        role: 'user',
+        isVerify: false,
+        otpCode: '',
+        otpExpiration: null,
+        volume: 100,
+        language: 'en',
+        mode: 'light',
+        isDisabled: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+      const docRef = await addDoc(collection(db, 'users'), userData); // Get document reference
+      res.status(200).send({
+        message: 'User created successfully!',
+        id: docRef.id, // Include the document ID
+      });
     } catch (error) {
       res.status(400).send({ message: error.message });
     }
@@ -131,7 +144,7 @@ class UserController {
       res.status(400).send({ message: error.message });
     }
   };
-  
+
   countUsersByMonth = async (req, res, next) => {
     try {
       const { month } = req.query; // ví dụ: "05"

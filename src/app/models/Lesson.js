@@ -1,9 +1,10 @@
 class Lesson {
-  constructor(id, name, grade, type, createdAt, updatedAt) {
+  constructor(id, name, grade, type, isDisabled, createdAt, updatedAt) {
     (this.id = id),
       (this.name = name),
       (this.grade = grade),
       (this.type = type),
+      (this.isDisabled = isDisabled),
       (this.createdAt = createdAt),
       (this.updatedAt = updatedAt);
   }
@@ -15,6 +16,7 @@ class Lesson {
       data.name,
       data.grade,
       data.type,
+      data.isDisabled,
       data.createdAt?.toDate().toLocaleString("vi-VN"),
       data.updatedAt?.toDate().toLocaleString("vi-VN")
     );
