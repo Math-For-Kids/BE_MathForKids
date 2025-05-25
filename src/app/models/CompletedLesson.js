@@ -1,4 +1,4 @@
-class CompletedExercises {
+class CompletedLesson {
     constructor(id, pupilId, lessonId, point, isCompleted, createAt, updateAt) {
         (this.id = id),
             (this.pupilId = pupilId),
@@ -10,7 +10,7 @@ class CompletedExercises {
     }
     static fromFirestore(doc) {
         const data = doc.data();
-        return new CompletedExercises(
+        return new CompletedLesson(
             doc.id,
             data.pupilId,
             data.lessonId,
@@ -21,4 +21,4 @@ class CompletedExercises {
         );
     }
 }
-module.exports = CompletedExercises;
+module.exports = CompletedLesson;

@@ -13,4 +13,3 @@ router.put("/:id", pupilController.update);
 router.put("/disable/:id", pupilController.delete);
 
 module.exports = router;
-
