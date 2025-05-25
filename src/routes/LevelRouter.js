@@ -7,6 +7,6 @@ router.get("/enabled", LevelController.getEnabledLevels);
 router.get("/", LevelController.getAll);
 router.get("/:id", LevelController.getById);
 router.put("/:id", LevelController.update);
-router.delete("/:id", LevelController.delete);
+// router.delete("/:id", LevelController.delete);
 
 module.exports = router;

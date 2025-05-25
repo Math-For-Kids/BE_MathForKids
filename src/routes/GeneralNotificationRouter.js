@@ -6,6 +6,6 @@ router.post("/", generalNotificationController.create);
 router.get("/:id", generalNotificationController.getById);
 router.get("/",generalNotificationController.getAll);
 router.put("/:id",generalNotificationController.update);
-router.delete("/:id", generalNotificationController.delete);
+// router.delete("/:id", generalNotificationController.delete);
 
 module.exports = router;

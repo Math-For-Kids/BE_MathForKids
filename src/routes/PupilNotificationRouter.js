@@ -6,6 +6,6 @@ const router = express.Router();
 router.post("/", notificationController.create);
 router.get("/", notificationController.getAll);
 router.get("/:id", notificationController.getById);
-router.delete("/:id", notificationController.delete);
+// router.delete("/:id", notificationController.delete);
 
 module.exports = router;

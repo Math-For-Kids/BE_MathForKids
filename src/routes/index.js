@@ -3,7 +3,6 @@ const exerciseRouter = require("../routes/ExerciseRouter");
 const goalRouter = require("../routes/GoalRouter");
 const rewardRouter = require("../routes/RewardRouter");
 const ownedrewardRouter = require("../routes/OwnedRewardRouter");
-const rankedpointsRouter = require("../routes/RankedPointRouter");
 const completedLessonRouter = require("../routes/CompletedLessonRouter");
 const testsRouter = require("../routes/TestRouter");
 const authRouter = require("../routes/AuthRouter");
@@ -22,7 +21,6 @@ function route(app) {
   app.use("/goal", goalRouter);
   app.use("/reward", rewardRouter);
   app.use("/ownereward", ownedrewardRouter);
-  app.use("/rankedpoints", rankedpointsRouter);
   app.use("/completedlesson", completedLessonRouter);
   app.use("/test", testsRouter);
   app.use("/auth", authRouter);
