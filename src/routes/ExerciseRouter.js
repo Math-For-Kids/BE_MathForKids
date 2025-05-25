@@ -14,6 +14,6 @@ router.get("/", exerciseController.getAll);
 router.get("/getByLesson/:lessonId", exerciseController.getByLesson);
 router.get("/:id", exerciseController.getById);
 router.put("/:id", uploadFields, exerciseController.update);
-router.put("/disable/:id", exerciseController.delete);
+// router.put("/disable/:id", exerciseController.delete);
 
 module.exports = router;

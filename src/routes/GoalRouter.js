@@ -4,8 +4,8 @@ const router = express.Router();
 
 router.post("/", goalController.create);
 router.get("/:id", goalController.getById);
-router.get("/",goalController.getAll);
+// router.get("/",goalController.getAll);
 router.put("/:id",goalController.update);
-router.delete("/:id", goalController.delete);
+// router.delete("/:id", goalController.delete);
 
 module.exports = router;

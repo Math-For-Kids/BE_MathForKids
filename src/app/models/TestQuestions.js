@@ -2,7 +2,7 @@ class TestQuestion {
   constructor(
     id,
     testId,
-    lessonId,
+    exerciseId,
     level,
     question,
     image,
@@ -15,7 +15,7 @@ class TestQuestion {
   ) {
     this.id = id;
     this.testId = testId;
-    this.lessonId = lessonId;
+    this.exerciseId = exerciseId;
     this.level = level;
     this.question = question;
     this.image = image;
@@ -32,7 +32,7 @@ class TestQuestion {
     return new TestQuestion(
       doc.id,
       data.testId ?? '',
-      data.lessonId ?? '',
+      data.exerciseId ?? '',
       data.level ?? {},
       data.question ?? {},
       data.image ?? '',

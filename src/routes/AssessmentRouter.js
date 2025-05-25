@@ -14,6 +14,6 @@ router.get("/enabled", AssessmentController.getEnabledAssessment);
 router.get("/", AssessmentController.getAll);
 router.get("/:id", AssessmentController.getById);
 router.put("/:id", uploadFields, AssessmentController.update);
-router.put("/disable/:id", AssessmentController.delete);
+// router.put("/disable/:id", AssessmentController.delete);
 
 module.exports = router;
