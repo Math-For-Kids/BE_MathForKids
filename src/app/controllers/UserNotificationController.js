@@ -25,7 +25,7 @@ class UserNotificationController {
         content,
         isRead: isRead ?? false,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        // updatedAt: serverTimestamp(),
       };
       await addDoc(collection(db, "user_notifications"), notificationData);
       res
@@ -93,7 +93,7 @@ class UserNotificationController {
         title,
         content,
         isRead,
-        updatedAt: serverTimestamp(),
+        // updatedAt: serverTimestamp(),
       });
       res
         .status(200)

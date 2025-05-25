@@ -8,6 +8,6 @@ router.get("/countlesson", lessonController.countLessons);
 router.get("/getByGrade/:grade", lessonController.getByGrade);
 router.get("/:id", lessonController.getById);
 router.put("/:id", lessonController.update);
-router.put("/disable/:id", lessonController.delete);
+// router.put("/disable/:id", lessonController.delete);
 
 module.exports = router;

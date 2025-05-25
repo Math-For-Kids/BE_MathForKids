@@ -12,6 +12,6 @@ router.post("/", uploadFields, rewardController.create);
 router.get("/:id", rewardController.getById);
 router.get("/", rewardController.getAll);
 router.put("/:id", uploadFields, rewardController.update);
-router.put("/disable/:id", rewardController.delete);
+// router.put("/disable/:id", rewardController.delete);
 
 module.exports = router;
