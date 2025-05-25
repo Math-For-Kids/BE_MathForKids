@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const UserNotificationController = require("../controllers/UserNotificationController");
+const UserNotificationController = require("../app/controllers/UserNotificationController");
 
 router.post("/", UserNotificationController.create);
 router.get("/", UserNotificationController.getAll);
