@@ -8,6 +8,6 @@ router.post(
 );
 router.post("/sendOTPByEmail/:email", authController.sendOTPByEmail);
 router.post("/verify/:id", authController.verify);
-router.post("/logout", authController.logout);
+router.get("/logout", authController.logout);
 
 module.exports = router;

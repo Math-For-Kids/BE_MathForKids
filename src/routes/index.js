@@ -4,7 +4,7 @@ const goalRouter = require("../routes/GoalRouter");
 const rewardRouter = require("../routes/RewardRouter");
 const ownedrewardRouter = require("../routes/OwnedRewardRouter");
 const rankedpointsRouter = require("../routes/RankedPointRouter");
-const completedexercisesRouter = require("../routes/CompletedExerciseRouter");
+const completedlessonRouter = require("./CompletedLessonRouter");
 const testsRouter = require("../routes/TestRouter");
 const authRouter = require("../routes/AuthRouter");
 const userRouter = require("../routes/UserRouter");
@@ -15,6 +15,7 @@ const levelRouter = require("../routes/LevelRouter");
 const testquestionRouter = require("../routes/TestQuestionRouter");
 const generalnotificationRouter = require("../routes/GeneralNotificationRouter");
 const dailytaskRouter = require("../routes/DailyTaskRouter");
+const CompletedTaskRouter = require("../routes/CompletedTaskRouter");
 
 function route(app) {
   app.use("/lesson", lessonRouter);
@@ -23,7 +24,7 @@ function route(app) {
   app.use("/reward", rewardRouter);
   app.use("/ownereward", ownedrewardRouter);
   app.use("/rankedpoints", rankedpointsRouter);
-  app.use("/completedexercises", completedexercisesRouter);
+  app.use("/completelesson", completedlessonRouter);
   app.use("/test", testsRouter);
   app.use("/auth", authRouter);
   app.use("/user", userRouter);
@@ -34,6 +35,7 @@ function route(app) {
   app.use("/testquestion", testquestionRouter);
   app.use("/generalnotification", generalnotificationRouter);
   app.use("/dailytask", dailytaskRouter);
+  app.use("/completetask", CompletedTaskRouter);
 
 }
 

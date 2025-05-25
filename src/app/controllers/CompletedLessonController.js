@@ -1,4 +1,4 @@
-const CompletedExercises = require("../models/CompletedExercises");
+const CompletedExercises = require("../models/CompletedLesson");
 const {
     getFirestore,
     collection,
@@ -18,7 +18,7 @@ class CompletedExercisesController {
     create = async (req, res, next) => {
         try {
             const data = req.body;
-            await addDoc(collection(db, "completed_exercises"), {
+            await addDoc(collection(db, "completed_lesson"), {
                 ...data,
                 createAt: serverTimestamp(),
                 updateAt: serverTimestamp(),
@@ -31,7 +31,7 @@ class CompletedExercisesController {
     getAll = async (req, res, next) => {
         try {
             const completeexercise = await getDocs(
-                collection(db, "completed_exercises")
+                collection(db, "completed_lesson")
             );
             const completeexerciseData = completeexercise.docs.map((doc) =>
                 CompletedExercises.fromFirestore(doc)
@@ -45,7 +45,7 @@ class CompletedExercisesController {
         try {
             const lessonId = req.params.exerciseId;
             const q = query(
-                collection(db, "completed_exercises"),
+                collection(db, "completed_lesson"),
                 where("lessonId", "==", lessonId)
             );
             const questions = await getDocs(q);
@@ -61,7 +61,7 @@ class CompletedExercisesController {
     getById = async (req, res, next) => {
         try {
             const id = req.params.id;
-            const completed_exercises = doc(db, "completed_exercises", id);
+            const completed_exercises = doc(db, "completed_lesson", id);
             const data = await getDoc(completed_exercises);
             const completed_exercisesData = CompletedExercises.fromFirestore(data);
             if (data.exists()) {
@@ -78,7 +78,7 @@ class CompletedExercisesController {
         try {
             const id = req.params.id;
             const data = req.body;
-            const completed_exercises = doc(db, "completed_exercises", id);
+            const completed_exercises = doc(db, "completed_lesson", id);
             await updateDoc(completed_exercises, { ...data, updateAt: serverTimestamp() });
             res.status(200).send({ message: "Completed exercise updated successfully" });
         } catch (error) {
@@ -89,7 +89,7 @@ class CompletedExercisesController {
     delete = async (req, res, next) => {
         try {
             const id = req.params.id;
-            await deleteDoc(doc(db, "completed_exercises", id));
+            await deleteDoc(doc(db, "completed_lesson", id));
             res.status(200).send({ message: "Question deleted successfully!" });
         } catch (error) {
             res.status(400).send({ message: error.message });

@@ -50,7 +50,7 @@ class FileController {
 
   //   return uploadedFiles;
   // };
-  uploadMultipleFiles = async (files, textOption,textAnswer) => {
+  uploadMultipleFiles = async (files, textOption, textAnswer) => {
     const result = {
       image: null,
       option: [],
@@ -95,6 +95,7 @@ class FileController {
         }
       }
     }
+
     // Handle answer (text or image)
     if (textAnswer) {
       try {

@@ -186,18 +186,15 @@ class AuthController {
 
   logout = async (req, res, next) => {
     try {
-      res.cookie("token", "none", {
-        expires: new Date(Date.now() + 10 * 1000),
-        httpOnly: true,
-      });
-
       res.status(200).json({
         success: true,
+        message: 'Logged out successfully',
       });
     } catch (err) {
       res.status(400).json({ success: false, message: err.message });
     }
   };
+
 }
 
 module.exports = new AuthController();
