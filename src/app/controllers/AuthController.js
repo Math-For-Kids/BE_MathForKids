@@ -14,30 +14,56 @@ const {
 } = require("firebase/firestore");
 const { smsService } = require("../services/SmsService");
 const { mailService } = require("../services/MailService");
-
+const jwt = require("jsonwebtoken");
 const db = getFirestore();
 
+// const sendTokenResponse = (user, statusCode, res) => {
+//   // Create token
+//   const token = user.getSignedJwtToken();
+
+//   const options = {
+//     expires: new Date(
+//       Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000
+//     ),
+//     httpOnly: true,
+//   };
+
+//   res.status(statusCode).cookie("token", token, options).json({
+//     success: true,
+//     id: user.id,
+//     fullName: user.fullName,
+//     role: user.role,
+//     volume: user.volume,
+//     language: user.language,
+//     mode: user.mode,
+//     token,
+//   });
+// };
+
 const sendTokenResponse = (user, statusCode, res) => {
-  // Create token
-  const token = user.getSignedJwtToken();
+  const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+    expiresIn: "1d",
+  });
 
   const options = {
-    expires: new Date(
-      Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000
-    ),
+    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
     httpOnly: true,
   };
 
-  res.status(statusCode).cookie("token", token, options).json({
-    success: true,
-    id: user.id,
-    fullName: user.fullName,
-    role: user.role,
-    volume: user.volume,
-    language: user.language,
-    mode: user.mode,
-    token,
-  });
+  res
+    .status(statusCode)
+    .cookie("token", token, options)
+    .json({
+      success: true,
+      id: user.id,
+      fullName: user.fullName,
+      role: user.role,
+      avatar: user.avatar || "",
+      volume: user.volume,
+      language: user.language,
+      mode: user.mode,
+      token,
+    });
 };
 
 const checkUserExist = async (phoneNumber, email) => {
