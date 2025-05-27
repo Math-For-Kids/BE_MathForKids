@@ -17,6 +17,8 @@ class User {
     language,
     mode,
     isDisabled,
+    image,
+    pin,
     createdAt,
     updatedAt
   ) {
@@ -35,6 +37,8 @@ class User {
       (this.language = language),
       (this.mode = mode),
       (this.isDisabled = isDisabled),
+      (this.image = image),
+      (this.pin = pin),
       (this.createdAt = createdAt),
       (this.updatedAt = updatedAt);
   }
@@ -57,6 +61,8 @@ class User {
       data.language,
       data.mode,
       data.isDisabled,
+      data.image,
+      data.pin,
       data.createdAt?.toDate().toLocaleString("vi-VN"),
       data.updatedAt?.toDate().toLocaleString("vi-VN")
     );
