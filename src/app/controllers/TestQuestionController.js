@@ -16,38 +16,23 @@ const {
 const db = getFirestore();
 
 class TestQuestionController {
-  create = async (req, res, next) => {
+
+  create = async (req, res) => {
     try {
-      const { levelId, testId, level, question, option: textOption, correctAnswer: textAnswer, selectedAnswer: textSelectedAnswer } = req.body;
-
-      const parsedQuestion = JSON.parse(question);
-
-      const { image, option, correctAnswer, selectedAnswer } = await uploadMultipleFiles(req.files, textOption, textAnswer, textSelectedAnswer);
-
-      const testQuestionRef = await addDoc(collection(db, "testquestions"), {
-        levelId,
-        testId,
-        level,
-        question: parsedQuestion,
-        option, // Array of text or image URLs
-        correctAnswer,
-        selectedAnswer,
-        image,
-        isDisabled: false,
+      const data = req.body;
+      const newDocRef = await addDoc(collection(db, "testquestions"), {
+        ...data,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-
-      res.status(201).send({
-        message: "Test question created successfully!",
-        data: testQuestionRef.id,
-      });
+      const newDocSnapshot = await getDoc(newDocRef);
+      const testQuestion = TestQuestion.fromFirestore(newDocSnapshot);
+      res.status(200).send(testQuestion);
     } catch (error) {
-      console.error("Error in create:", error.message);
       res.status(400).send({ message: error.message });
     }
   };
-
+  
   update = async (req, res) => {
     try {
       const id = req.params.id;

@@ -13,7 +13,7 @@ const {
 const db = getFirestore();
 
 class PupilNotificationController {
-  
+
   create = async (req, res, next) => {
     try {
       const data = req.body;

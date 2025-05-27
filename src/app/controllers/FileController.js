@@ -73,8 +73,23 @@ class FileController {
 
     if (textOption) {
       try {
-        const parsedTextOptions = JSON.parse(textOption);
-        result.option.push(...parsedTextOptions); // Add text options to the array
+        let parsedOptions;
+        if (Array.isArray(textOption)) {
+          parsedOptions = textOption; // Already an array, use it directly
+        } else if (typeof textOption === "string") {
+          // Check if it's a JSON string
+          if (textOption.startsWith("[") && textOption.endsWith("]")) {
+            parsedOptions = JSON.parse(textOption); // Parse JSON array
+            if (!Array.isArray(parsedOptions)) {
+              throw new Error("Parsed textOption is not an array");
+            }
+          } else {
+            parsedOptions = [textOption]; // Treat plain string as single-item array
+          }
+        } else {
+          throw new Error("Invalid textOption type");
+        }
+        result.option.push(...parsedOptions); // Add options to result.option
       } catch (error) {
         console.error("Error parsing textOption:", error);
         throw new Error("Invalid textOption format");

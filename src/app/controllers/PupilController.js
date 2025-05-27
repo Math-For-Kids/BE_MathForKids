@@ -45,6 +45,7 @@ class PupilController {
       res.status(400).send({ message: error.message });
     }
   };
+
   getById = async (req, res, next) => {
     try {
       const id = req.params.id;
@@ -60,6 +61,7 @@ class PupilController {
       res.status(400).send({ message: error.message });
     }
   };
+
   getEnabledPupil = async (req, res) => {
     try {
       const pupilsRef = collection(db, "pupils");
@@ -72,37 +74,30 @@ class PupilController {
     }
   };
 
-
-
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const { createdAt, dateOfBirth, ...data } = req.body;
+      const { isDisabled, createdAt, dateOfBirth, ...data } = req.body;
 
-      // Nếu có trường dateOfBirth thì chuyển thành Timestamp
-      if (dateOfBirth) {
-        const date = new Date(dateOfBirth);
-        data.dateOfBirth = Timestamp.fromDate(date);
-      }
-      const pupilRef = doc(db, "pupils", id);
-      await updateDoc(pupilRef, {
+      const updateData = {
         ...data,
         updatedAt: serverTimestamp(),
-      });
-      res.status(200).send({ message: "Pupil updated successfully!" });
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
-  };
-
-  // Xóa học sinh
-  delete = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      const { createdAt, dateOfBirth, ...data } = req.body;
+      };
+      if (dateOfBirth) {
+        const date = new Date(dateOfBirth);
+        if (!isNaN(date)) {
+          updateData.dateOfBirth = Timestamp.fromDate(date);
+        } else {
+          throw new Error("Invalid dateOfBirth format");
+        }
+      }
+      // If only isDisabled is provided, update only that field
+      if (isDisabled !== undefined && Object.keys(data).length === 0 && !dateOfBirth) {
+        updateData.isDisabled = isDisabled;
+      }
       const pupilRef = doc(db, "pupils", id);
-      await updateDoc(pupilRef, { ...data, updatedAt: serverTimestamp() });
-      res.status(200).send({ message: "Pupil disabled successfully!" });
+      await updateDoc(pupilRef, updateData);
+      res.status(200).send({ message: "Pupil updated successfully!" });
     } catch (error) {
       res.status(400).send({ message: error.message });
     }
@@ -117,25 +112,20 @@ class PupilController {
       res.status(400).send({ message: error.message });
     }
   };
+
   countPupilsByGrade = async (req, res, next) => {
     try {
       const pupilsRef = collection(db, "pupils");
       const q = query(pupilsRef, where("isDisabled", "==", false)); // Chỉ đếm học sinh chưa bị vô hiệu hóa
       const snapshot = await getDocs(q);
-
-      // Tạo một object để lưu số lượng học sinh theo cấp lớp
       const gradeCounts = {};
-
-      // Duyệt qua các document và đếm theo grade
       snapshot.docs.forEach(doc => {
         const pupil = Pupil.fromFirestore(doc);
-        const grade = pupil.grade; // Giả sử trường grade tồn tại trong model Pupil
+        const grade = pupil.grade;
         if (grade) {
           gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
         }
       });
-
-      // Chuyển object thành mảng để trả về kết quả
       const result = Object.keys(gradeCounts).map(grade => ({
         grade,
         count: gradeCounts[grade]
@@ -146,6 +136,7 @@ class PupilController {
       res.status(400).send({ message: error.message });
     }
   };
+
   countPupilsByMonth = async (req, res, next) => {
     try {
       const { month } = req.query; // ví dụ "2024-12"

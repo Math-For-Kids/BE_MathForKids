@@ -25,7 +25,6 @@ class UserNotificationController {
         content,
         isRead: isRead ?? false,
         createdAt: serverTimestamp(),
-        // updatedAt: serverTimestamp(),
       };
       await addDoc(collection(db, "user_notifications"), notificationData);
       res
@@ -67,6 +66,7 @@ class UserNotificationController {
       res.status(400).send({ message: error.message });
     }
   };
+
   getById = async (req, res, next) => {
     try {
       const id = req.params.id;
@@ -83,6 +83,7 @@ class UserNotificationController {
       res.status(400).send({ message: error.message });
     }
   };
+
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
@@ -102,6 +103,7 @@ class UserNotificationController {
       res.status(400).send({ message: error.message });
     }
   };
+  
   delete = async (req, res, next) => {
     try {
       const id = req.params.id;

@@ -9,8 +9,9 @@ const uploadFields = upload.fields([
 ]);
 
 router.post("/", uploadFields, rewardController.create);
-router.get("/:id", rewardController.getById);
+router.get("/enabled", rewardController.getEnabledRewards);
 router.get("/", rewardController.getAll);
+router.get("/:id", rewardController.getById);
 router.put("/:id", uploadFields, rewardController.update);
 // router.put("/disable/:id", rewardController.delete);
 

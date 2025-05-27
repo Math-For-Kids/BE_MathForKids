@@ -41,6 +41,18 @@ class LessonController {
     }
   };
 
+  getEnabledLessons = async (req, res) => {
+    try {
+      const lessonsRef = collection(db, "lessons");
+      const q = query(lessonsRef, where("isDisabled", "==", false));
+      const snapshot = await getDocs(q);
+      const lessons = snapshot.docs.map(doc => Lesson.fromFirestore(doc));
+      res.status(200).send(lessons);
+    } catch (error) {
+      res.status(400).send({ message: error.message });
+    }
+  };
+
   getByGrade = async (req, res, next) => {
     try {
       const grade = parseInt(req.params.grade);
@@ -81,25 +93,11 @@ class LessonController {
     }
   };
 
-
-  delete = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      const { createdAt, ...data } = req.body;
-      const lessonRef = doc(db, "lessons", id);
-      await updateDoc(lessonRef, { ...data, updatedAt: serverTimestamp() });
-      res.status(200).send({ message: "Lesson disabled successfully!" });
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
-  };
-
   countLessons = async (req, res, next) => {
     try {
       const q = query(collection(db, "lessons"), where("isDisabled", "==", false));
       const snapshot = await getDocs(q);
       const count = snapshot.size;
-
       res.status(200).send({ count: count });
     } catch (error) {
       res.status(400).send({ message: error.message });

@@ -4,6 +4,7 @@ const router = express.Router();
 
 router.get("/", userController.getAll);
 router.post("/", userController.create);
+router.get("/enabled", userController.getEnabledUsers);
 router.get("/countuser", userController.countUsers);
 router.get("/countusersbymonth", userController.countUsersByMonth);
 router.get("/:id", userController.getById);

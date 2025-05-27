@@ -3,6 +3,7 @@ const lessonController = require("../app/controllers/LessonController");
 const router = express.Router();
 
 router.get("/", lessonController.getAll);
+router.get("/enabled", lessonController.getEnabledLessons);
 router.post("/", lessonController.create);
 router.get("/countlesson", lessonController.countLessons);
 router.get("/getByGrade/:grade", lessonController.getByGrade);

@@ -40,7 +40,7 @@ class UserController {
       res.status(200).send(users);
     } catch (error) {
       res.status(400).send({ message: error.message });
-    } 
+    }
   };
   getById = async (req, res, next) => {
     try {
@@ -57,6 +57,19 @@ class UserController {
       res.status(400).send({ message: error.message });
     }
   };
+
+  getEnabledUsers = async (req, res) => {
+    try {
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("isDisabled", "==", false));
+      const snapshot = await getDocs(q);
+      const users = snapshot.docs.map(doc => User.fromFirestore(doc));
+      res.status(200).send(users);
+    } catch (error) {
+      res.status(400).send({ message: error.message });
+    }
+  };
+
   create = async (req, res, next) => {
     try {
       const data = req.body;
@@ -89,25 +102,47 @@ class UserController {
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const { createdAt, dateOfBirth, ...data } = req.body;
+      const { isDisabled, createdAt, dateOfBirth, ...data } = req.body;
 
-      // Nếu có trường dateOfBirth thì chuyển thành Timestamp
-      if (dateOfBirth) {
-        const date = new Date(dateOfBirth);
-        data.dateOfBirth = Timestamp.fromDate(date);
-      }
-
-      const userRef = doc(db, "users", id);
-      await updateDoc(userRef, {
+      const updateData = {
         ...data,
         updatedAt: serverTimestamp(),
-      });
+      };
+      if (dateOfBirth) {
+        const date = new Date(dateOfBirth);
+        if (!isNaN(date)) {
+          updateData.dateOfBirth = Timestamp.fromDate(date);
+        } else {
+          throw new Error("Invalid dateOfBirth format");
+        }
+      }
+      if (isDisabled !== undefined) {
+        updateData.isDisabled = isDisabled;
+      }
+      const userRef = doc(db, "users", id);
+      await updateDoc(userRef, updateData);
+      if (isDisabled !== undefined) {
+        const pupilQuery = query(collection(db, "pupils"), where("userId", "==", id));
+        const pupilSnapshot = await getDocs(pupilQuery);
+
+        const batch = writeBatch(db);
+        pupilSnapshot.forEach(docSnap => {
+          const pupilRef = doc(db, "pupils", docSnap.id);
+          batch.update(pupilRef, {
+            isDisabled: isDisabled,
+            updatedAt: serverTimestamp(),
+          });
+        });
+
+        await batch.commit();
+      }
 
       res.status(200).send({ message: "User updated successfully!" });
     } catch (error) {
       res.status(400).send({ message: error.message });
     }
   };
+
 
   delete = async (req, res, next) => {
     try {

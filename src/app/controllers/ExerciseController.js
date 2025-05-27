@@ -20,12 +20,8 @@ class ExerciseController {
   create = async (req, res, next) => {
     try {
       const { levelId, lessonId, question, option: textOption, answer: textAnswer } = req.body;
-      // Parse JSON fields
       const parsedQuestion = JSON.parse(question);
-      // Upload files and get image, option, and answer
       const { image, option, answer } = await uploadMultipleFiles(req.files, textOption, textAnswer);
-
-      // Prepare assessment data
       const exercisesRef = await addDoc(collection(db, "exercises"), {
         levelId,
         lessonId,
@@ -47,6 +43,7 @@ class ExerciseController {
       res.status(400).send({ message: error.message });
     }
   };
+
   getAll = async (req, res, next) => {
     try {
       const exercises = await getDocs(collection(db, "exercises"));
@@ -56,6 +53,19 @@ class ExerciseController {
       res.status(400).send({ message: error.message });
     }
   };
+
+  getEnabledExercises = async (req, res) => {
+    try {
+      const exercisesRef = collection(db, "exercises");
+      const q = query(exercisesRef, where("isDisabled", "==", false));
+      const snapshot = await getDocs(q);
+      const exercises = snapshot.docs.map(doc => Exercise.fromFirestore(doc));
+      res.status(200).send(exercises);
+    } catch (error) {
+      res.status(400).send({ message: error.message });
+    }
+  };
+
   getByLesson = async (req, res, next) => {
     try {
       const lessonId = req.params.lessonId;
@@ -96,57 +106,104 @@ class ExerciseController {
       const docSnapshot = await getDoc(exercisesRef);
 
       if (!docSnapshot.exists()) {
-        return res.status(404).send({ message: "Exercises not found!" });
+        return res.status(404).send({ message: "Exercise not found!" });
       }
       const oldData = docSnapshot.data();
-      const { levelId, lessonId, question, option: textOption, answer: textAnswer } = req.body;
-      let parsedQuestion, parsedOption, parsedAnswer;
-      try {
-        parsedQuestion = JSON.parse(question);
-        parsedOption = textOption ? JSON.parse(textOption) : null;
-        parsedAnswer = textAnswer || null;
-      } catch (error) {
-        return res.status(400).send({ message: "Invalid JSON format for type, question, option, or answer!" });
-      }
-      const { image, option: uploadedOption, answer: uploadedAnswer } = await uploadMultipleFiles(
-        req.files,
-        parsedOption,
-        parsedAnswer
-      );
-
-      const finalOption =
-        (uploadedOption && uploadedOption.length > 0) ? uploadedOption :
-          (parsedOption && parsedOption.length > 0) ? parsedOption :
-            oldData.option;
-
-      const finalAnswer = uploadedAnswer ?? parsedAnswer ?? oldData.answer;
-      const finalImage = image ?? oldData.image;
-
+      const { levelId, lessonId, question, option: textOption, answer: textAnswer, isDisabled } = req.body;
       const updateData = {
-        levelId,
-        lessonId,
-        question: parsedQuestion,
-        option: finalOption,
-        answer: finalAnswer,
-        image: finalImage,
         updatedAt: serverTimestamp(),
       };
+
+      // Handle isDisabled-only update
+      if (
+        typeof isDisabled !== "undefined" &&
+        !levelId &&
+        !lessonId &&
+        !question &&
+        !textOption &&
+        !textAnswer &&
+        (!req.files || Object.keys(req.files).length === 0)
+      ) {
+        updateData.isDisabled = isDisabled === "true" || isDisabled === true;
+      } else {
+        let parsedQuestion, parsedOption, parsedAnswer;
+
+        // Parse question
+        try {
+          parsedQuestion = question ? JSON.parse(question) : oldData.question;
+        } catch (error) {
+          return res.status(400).send({ message: "Invalid JSON format for question!" });
+        }
+
+        // Parse textOption and textAnswer
+        try {
+          parsedOption = textOption
+            ? typeof textOption === "string" && textOption.startsWith("[")
+              ? JSON.parse(textOption)
+              : [textOption] // Treat as single-item array if plain text
+            : null;
+          parsedAnswer = textAnswer || null;
+        } catch (error) {
+          return res.status(400).send({ message: "Invalid format for option or answer!" });
+        }
+
+        // Process file uploads and text inputs
+        const { image, option: uploadedOption, answer: uploadedAnswer } = await uploadMultipleFiles(
+          req.files || {},
+          parsedOption,
+          parsedAnswer
+        );
+
+        // Determine final values for option and answer
+        const finalOption =
+          parsedOption && parsedOption.length > 0
+            ? parsedOption // Prioritize text option if provided
+            : uploadedOption && uploadedOption.length > 0
+              ? uploadedOption
+              : oldData.option;
+
+        const finalAnswer =
+          parsedAnswer !== null
+            ? parsedAnswer // Prioritize text answer if provided
+            : uploadedAnswer !== null
+              ? uploadedAnswer
+              : oldData.answer;
+
+        const finalImage = image !== null ? image : oldData.image;
+
+        // Build update data
+        updateData.levelId = levelId || oldData.levelId;
+        updateData.lessonId = lessonId || oldData.lessonId;
+        updateData.question = parsedQuestion;
+        updateData.option = finalOption;
+        updateData.answer = finalAnswer;
+        updateData.image = finalImage;
+
+        if (typeof isDisabled !== "undefined") {
+          updateData.isDisabled = isDisabled === "true" || isDisabled === true;
+        }
+      }
+
       await updateDoc(exercisesRef, updateData);
-      res.status(200).send({ message: "Exercises updated successfully!" });
+      res.status(200).send({ message: "Exercise updated successfully!" });
     } catch (error) {
       console.error("Error in update:", error.message);
       res.status(400).send({ message: error.message });
     }
   };
-
-  delete = async (req, res, next) => {
+  getByLessonQuery = async (req, res, next) => {
     try {
-      const id = req.params.id;
-      const { createdAt, ...data } = req.body;
-      const exercisesRef = doc(db, "exercises", id);
-      await updateDoc(exercisesRef, { ...data, updatedAt: serverTimestamp() });
-      res.status(200).send({ message: "Exercises disabled successfully!" });
+      const lessonId = req.params.id; // Lấy lessonId từ query parameter
+      if (!lessonId) {
+        return res.status(400).send({ message: "lessonId is required in query parameters!" });
+      }
+      const exercisesRef = collection(db, "exercises");
+      const q = query(exercisesRef, where("lessonId", "==", lessonId));
+      const snapshot = await getDocs(q);
+      const exerciseArray = snapshot.docs.map((doc) => Exercise.fromFirestore(doc));
+      res.status(200).send(exerciseArray);
     } catch (error) {
+      console.error("Error in getByLessonQuery:", error.message);
       res.status(400).send({ message: error.message });
     }
   };
