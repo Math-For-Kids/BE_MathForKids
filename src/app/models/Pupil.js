@@ -14,6 +14,7 @@ class Pupil {
     mode,
     theme,
     isDisabled,
+    assess,
     createdAt,
     updatedAt
   ) {
@@ -31,6 +32,7 @@ class Pupil {
     this.mode = mode;
     this.theme = theme;
     this.isDisabled = isDisabled;
+    this.assess = assess;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
@@ -39,21 +41,22 @@ class Pupil {
     const data = doc.data();
     return new Pupil(
       doc.id,
-      data.userId ?? '',
-      data.fullName ?? '',
-      data.nickName ?? '',
-      data.image ?? '',
-      data.gender ?? '',
-      data.dateOfBirth ?? '',
-      data.grade ?? '',
+      data.userId ?? "",
+      data.fullName ?? "",
+      data.nickName ?? "",
+      data.image ?? "",
+      data.gender ?? "",
+      data.dateOfBirth ?? "",
+      data.grade ?? "",
       data.point ?? 0,
       data.volume ?? 0,
-      data.language ?? '',
+      data.language ?? "",
       data.mode ?? false,
-      data.theme ?? '',
+      data.theme ?? "",
       data.isDisabled ?? false,
-      data.createdAt?.toDate().toLocaleString("vi-VN") ?? '',
-      data.updatedAt?.toDate().toLocaleString("vi-VN") ?? ''
+      data.assess ?? false,
+      data.createdAt?.toDate().toLocaleString("vi-VN") ?? "",
+      data.updatedAt?.toDate().toLocaleString("vi-VN") ?? ""
     );
   }
 }
