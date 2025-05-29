@@ -89,9 +89,8 @@ exports.mailService = async (email, otp) => {
 
   try {
     await transporter.sendMail(mailOptions);
-    return { status: 200, message: "OTP send successfully!" };
-  } catch (err) {
-    console.error(err);
-    return { status: 500, message: err.message };
+    return
+  } catch (error) {
+    throw error;
   }
 };
