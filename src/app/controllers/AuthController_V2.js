@@ -49,6 +49,27 @@ const verify = (user, otpCode) => {
   }
 };
 
+const generateAuthResponse = (userId, userInfo) => {
+  const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE,
+  });
+  const options = {
+    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    httpOnly: true,
+  };
+  const response = {
+    id: userInfo.id,
+    fullName: userInfo.fullName,
+    role: userInfo.role,
+    image: userInfo.image || "",
+    volume: userInfo.volume,
+    language: userInfo.language,
+    mode: userInfo.mode,
+    token,
+  };
+  return { token, options, response };
+};
+
 class AuthController {
   // Send OTP by phone number
   sendOTPByPhoneNumber = async (req, res, next) => {
@@ -140,31 +161,14 @@ class AuthController {
       const { id } = req.params;
       const user = req.user;
       const { otpCode } = req.body;
-
       // Verify OTP
       verify(user, otpCode);
-
       // Gửi token về client
-      const token = jwt.sign({ id: id }, process.env.JWT_SECRET, {
-        expiresIn: process.env.JWT_EXPIRE,
-      });
-      const options = {
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        httpOnly: true,
-      };
+      const generate = generateAuthResponse(id, user);
       res
         .status(200)
-        .cookie("token", token, options)
-        .json({
-          id: user.id,
-          fullName: user.fullName,
-          role: user.role,
-          image: user.image || "",
-          volume: user.volume,
-          language: user.language,
-          mode: user.mode,
-          token,
-        });
+        .cookie("token", generate.token, generate.options)
+        .json(generate.response);
     } catch (error) {
       const status = error.statusCode || 500;
       return res.status(status).json({
@@ -174,6 +178,32 @@ class AuthController {
               en: error.message,
               vi: "Đã xảy ra lỗi nội bộ.",
             },
+      });
+    }
+  };
+
+  // Update user setting & token
+  updateSettingAndToken = async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      // const user = req.user;
+      const data = req.body;
+      const userRef = doc(db, "users", id);
+      await updateDoc(userRef, data);
+      const updatedSnapshot = await getDoc(userRef);
+      const userData = updatedSnapshot.data();
+      // Gửi token mới về client
+      const generate = generateAuthResponse(id, userData);
+      res
+        .status(200)
+        .cookie("token", generate.token, generate.options)
+        .json(generate.response);
+    } catch (error) {
+      return res.status(500).json({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
       });
     }
   };

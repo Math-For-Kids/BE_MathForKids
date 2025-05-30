@@ -17,17 +17,23 @@ router.post(
   userMiddleware.checkIsDisabled,
   authController.sendOTPByEmail
 );
+// Verify OTP normally
+router.post(
+  "/verifyOTP/:id",
+  userMiddleware.checkUserExistById,
+  authController.verifyOTP
+);
 // Verify and authentication
 router.post(
   "/verifyAndAuthentication/:id",
   userMiddleware.checkUserExistById,
   authController.verifyOtpAndAuthenticate
 );
-// Verify OTP normally
-router.post(
-  "/verifyOTP/:id",
+// Update user setting & token
+router.put(
+  "/updateSettingAndToken/:id",
   userMiddleware.checkUserExistById,
-  authController.verifyOTP
+  authController.updateSettingAndToken
 );
 // Logout
 router.post("/logout", authController.logout);
