@@ -15,9 +15,10 @@ const {
 } = require("firebase/firestore");
 
 const db = getFirestore();
-
+const { PutObjectCommand } = require("@aws-sdk/client-s3");
+const { s3 } = require("../services/AwsService");
+const { v4: uuidv4 } = require("uuid");
 class PupilController {
-
   create = async (req, res, next) => {
     try {
       const data = req.body;
@@ -27,6 +28,7 @@ class PupilController {
         ...data,
         dateOfBirth: dateOfBirthTimestamp,
         isDisabled: false,
+        assess: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
@@ -67,7 +69,7 @@ class PupilController {
       const pupilsRef = collection(db, "pupils");
       const q = query(pupilsRef, where("isDisabled", "==", false));
       const snapshot = await getDocs(q);
-      const pupils = snapshot.docs.map(doc => Pupil.fromFirestore(doc));
+      const pupils = snapshot.docs.map((doc) => Pupil.fromFirestore(doc));
       res.status(200).send(pupils);
     } catch (error) {
       res.status(400).send({ message: error.message });
@@ -119,16 +121,20 @@ class PupilController {
       const q = query(pupilsRef, where("isDisabled", "==", false)); // Chỉ đếm học sinh chưa bị vô hiệu hóa
       const snapshot = await getDocs(q);
       const gradeCounts = {};
-      snapshot.docs.forEach(doc => {
+
+      // Duyệt qua các document và đếm theo grade
+      snapshot.docs.forEach((doc) => {
         const pupil = Pupil.fromFirestore(doc);
         const grade = pupil.grade;
         if (grade) {
           gradeCounts[grade] = (gradeCounts[grade] || 0) + 1;
         }
       });
-      const result = Object.keys(gradeCounts).map(grade => ({
+
+      // Chuyển object thành mảng để trả về kết quả
+      const result = Object.keys(gradeCounts).map((grade) => ({
         grade,
-        count: gradeCounts[grade]
+        count: gradeCounts[grade],
       }));
 
       res.status(200).send(result);
@@ -159,7 +165,7 @@ class PupilController {
       let currentMonthCount = 0;
       let previousMonthCount = 0;
 
-      pupilsSnapshot.forEach(docSnap => {
+      pupilsSnapshot.forEach((docSnap) => {
         const data = docSnap.data();
         if (data.createdAt && data.createdAt.toDate) {
           const createdAt = data.createdAt.toDate();
@@ -268,6 +274,45 @@ class PupilController {
       });
     } catch (error) {
       res.status(400).send({ message: error.message });
+    }
+  };
+  uploadAvatarToS3 = async (req, res, next) => {
+    try {
+      const id = req.params.id;
+      const file = req.file;
+
+      if (!file || !file.buffer) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      const fileExt = file.originalname.split(".").pop();
+      const key = `profile-images/${id}_${uuidv4()}.${fileExt}`;
+
+      const command = new PutObjectCommand({
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+        ACL: "public-read",
+      });
+
+      await s3.send(command);
+
+      const publicUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
+      const userRef = doc(db, "pupils", id);
+      await updateDoc(userRef, {
+        image: publicUrl,
+        updatedAt: serverTimestamp(),
+      });
+
+      res.status(200).json({
+        message: "Profile image uploaded successfully!",
+        image: publicUrl,
+      });
+    } catch (error) {
+      console.error("S3 upload error:", error);
+      res.status(500).json({ message: "Upload failed", error });
     }
   };
 }
