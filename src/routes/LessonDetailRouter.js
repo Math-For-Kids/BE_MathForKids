@@ -1,13 +1,12 @@
 const express = require("express");
-const lessonDetailController = require("../app/controllers/LessonDetailController");
 const router = express.Router();
+const controller = require("../app/controllers/LessonDetailController");
 
-router.post("/", lessonDetailController.create);
-// router.get("/", lessonDetailController.getAll);
-router.get("/byLesson/:lessonId", lessonDetailController.getByLessonId);
-router.get("/:id", lessonDetailController.getById);
-router.put("/:id", lessonDetailController.update);
-router.put("/disable/:id", lessonDetailController.delete);
-// router.get("/count/:lessonId", lessonDetailController.countByLessonId);
+router.post("/", controller.create);
+router.post("/full", controller.createFullLesson);
+router.get("/lesson/:lessonId", controller.getByLessonId);
+router.get("/:id", controller.getById);
+router.put("/:id", controller.update);
+router.delete("/:id", controller.delete);
 
 module.exports = router;

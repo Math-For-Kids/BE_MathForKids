@@ -1,4 +1,3 @@
-const LessonDetail = require("../models/LessonDetail");
 const {
   getFirestore,
   collection,
@@ -7,17 +6,17 @@ const {
   getDoc,
   getDocs,
   updateDoc,
-  deleteDoc,
   serverTimestamp,
   query,
   where,
 } = require("firebase/firestore");
 
+const LessonDetail = require("../models/LessonDetail");
 const db = getFirestore();
 
 class LessonDetailController {
-  // Tạo lesson detail mới
-  create = async (req, res, next) => {
+  // Tạo 1 phần
+  create = async (req, res) => {
     try {
       const data = req.body;
       await addDoc(collection(db, "lesson_details"), {
@@ -32,53 +31,99 @@ class LessonDetailController {
     }
   };
 
-  // Lấy tất cả lesson details
-//   getAll = async (req, res, next) => {
-//     try {
-//       const snapshot = await getDocs(collection(db, "lesson_details"));
-//       const list = snapshot.docs.map((doc) => LessonDetail.fromFirestore(doc));
-//       res.status(200).send(list);
-//     } catch (error) {
-//       res.status(400).send({ message: error.message });
-//     }
-//   };
+  // Tạo liền 3 phần: Define, Example, Remember
+  createFullLesson = async (req, res) => {
+    try {
+      const { lessonId, contents, images = {} } = req.body;
+
+      if (
+        !lessonId ||
+        !contents?.define ||
+        !contents?.example ||
+        !contents?.remember
+      ) {
+        return res.status(400).send({ message: "Missing required fields." });
+      }
+
+      const baseData = {
+        lessonId,
+        isDisabled: false,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      };
+
+      const collectionRef = collection(db, "lesson_details");
+
+      await Promise.all([
+        addDoc(collectionRef, {
+          ...baseData,
+          order: 1,
+          title: { vi: "Định nghĩa", en: "Define" },
+          content: contents.define,
+          image: images.define || null,
+        }),
+        addDoc(collectionRef, {
+          ...baseData,
+          order: 2,
+          title: { vi: "Bài tập", en: "Exercise" },
+          content: contents.example,
+          image: images.example || null,
+        }),
+        addDoc(collectionRef, {
+          ...baseData,
+          order: 3,
+          title: { vi: "Ghi nhớ", en: "Remember" },
+          content: contents.remember,
+          image: images.remember || null,
+        }),
+      ]);
+
+      res
+        .status(200)
+        .send({ message: "All lesson details created successfully!" });
+    } catch (error) {
+      res.status(400).send({ message: error.message });
+    }
+  };
 
   // Lấy theo lessonId
-  getByLessonId = async (req, res, next) => {
+  getByLessonId = async (req, res) => {
     try {
-      const lessonId = req.params.lessonId;
+      const { lessonId } = req.params;
       const q = query(
         collection(db, "lesson_details"),
-        where("lessonId", "==", lessonId)
+        where("lessonId", "==", lessonId),
+        where("isDisabled", "==", false)
       );
       const snapshot = await getDocs(q);
-      const list = snapshot.docs.map((doc) => LessonDetail.fromFirestore(doc));
+      const list = snapshot.docs
+        .map((doc) => LessonDetail.fromFirestore(doc))
+        .sort((a, b) => a.order - b.order);
       res.status(200).send(list);
     } catch (error) {
       res.status(400).send({ message: error.message });
     }
   };
 
-  // Lấy chi tiết theo ID
-  getById = async (req, res, next) => {
+  // Lấy theo ID
+  getById = async (req, res) => {
     try {
-      const id = req.params.id;
+      const { id } = req.params;
       const docRef = doc(db, "lesson_details", id);
       const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        res.status(200).send(LessonDetail.fromFirestore(docSnap));
-      } else {
-        res.status(404).send({ message: "Lesson detail not found!" });
+      if (!docSnap.exists()) {
+        return res.status(404).send({ message: "Lesson detail not found!" });
       }
+      res.status(200).send(LessonDetail.fromFirestore(docSnap));
     } catch (error) {
       res.status(400).send({ message: error.message });
     }
   };
 
-  // Cập nhật lesson detail
-  update = async (req, res, next) => {
+  // Cập nhật
+  update = async (req, res) => {
     try {
-      const id = req.params.id;
+      const { id } = req.params;
       const { createdAt, ...data } = req.body;
       const docRef = doc(db, "lesson_details", id);
       await updateDoc(docRef, {
@@ -91,31 +136,16 @@ class LessonDetailController {
     }
   };
 
-  // Vô hiệu hoá lesson detail
-  delete = async (req, res, next) => {
+  // Vô hiệu hoá
+  delete = async (req, res) => {
     try {
-      const id = req.params.id;
+      const { id } = req.params;
       const docRef = doc(db, "lesson_details", id);
       await updateDoc(docRef, {
         isDisabled: true,
         updatedAt: serverTimestamp(),
       });
       res.status(200).send({ message: "Lesson detail disabled successfully!" });
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
-  };
-
-  // Đếm số lượng lesson detail theo lessonId
-  countByLessonId = async (req, res, next) => {
-    try {
-      const lessonId = req.params.lessonId;
-      const q = query(
-        collection(db, "lesson_details"),
-        where("lessonId", "==", lessonId)
-      );
-      const snapshot = await getDocs(q);
-      res.status(200).send({ count: snapshot.size });
     } catch (error) {
       res.status(400).send({ message: error.message });
     }
