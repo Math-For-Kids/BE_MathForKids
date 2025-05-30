@@ -1,3 +1,4 @@
+const Test = require("../models/Test");
 const Tests = require("../models/Test");
 const {
     getFirestore,
@@ -41,30 +42,28 @@ class TestController {
             res.status(400).send({ message: error.message });
         }
     };
+
     getByLessonId = async (req, res, next) => {
         try {
-            const lessonId = req.params.lessonId;
-            const q = query(
-                collection(db, "tests"),
-                where("lessonId", "==", lessonId),
-                where("isDisabled", "==", false)
-            );
-            const test = await getDocs(q);
-            const testArray = test.docs.map((doc) =>
-                Tests.fromFirestore(doc)
-            );
+            const lessonId = req.params.id;
+            const testRef = doc(db, "tests", lessonId);
+            const snapshot = await getDoc(testRef);
+            if (!snapshot.exists()) {
+                return res.status(404).send({ message: "Test not found" });
+            }
+            const testArray = Test.fromFirestore(snapshot);
             res.status(200).send(testArray);
         } catch (error) {
             res.status(400).send({ message: error.message });
         }
     };
+
     getByExerciseId = async (req, res, next) => {
         try {
-            const exerciseId = req.params.exerciseId;
+            const exerciseId = req.params.id;
             const q = query(
                 collection(db, "tests"),
-                where("exerciseId", "==", exerciseId),
-                where("isDisabled", "==", false)
+                where("exerciseId", "==", exerciseId)
             );
             const test = await getDocs(q);
             const testArray = test.docs.map((doc) =>
@@ -90,6 +89,70 @@ class TestController {
             res.status(400).send({ message: error.message });
         }
     };
+
+    getTestByPupilId = async (req, res, next) => {
+        try {
+            const pupilId = req.params.id;
+            if (!pupilId) {
+                return res.status(400).send({ message: "pupilId is required" });
+            }
+            console.log("Querying for pupilId:", pupilId); // Debug log
+            const q = query(
+                collection(db, "tests"),
+                where("pupilId", "==", pupilId)
+            );
+            const testSnapshot = await getDocs(q);
+            if (testSnapshot.empty) {
+                return res.status(404).send({ message: "No tests found for this pupilId" });
+            }
+            const testArray = testSnapshot.docs.map((doc) => Tests.fromFirestore(doc));
+            res.status(200).send(testArray);
+        } catch (error) {
+            res.status(400).send({ message: error.message });
+        }
+    }
+
+    getTestsByLesson = async (req, res, next) => {
+        try {
+            const lessonId = req.params.id;
+            if (!lessonId) {
+                return res.status(400).send({ message: "lessonId is required" });
+            }
+            console.log("Querying for lessonId:", lessonId); // Debug log
+            const q = query(
+                collection(db, "tests"),
+                where("lessonId", "==", lessonId)
+            );
+            const testSnapshot = await getDocs(q);
+            const testArray = testSnapshot.docs.map((doc) => Tests.fromFirestore(doc));
+            res.status(200).send(testArray);
+        } catch (error) {
+            res.status(400).send({ message: error.message });
+        }
+    };
+
+    // Hàm mới: Lấy tests theo pupilId và lessonId
+    getTestsByPupilIdAndLesson = async (req, res, next) => {
+        try {
+            const { pupilId, lessonId } = req.params;
+            if (!lessonId || !pupilId) {
+                return res.status(400).send({ message: "Both pupilId and lessonId are required" });
+            }
+            console.log("Querying for lessonId:", pupilId, "and lessonId", lessonId); // Debug log
+
+            const q = query(
+                collection(db, "tests"),
+                where("pupilId", "==", pupilId),
+                where("lessonId", "==", lessonId)
+            );
+            const testSnapshot = await getDocs(q);
+            const testArray = testSnapshot.docs.map((doc) => Tests.fromFirestore(doc));
+            res.status(200).send(testArray);
+        } catch (error) {
+            res.status(400).send({ message: error.message });
+        }
+    };
+
     update = async (req, res, next) => {
         try {
             const id = req.params.id;

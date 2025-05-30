@@ -3,7 +3,7 @@ const testquestionController = require("../app/controllers/TestQuestionControlle
 const router = express.Router();
 
 router.post("/", testquestionController.create);
-// router.get("/enabled",testquestionController.getEnabledTestQuestion);
+router.get("/getTestQuestionByTest/:id",testquestionController.getTestQuestionByTest);
 // router.get("/",testquestionController.getAll);
 router.get("/:id", testquestionController.getById);
 router.put("/:id",testquestionController.update);
