@@ -54,20 +54,26 @@ class AuthController {
   sendOTPByPhoneNumber = async (req, res, next) => {
     try {
       const { phoneNumber } = req.params;
+      const { id } = req.user;
       const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
+      const otpExpiration = convertToTimeStamp(5 * 60 * 1000);
       await smsService(
         phoneNumber,
         `Your OTP is ${otpCode}. Please do not send this to anyone.`,
         2,
         "5087a0dcd4ccd3a2"
       );
-      const otpExpiration = convertToTimeStamp(5 * 60 * 1000);
-      req.params.id = req.user.id;
-      req.body = {
+      const userRef = doc(db, "users", id);
+      await updateDoc(userRef, {
         otpCode: otpCode,
         otpExpiration: otpExpiration,
-      };
-      return next();
+      });
+      return res.status(200).json({
+        message: {
+          en: "Send OTP successfully!",
+          vi: "Gửi OTP thành công!",
+        },
+      });
     } catch (error) {
       return res.status(500).json({
         message: {
@@ -82,14 +88,21 @@ class AuthController {
   sendOTPByEmail = async (req, res, next) => {
     try {
       const { email } = req.params;
+      const { id } = req.user;
       const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
-      await mailService(email, otpCode);
       const otpExpiration = convertToTimeStamp(5 * 60 * 1000);
-      req.params.id = req.user.id;
-      req.body = {
+      await mailService(email, otpCode);
+      const userRef = doc(db, "users", id);
+      await updateDoc(userRef, {
         otpCode: otpCode,
         otpExpiration: otpExpiration,
-      };
+      });
+      return res.status(200).json({
+        message: {
+          en: "Send OTP successfully!",
+          vi: "Gửi OTP thành công!",
+        },
+      });
       return next();
     } catch (error) {
       res.status(500).send({
