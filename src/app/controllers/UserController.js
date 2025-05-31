@@ -220,7 +220,7 @@ class UserController {
       res.status(400).send({ message: error.message });
     }
   };
-  
+
   countUsersByWeek = async (req, res, next) => {
     try {
       const { week, year } = req.query; // ví dụ: week=45, year=2025
@@ -309,7 +309,8 @@ class UserController {
       });
     } catch (error) {
       res.status(400).send({ message: error.message });
-      
+    }
+  }
   uploadAvatarToS3 = async (req, res, next) => {
     try {
       const id = req.params.id;

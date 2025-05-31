@@ -5,7 +5,7 @@ const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 router.get("/", userController.getAll);
 router.post("/", userController.create);
-router.get("/enabled", userController.getEnabledUsers);
+// router.get("/enabled", userController.getEnabledUsers);
 router.get("/countuser", userController.countUsers);
 router.get("/countusersbymonth", userController.countUsersByMonth);
 router.get("/countusersbyweek", userController.countUsersByWeek);

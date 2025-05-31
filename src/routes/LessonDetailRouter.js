@@ -3,7 +3,7 @@ const lessonDetailController = require("../app/controllers/LessonDetailControlle
 const router = express.Router();
 
 router.post("/", lessonDetailController.create);
-// router.get("/", lessonDetailController.getAll);
+router.get("/", lessonDetailController.getAll);
 router.get("/byLesson/:lessonId", lessonDetailController.getByLessonId);
 router.get("/:id", lessonDetailController.getById);
 router.put("/:id", lessonDetailController.update);
