@@ -7,20 +7,51 @@ const {
   getDocs,
   updateDoc,
   serverTimestamp,
+  deleteDoc,
   query,
   where,
 } = require("firebase/firestore");
 
 const LessonDetail = require("../models/LessonDetail");
 const db = getFirestore();
+const { uploadMultipleFiles } = require("./fileController");
 
 class LessonDetailController {
+  static fromFirestore(doc) {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      lessonId: data.lessonId,
+      order: data.order,
+      title: data.title,
+      content: data.content,
+      image: data.image || null,
+      isDisabled: data.isDisabled ?? false,
+      createdAt: data.createdAt,
+      updatedAt: data.updatedAt,
+    };
+  }
   // Tạo 1 phần
   create = async (req, res) => {
     try {
-      const data = req.body;
+      const { lessonId, order, title, content } = req.body;
+      if (!lessonId || !order || !title || !content) {
+        return res.status(400).send({ message: "Missing required fields." });
+      }
+      let uploadedFiles = {};
+      if (req.files && Object.keys(req.files).length > 0) {
+        uploadedFiles = await uploadMultipleFiles(req.files);
+      }
+      const image = uploadedFiles["image"] || null;
+      const parsedTitle = typeof title === "string" ? JSON.parse(title) : title;
+      const parsedContent =
+        typeof content === "string" ? JSON.parse(content) : content;
       await addDoc(collection(db, "lesson_details"), {
-        ...data,
+        lessonId,
+        order: Number(order),
+        title: parsedTitle,
+        content: parsedContent,
+        image,
         isDisabled: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
@@ -34,8 +65,7 @@ class LessonDetailController {
   // Tạo liền 3 phần: Define, Example, Remember
   createFullLesson = async (req, res) => {
     try {
-      const { lessonId, contents, images = {} } = req.body;
-
+      const { lessonId, contents } = req.body;
       if (
         !lessonId ||
         !contents?.define ||
@@ -44,40 +74,49 @@ class LessonDetailController {
       ) {
         return res.status(400).send({ message: "Missing required fields." });
       }
-
+      let uploadedFiles = {};
+      if (req.files && Object.keys(req.files).length > 0) {
+        uploadedFiles = await uploadMultipleFiles(req.files);
+      }
       const baseData = {
         lessonId,
         isDisabled: false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
-
       const collectionRef = collection(db, "lesson_details");
-
       await Promise.all([
         addDoc(collectionRef, {
           ...baseData,
           order: 1,
           title: { vi: "Định nghĩa", en: "Define" },
-          content: contents.define,
-          image: images.define || null,
+          content:
+            typeof contents.define === "string"
+              ? JSON.parse(contents.define)
+              : contents.define,
+          image: uploadedFiles["define"] || null,
         }),
         addDoc(collectionRef, {
           ...baseData,
           order: 2,
           title: { vi: "Bài tập", en: "Exercise" },
-          content: contents.example,
-          image: images.example || null,
+          content:
+            typeof contents.example === "string"
+              ? JSON.parse(contents.example)
+              : contents.example,
+          image: uploadedFiles["example"] || null,
         }),
         addDoc(collectionRef, {
           ...baseData,
           order: 3,
           title: { vi: "Ghi nhớ", en: "Remember" },
-          content: contents.remember,
-          image: images.remember || null,
+          content:
+            typeof contents.remember === "string"
+              ? JSON.parse(contents.remember)
+              : contents.remember,
+          image: uploadedFiles["remember"] || null,
         }),
       ]);
-
       res
         .status(200)
         .send({ message: "All lesson details created successfully!" });
@@ -124,12 +163,59 @@ class LessonDetailController {
   update = async (req, res) => {
     try {
       const { id } = req.params;
-      const { createdAt, ...data } = req.body;
+      if (!id) return res.status(400).send({ message: "Missing ID." });
+
       const docRef = doc(db, "lesson_details", id);
+      const { title, content, order, ...rest } = req.body;
+      const parsedTitle = typeof title === "string" ? JSON.parse(title) : title;
+      const parsedContent =
+        typeof content === "string" ? JSON.parse(content) : content;
+      let uploadedFiles = {};
+      if (req.files && Object.keys(req.files).length > 0) {
+        uploadedFiles = await uploadMultipleFiles(req.files);
+      }
+      const image = uploadedFiles["image"] || null;
+      await updateDoc(docRef, {
+        ...rest,
+        ...(order && { order: Number(order) }),
+        ...(parsedTitle && { title: parsedTitle }),
+        ...(parsedContent && { content: parsedContent }),
+        ...(image && { image }),
+        updatedAt: serverTimestamp(),
+      });
+
+      res.status(200).send({ message: "Lesson detail updated successfully!" });
+    } catch (error) {
+      res.status(400).send({ message: error.message });
+    }
+  };
+
+  // Cập nhật theo lessonId và order
+  updateByLessonIdAndOrder = async (req, res) => {
+    try {
+      const { lessonId, order } = req.params;
+      const { createdAt, ...data } = req.body;
+
+      const q = query(
+        collection(db, "lesson_details"),
+        where("lessonId", "==", lessonId),
+        where("order", "==", parseInt(order)),
+        where("isDisabled", "==", false)
+      );
+
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        return res.status(404).send({ message: "Lesson detail not found!" });
+      }
+
+      const docRef = snapshot.docs[0].ref;
+
       await updateDoc(docRef, {
         ...data,
         updatedAt: serverTimestamp(),
       });
+
       res.status(200).send({ message: "Lesson detail updated successfully!" });
     } catch (error) {
       res.status(400).send({ message: error.message });
@@ -139,14 +225,32 @@ class LessonDetailController {
   // Vô hiệu hoá
   delete = async (req, res) => {
     try {
-      const { id } = req.params;
-      const docRef = doc(db, "lesson_details", id);
-      await updateDoc(docRef, {
-        isDisabled: true,
-        updatedAt: serverTimestamp(),
-      });
-      res.status(200).send({ message: "Lesson detail disabled successfully!" });
+      const { lessonId } = req.params;
+
+      const q = query(
+        collection(db, "lesson_details"),
+        where("lessonId", "==", lessonId)
+      );
+
+      const snapshot = await getDocs(q);
+
+      if (snapshot.empty) {
+        return res
+          .status(404)
+          .send({ message: "No lesson details found for this lessonId." });
+      }
+
+      const deletePromises = snapshot.docs.map((docSnap) =>
+        deleteDoc(doc(db, "lesson_details", docSnap.id))
+      );
+
+      await Promise.all(deletePromises);
+
+      res
+        .status(200)
+        .send({ message: `Deleted ${deletePromises.length} lesson details.` });
     } catch (error) {
+      console.error("Delete by lessonId error:", error);
       res.status(400).send({ message: error.message });
     }
   };

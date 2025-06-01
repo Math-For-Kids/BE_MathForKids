@@ -50,11 +50,14 @@ class FileController {
 
   //   return uploadedFiles;
   // };
-  uploadMultipleFiles = async (files, textOption,textAnswer) => {
+  uploadMultipleFiles = async (files, textOption, textAnswer) => {
     const result = {
       image: null,
       option: [],
       answer: null,
+      define: null,
+      example: null,
+      remember: null,
     };
 
     // Handle image file
@@ -115,6 +118,31 @@ class FileController {
         throw error;
       }
     }
+    console.log("📥 Received files:", Object.keys(files));
+
+    const sections = ["define", "example", "remember"];
+
+    for (const key of sections) {
+      if (files[key] && files[key].length > 0) {
+        const file = files[key][0];
+        const fileName = Date.now().toString() + "-" + file.originalname;
+        console.log(`📤 Uploading [${key}]: ${fileName}`);
+
+        try {
+          await this.uploadFile(file, fileName);
+          const url = `${process.env.CLOUD_FRONT}${fileName}`;
+          console.log(`✅ Uploaded [${key}] to: ${url}`);
+          result[key] = url;
+        } catch (error) {
+          console.error(`❌ Error uploading [${key}]:`, error);
+          throw error;
+        }
+      } else {
+        console.log(`⚠️ No file uploaded for [${key}]`);
+      }
+    }
+
+    console.log("🎯 Final upload result:", result);
     return result;
   };
 }
