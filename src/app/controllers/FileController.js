@@ -50,13 +50,56 @@ class FileController {
 
   //   return uploadedFiles;
   // };
-  uploadMultipleFiles = async (files, textOption,textAnswer) => {
+  uploadMultipleFiles = async (files, textOption, textAnswer) => {
     const result = {
       image: null,
       option: [],
       answer: null,
+      define: null,
+      example: null,
+      remember: null,
     };
+    // Handle define file
+    if (files.define && files.define.length > 0) {
+      const file = files.define[0];
+      const fileName = Date.now().toString() + "-" + file.originalname;
+      console.log("Upload file: " + fileName);
+      try {
+        await this.uploadFile(file, fileName);
+        result.define = `${process.env.CLOUD_FRONT}${fileName}`;
+      } catch (error) {
+        console.error("Error during define upload:", error);
+        throw error;
+      }
+    }
 
+    // Handle example file
+    if (files.example && files.example.length > 0) {
+      const file = files.example[0];
+      const fileName = Date.now().toString() + "-" + file.originalname;
+      console.log("Upload file: " + fileName);
+      try {
+        await this.uploadFile(file, fileName);
+        result.example = `${process.env.CLOUD_FRONT}${fileName}`;
+      } catch (error) {
+        console.error("Error during example upload:", error);
+        throw error;
+      }
+    }
+
+    // Handle remember file
+    if (files.remember && files.remember.length > 0) {
+      const file = files.remember[0];
+      const fileName = Date.now().toString() + "-" + file.originalname;
+      console.log("Upload file: " + fileName);
+      try {
+        await this.uploadFile(file, fileName);
+        result.remember = `${process.env.CLOUD_FRONT}${fileName}`;
+      } catch (error) {
+        console.error("Error during remember upload:", error);
+        throw error;
+      }
+    }
     // Handle image file
     if (files.image && files.image.length > 0) {
       const file = files.image[0];
@@ -70,11 +113,26 @@ class FileController {
         throw error;
       }
     }
-
+    //text option 
     if (textOption) {
       try {
-        const parsedTextOptions = JSON.parse(textOption);
-        result.option.push(...parsedTextOptions); // Add text options to the array
+        let parsedOptions;
+        if (Array.isArray(textOption)) {
+          parsedOptions = textOption; // Already an array, use it directly
+        } else if (typeof textOption === "string") {
+          // Check if it's a JSON string
+          if (textOption.startsWith("[") && textOption.endsWith("]")) {
+            parsedOptions = JSON.parse(textOption); // Parse JSON array
+            if (!Array.isArray(parsedOptions)) {
+              throw new Error("Parsed textOption is not an array");
+            }
+          } else {
+            parsedOptions = [textOption]; // Treat plain string as single-item array
+          }
+        } else {
+          throw new Error("Invalid textOption type");
+        }
+        result.option.push(...parsedOptions); // Add options to result.option
       } catch (error) {
         console.error("Error parsing textOption:", error);
         throw new Error("Invalid textOption format");
@@ -95,6 +153,7 @@ class FileController {
         }
       }
     }
+
     // Handle answer (text or image)
     if (textAnswer) {
       try {
@@ -115,6 +174,7 @@ class FileController {
         throw error;
       }
     }
+
     return result;
   };
 }

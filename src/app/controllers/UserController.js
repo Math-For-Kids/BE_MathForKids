@@ -89,25 +89,47 @@ class UserController {
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const { createdAt, dateOfBirth, ...data } = req.body;
+      const { isDisabled, createdAt, dateOfBirth, ...data } = req.body;
 
-      // Nếu có trường dateOfBirth thì chuyển thành Timestamp
-      if (dateOfBirth) {
-        const date = new Date(dateOfBirth);
-        data.dateOfBirth = Timestamp.fromDate(date);
-      }
-
-      const userRef = doc(db, "users", id);
-      await updateDoc(userRef, {
+      const updateData = {
         ...data,
         updatedAt: serverTimestamp(),
-      });
+      };
+      if (dateOfBirth) {
+        const date = new Date(dateOfBirth);
+        if (!isNaN(date)) {
+          updateData.dateOfBirth = Timestamp.fromDate(date);
+        } else {
+          throw new Error("Invalid dateOfBirth format");
+        }
+      }
+      if (isDisabled !== undefined) {
+        updateData.isDisabled = isDisabled;
+      }
+      const userRef = doc(db, "users", id);
+      await updateDoc(userRef, updateData);
+      if (isDisabled !== undefined) {
+        const pupilQuery = query(collection(db, "pupils"), where("userId", "==", id));
+        const pupilSnapshot = await getDocs(pupilQuery);
+
+        const batch = writeBatch(db);
+        pupilSnapshot.forEach(docSnap => {
+          const pupilRef = doc(db, "pupils", docSnap.id);
+          batch.update(pupilRef, {
+            isDisabled: isDisabled,
+            updatedAt: serverTimestamp(),
+          });
+        });
+
+        await batch.commit();
+      }
 
       res.status(200).send({ message: "User updated successfully!" });
     } catch (error) {
       res.status(500).send({ message: error.message });
     }
   };
+
 
   delete = async (req, res, next) => {
     try {
@@ -153,51 +175,139 @@ class UserController {
 
   countUsersByMonth = async (req, res, next) => {
     try {
-      const { month } = req.query; // ví dụ: "05"
-      if (!month || !/^\d{2}$/.test(month)) {
-        return res
-          .status(400)
-          .send({ message: "Invalid month format. Use MM" });
+      const { month, year } = req.query; // ví dụ: month=05, year=2025
+      if (!month || !/^\d{2}$/.test(month) || !year || !/^\d{4}$/.test(year)) {
+        return res.status(400).send({ message: "Invalid month or year format. Use month=MM and year=YYYY" });
       }
 
-      const now = new Date();
-      const year = now.getFullYear();
+      const yearNum = parseInt(year);
       const monthIndex = parseInt(month) - 1;
 
-      const currentStart = new Date(year, monthIndex, 1);
-      const currentEnd = new Date(year, monthIndex + 1, 1);
+      const currentStart = new Date(yearNum, monthIndex, 1);
+      const currentEnd = new Date(yearNum, monthIndex + 1, 1);
 
       const prevMonthIndex = (monthIndex - 1 + 12) % 12;
-      const prevYear = monthIndex === 0 ? year - 1 : year;
+      const prevYear = monthIndex === 0 ? yearNum - 1 : yearNum;
       const prevStart = new Date(prevYear, prevMonthIndex, 1);
       const prevEnd = new Date(prevYear, prevMonthIndex + 1, 1);
 
       const usersSnapshot = await getDocs(collection(db, "users"));
-      let currentCount = 0;
-      let previousCount = 0;
+      let currentMonthCount = 0;
+      let previousMonthCount = 0;
 
       usersSnapshot.forEach((docSnap) => {
         const data = docSnap.data();
         if (data.createdAt && data.createdAt.toDate) {
           const createdAt = data.createdAt.toDate();
           if (createdAt >= currentStart && createdAt < currentEnd) {
-            currentCount++;
+            currentMonthCount++;
           } else if (createdAt >= prevStart && createdAt < prevEnd) {
-            previousCount++;
+            previousMonthCount++;
           }
         }
       });
 
       res.status(200).send({
         month,
-        currentMonthCount: currentCount,
-        previousMonthCount: previousCount,
+        year: yearNum,
+        currentMonthCount,
+        previousMonthCount,
       });
     } catch (error) {
       res.status(500).send({ message: error.message });
     }
   };
 
+  countUsersByWeek = async (req, res, next) => {
+    try {
+      const { week, year } = req.query; // ví dụ: week=45, year=2025
+      if (!week || !/^\d{1,2}$/.test(week) || !year || !/^\d{4}$/.test(year)) {
+        return res.status(400).send({ message: "Invalid week or year format. Use week=WW and year=YYYY" });
+      }
+
+      const weekNum = parseInt(week);
+      const yearNum = parseInt(year);
+
+      // Tính ngày bắt đầu và kết thúc của tuần
+      const firstDayOfYear = new Date(yearNum, 0, 1);
+      const firstMonday = new Date(firstDayOfYear);
+      firstMonday.setDate(firstDayOfYear.getDate() + ((8 - firstDayOfYear.getDay()) % 7));
+
+      const weekStart = new Date(firstMonday);
+      weekStart.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 7);
+
+      // Tính tuần trước
+      const prevWeekStart = new Date(weekStart);
+      prevWeekStart.setDate(weekStart.getDate() - 7);
+      const prevWeekEnd = new Date(weekStart);
+
+      const usersSnapshot = await getDocs(collection(db, "users"));
+      let currentWeekCount = 0;
+      let previousWeekCount = 0;
+
+      usersSnapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.createdAt && data.createdAt.toDate) {
+          const createdAt = data.createdAt.toDate();
+          if (createdAt >= weekStart && createdAt < weekEnd) {
+            currentWeekCount++;
+          } else if (createdAt >= prevWeekStart && createdAt < prevWeekEnd) {
+            previousWeekCount++;
+          }
+        }
+      });
+
+      res.status(200).send({
+        week: weekNum,
+        year: yearNum,
+        currentWeekCount,
+        previousWeekCount,
+      });
+    } catch (error) {
+      res.status(400).send({ message: error.message });
+    }
+  };
+
+  countUsersByYear = async (req, res, next) => {
+    try {
+      const { year } = req.query; // ví dụ: year=2025
+      if (!year || !/^\d{4}$/.test(year)) {
+        return res.status(400).send({ message: "Invalid year format. Use year=YYYY" });
+      }
+
+      const yearNum = parseInt(year);
+      const yearStart = new Date(yearNum, 0, 1);
+      const yearEnd = new Date(yearNum + 1, 0, 1);
+      const prevYearStart = new Date(yearNum - 1, 0, 1);
+      const prevYearEnd = new Date(yearNum, 0, 1);
+
+      const usersSnapshot = await getDocs(collection(db, "users"));
+      let currentYearCount = 0;
+      let previousYearCount = 0;
+
+      usersSnapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        if (data.createdAt && data.createdAt.toDate) {
+          const createdAt = data.createdAt.toDate();
+          if (createdAt >= yearStart && createdAt < yearEnd) {
+            currentYearCount++;
+          } else if (createdAt >= prevYearStart && createdAt < prevYearEnd) {
+            previousYearCount++;
+          }
+        }
+      });
+
+      res.status(200).send({
+        year: yearNum,
+        currentYearCount,
+        previousYearCount,
+      });
+    } catch (error) {
+      res.status(400).send({ message: error.message });
+    }
+  }
   uploadAvatarToS3 = async (req, res, next) => {
     try {
       const id = req.params.id;

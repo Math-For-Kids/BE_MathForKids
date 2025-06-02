@@ -1,4 +1,4 @@
-const CompleteTask = require("../models/CompleteTask");
+const CompleteTask = require("../models/CompletedTask");
 const {
   getFirestore,
   collection,
@@ -18,10 +18,11 @@ const db = getFirestore();
 class CompleteTaskController {
   create = async (req, res, next) => {
     try {
-      const { studentId, taskId, isCompleted } = req.body;
+      const { pupilId, taskId, lessonId, isCompleted } = req.body;
       const taskData = {
-        studentId,
+        pupilId,
         taskId,
+        lessonId,
         isCompleted: isCompleted ?? false,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
