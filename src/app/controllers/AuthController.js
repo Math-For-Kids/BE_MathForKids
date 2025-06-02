@@ -11,11 +11,13 @@ const {
   serverTimestamp,
   query,
   where,
+  setDoc,
 } = require("firebase/firestore");
 const { smsService } = require("../services/SmsService");
 const { mailService } = require("../services/MailService");
 const jwt = require("jsonwebtoken");
 const db = getFirestore();
+const otpStore = {};
 
 // const sendTokenResponse = (user, statusCode, res) => {
 //   // Create token
@@ -86,6 +88,32 @@ const updateUserData = async (userDoc, otp) => {
     otpCode: otp,
     otpExpiration: expiration,
   });
+};
+
+const storeOTPInFirestore = async (email, otp) => {
+  const expiration = new Date(Date.now() + 5 * 60 * 1000); // 5 phút
+  const otpDocRef = doc(db, "otps", email); // email làm ID document
+  await setDoc(otpDocRef, {
+    email,
+    otp,
+    expire: expiration,
+    createdAt: serverTimestamp(),
+  }, { merge: true }); // merge true để không ghi đè toàn bộ nếu có trường khác
+};
+
+const getOTPFromFirestore = async (email) => {
+  const otpDocRef = doc(db, "otps", email);
+  const otpDocSnap = await getDoc(otpDocRef);
+
+  if (otpDocSnap.exists()) {
+    return otpDocSnap.data();
+  } else {
+    return null;
+  }
+};
+
+const deleteOTPFromFirestore = async (email) => {
+  await deleteDoc(doc(db, "otps", email));
 };
 
 class AuthController {
@@ -233,6 +261,63 @@ class AuthController {
       res.status(400).json({ success: false, message: err.message });
     }
   };
+
+
+
+  sendOTPByEmailChange = async (req, res) => {
+    try {
+      const email = req.params.email;
+
+      // Kiểm tra email trùng lặp
+      const existingUser = await checkUserExist(null, email);
+      if (existingUser) {
+        return res.status(400).json({ success: false, message: 'Email is already in use' });
+      }
+
+      const otp = Math.floor(1000 + Math.random() * 9000).toString();
+      const response = await mailService(email, otp);
+      if (response.status === 200) {
+        await storeOTPInFirestore(email, otp);
+        return res.status(200).json({
+          success: true,
+          message: 'OTP sent successfully',
+          email,
+        });
+      }
+      return res.status(500).json({ success: false, message: 'Failed to send email' });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  };
+  verifyOTP = async (req, res) => {
+    try {
+      const { email, otp } = req.body;
+      console.log(email, otp)
+      if (!email || !otp) {
+        return res.status(400).json({ success: false, message: 'Email and OTP are required' });
+      }
+
+      const record = await getOTPFromFirestore(email);
+      if (!record) {
+        return res.status(400).json({ success: false, message: 'OTP not found. Please request a new one.' });
+      }
+
+      if (Date.now() > record.expire.toDate().getTime()) {
+        await deleteOTPFromFirestore(email);
+        return res.status(400).json({ success: false, message: 'OTP expired. Please request a new one.' });
+      }
+
+      if (record.otp !== otp) {
+        return res.status(400).json({ success: false, message: 'Invalid OTP' });
+      }
+
+      await deleteOTPFromFirestore(email); // Xóa OTP sau khi xác thực
+      return res.status(200).json({ success: true, message: 'OTP verified successfully' });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message });
+    }
+  };
+
 }
 
 module.exports = new AuthController();
