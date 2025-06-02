@@ -14,6 +14,7 @@ router.get("/", exerciseController.getAll);
 router.get("/lessonId/:id", exerciseController.getByLessonQuery);
 router.get("/enabled", exerciseController.getEnabledExercises);
 router.get("/getByLesson/:lessonId", exerciseController.getByLesson);
+router.get("/getEnabledByLesson/:lessonId", exerciseController.getEnabledByLesson);
 router.get("/:id", exerciseController.getById);
 router.put("/:id", uploadFields, exerciseController.update);
 // router.put("/disable/:id", exerciseController.delete);

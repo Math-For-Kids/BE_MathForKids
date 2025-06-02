@@ -31,7 +31,7 @@ class ExerciseController {
         image,
         isDisabled: false,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        // updatedAt: serverTimestamp(),
       });
 
       res.status(201).send({
@@ -40,7 +40,7 @@ class ExerciseController {
       });
     } catch (error) {
       console.error("Error in create:", error.message);
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -50,7 +50,7 @@ class ExerciseController {
       const exerciseArray = exercises.docs.map((doc) => Exercise.fromFirestore(doc));
       res.status(200).send(exerciseArray);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -79,7 +79,25 @@ class ExerciseController {
       );
       res.status(200).send(exerciseArray);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
+    }
+  };
+
+  getEnabledByLesson = async (req, res, next) => {
+    try {
+      const lessonId = req.params.lessonId;
+      const q = query(
+        collection(db, "exercises"),
+        where("lessonId", "==", lessonId),
+        where("isDisabled", "==", false)
+      );
+      const exercises = await getDocs(q);
+      const exerciseArray = exercises.docs.map((doc) =>
+        Exercise.fromFirestore(doc)
+      );
+      res.status(200).send(exerciseArray);
+    } catch (error) {
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -95,7 +113,7 @@ class ExerciseController {
         res.status(404).send({ message: "Exercise not found!" });
       }
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -110,7 +128,36 @@ class ExerciseController {
       }
       const oldData = docSnapshot.data();
       const { levelId, lessonId, question, option: textOption, answer: textAnswer, isDisabled } = req.body;
+      let parsedQuestion, parsedOption, parsedAnswer;
+      try {
+        parsedQuestion = JSON.parse(question);
+        parsedOption = textOption ? JSON.parse(textOption) : null;
+        parsedAnswer = textAnswer || null;
+      } catch (error) {
+        return res.status(400).send({ message: "Invalid JSON format for type, question, option, or answer!" });
+      }
+      const { image, option: uploadedOption, answer: uploadedAnswer } = await uploadMultipleFiles(
+        req.files,
+        parsedOption,
+        parsedAnswer
+      );
+
+      const finalOption =
+        (uploadedOption && uploadedOption.length > 0) ? uploadedOption :
+          (parsedOption && parsedOption.length > 0) ? parsedOption :
+            oldData.option;
+
+      const finalAnswer = uploadedAnswer ?? parsedAnswer ?? oldData.answer;
+      const finalImage = image ?? oldData.image;
+
       const updateData = {
+        levelId,
+        lessonId,
+        question: parsedQuestion,
+        option: finalOption,
+        answer: finalAnswer,
+        image: finalImage,
+        isDisabled,
         updatedAt: serverTimestamp(),
       };
 
@@ -188,7 +235,7 @@ class ExerciseController {
       res.status(200).send({ message: "Exercise updated successfully!" });
     } catch (error) {
       console.error("Error in update:", error.message);
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
   getByLessonQuery = async (req, res, next) => {
@@ -203,8 +250,7 @@ class ExerciseController {
       const exerciseArray = snapshot.docs.map((doc) => Exercise.fromFirestore(doc));
       res.status(200).send(exerciseArray);
     } catch (error) {
-      console.error("Error in getByLessonQuery:", error.message);
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 }

@@ -23,11 +23,10 @@ class LessonController {
         ...data,
         isDisabled: false,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
       });
       res.status(200).send({ message: "Lesson created successfully!" });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -37,7 +36,7 @@ class LessonController {
       const lessonArray = lessons.docs.map((doc) => Lesson.fromFirestore(doc));
       res.status(200).send(lessonArray);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -53,15 +52,20 @@ class LessonController {
     }
   };
 
-  getByGrade = async (req, res, next) => {
+  getByGradeAndType = async (req, res, next) => {
     try {
-      const grade = parseInt(req.params.grade);
-      const q = query(collection(db, "lessons"), where("grade", "==", grade));
+      const data = req.body;
+      const q = query(
+        collection(db, "lessons"),
+        where("grade", "==", parseInt(data.grade)),
+        where("type", "==", data.type),
+        where("isDisabled", "==", false)
+      );
       const lessons = await getDocs(q);
       const lessonArray = lessons.docs.map((doc) => Lesson.fromFirestore(doc));
       res.status(200).send(lessonArray);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -77,33 +81,35 @@ class LessonController {
         res.status(404).send({ message: "Lesson not found!" });
       }
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const { createdAt, ...data } = req.body;
+      const data = req.body;
       const lesson = doc(db, "lessons", id);
       await updateDoc(lesson, { ...data, updatedAt: serverTimestamp() });
       res.status(200).send({ message: "Lesson updated successfully!" });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 
   countLessons = async (req, res, next) => {
     try {
-      const q = query(collection(db, "lessons"), where("isDisabled", "==", false));
+      const q = query(
+        collection(db, "lessons"),
+        where("isDisabled", "==", false)
+      );
       const snapshot = await getDocs(q);
       const count = snapshot.size;
       res.status(200).send({ count: count });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
-
 }
 
 module.exports = new LessonController();

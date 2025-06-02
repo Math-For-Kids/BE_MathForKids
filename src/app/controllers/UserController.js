@@ -33,7 +33,7 @@ class UserController {
       }));
       res.status(200).send(users);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
   getById = async (req, res, next) => {
@@ -49,7 +49,7 @@ class UserController {
         res.status(404).send({ message: "User not found!" });
       }
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -58,21 +58,18 @@ class UserController {
       const data = req.body;
       const date = new Date(data.dateOfBirth);
       const dateOfBirthTimestamp = Timestamp.fromDate(date);
-      const pin = data.pin;
-
       const userData = {
         ...data,
         dateOfBirth: dateOfBirthTimestamp,
         role: "user",
         isVerify: false,
-        otpCode: "",
+        otpCode: null,
         otpExpiration: null,
         volume: 100,
         language: "en",
         mode: "light",
         isDisabled: false,
         image: "",
-        pin,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       };
@@ -85,7 +82,7 @@ class UserController {
         role: userData.role,
       });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -129,7 +126,7 @@ class UserController {
 
       res.status(200).send({ message: "User updated successfully!" });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -162,7 +159,7 @@ class UserController {
         .status(200)
         .send({ message: "User and related pupils disabled successfully!" });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -172,7 +169,7 @@ class UserController {
       const userCount = usersSnapshot.size;
       res.status(200).send({ count: userCount });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -217,7 +214,7 @@ class UserController {
         previousMonthCount,
       });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 

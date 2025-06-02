@@ -7,9 +7,10 @@ router.post(
   authController.sendOTPByPhoneNumber
 );
 router.post("/sendOTPByEmail/:email", authController.sendOTPByEmail);
-router.post("/verify/:id", authController.verify);
 router.post("/sendOTPByEmailChange/:email", authController.sendOTPByEmailChange);
 router.post("/verifyOTP", authController.verifyOTP);
 router.get("/logout", authController.logout);
+router.post("/verify/:id", authController.verifyOtpAndAuthenticate);
+router.post("/logout", authController.logout);
 
 module.exports = router;
