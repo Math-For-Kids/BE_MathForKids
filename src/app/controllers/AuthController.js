@@ -17,32 +17,9 @@ const { mailService } = require("../services/MailService");
 const jwt = require("jsonwebtoken");
 const db = getFirestore();
 
-// const sendTokenResponse = (user, statusCode, res) => {
-//   // Create token
-//   const token = user.getSignedJwtToken();
-
-//   const options = {
-//     expires: new Date(
-//       Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000
-//     ),
-//     httpOnly: true,
-//   };
-
-//   res.status(statusCode).cookie("token", token, options).json({
-//     success: true,
-//     id: user.id,
-//     fullName: user.fullName,
-//     role: user.role,
-//     volume: user.volume,
-//     language: user.language,
-//     mode: user.mode,
-//     token,
-//   });
-// };
-
 const sendTokenResponse = (user, statusCode, res) => {
   const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-    expiresIn: "1d",
+    expiresIn: process.env.JWT_EXPIRE,
   });
 
   const options = {
@@ -130,11 +107,11 @@ class AuthController {
       const userDoc = await checkUserExist(null, email);
       if (userDoc && userDoc.data().isVerify) {
         const otp = Math.floor(1000 + Math.random() * 9000).toString();
-        const response = await mailService(email, otp);
-        if (response.status == 200) {
+        await mailService(email, otp);
+        if (userDoc) {
           await updateUserData(userDoc, otp);
           return res.status(200).json({
-            message: response.message,
+            message: "success",
             userId: userDoc.id,
           });
         } else if (!userDoc.data().isVerify) {
@@ -143,7 +120,7 @@ class AuthController {
           });
         } else {
           return res.status(500).json({
-            message: response.message,
+            message: "fail",
           });
         }
       } else {
@@ -156,9 +133,9 @@ class AuthController {
     }
   };
 
-  verify = async (req, res, next) => {
+  verifyOtpAndAuthenticate = async (req, res, next) => {
     try {
-      const { id } = req.params; // ID của document
+      const { id } = req.params;
       const { otpCode } = req.body;
 
       const userRef = doc(db, "users", id);
@@ -221,7 +198,7 @@ class AuthController {
         success: true,
       });
     } catch (err) {
-      res.status(400).json({ success: false, message: err.message });
+      res.status(500).json({ success: false, message: err.message });
     }
   };
 }

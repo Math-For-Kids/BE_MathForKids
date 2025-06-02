@@ -3,6 +3,7 @@ const userController = require("../app/controllers/UserController");
 const router = express.Router();
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
+
 router.get("/", userController.getAll);
 router.post("/", userController.create);
 router.get("/countuser", userController.countUsers);
@@ -21,7 +22,7 @@ router.post("/:id/verify-email", userController.verifyEmailChange);
 router.put("/:id/change-pin", userController.changePin);
 router.put(
   "/:id/avatar",
-  upload.single("avatar"),
+  upload.single("image"),
   userController.uploadAvatarToS3
 );
 module.exports = router;

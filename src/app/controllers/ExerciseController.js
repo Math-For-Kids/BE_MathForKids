@@ -35,7 +35,7 @@ class ExerciseController {
         image,
         isDisabled: false,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        // updatedAt: serverTimestamp(),
       });
 
       res.status(201).send({
@@ -44,18 +44,20 @@ class ExerciseController {
       });
     } catch (error) {
       console.error("Error in create:", error.message);
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
+
   getAll = async (req, res, next) => {
     try {
       const exercises = await getDocs(collection(db, "exercises"));
       const exerciseArray = exercises.docs.map((doc) => Exercise.fromFirestore(doc));
       res.status(200).send(exerciseArray);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
+
   getByLesson = async (req, res, next) => {
     try {
       const lessonId = req.params.lessonId;
@@ -69,7 +71,25 @@ class ExerciseController {
       );
       res.status(200).send(exerciseArray);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
+    }
+  };
+
+  getEnabledByLesson = async (req, res, next) => {
+    try {
+      const lessonId = req.params.lessonId;
+      const q = query(
+        collection(db, "exercises"),
+        where("lessonId", "==", lessonId),
+        where("isDisabled", "==", false)
+      );
+      const exercises = await getDocs(q);
+      const exerciseArray = exercises.docs.map((doc) =>
+        Exercise.fromFirestore(doc)
+      );
+      res.status(200).send(exerciseArray);
+    } catch (error) {
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -85,7 +105,7 @@ class ExerciseController {
         res.status(404).send({ message: "Exercise not found!" });
       }
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -99,7 +119,7 @@ class ExerciseController {
         return res.status(404).send({ message: "Exercises not found!" });
       }
       const oldData = docSnapshot.data();
-      const { levelId, lessonId, question, option: textOption, answer: textAnswer } = req.body;
+      const { levelId, lessonId, question, option: textOption, answer: textAnswer, isDisabled } = req.body;
       let parsedQuestion, parsedOption, parsedAnswer;
       try {
         parsedQuestion = JSON.parse(question);
@@ -129,13 +149,14 @@ class ExerciseController {
         option: finalOption,
         answer: finalAnswer,
         image: finalImage,
+        isDisabled,
         updatedAt: serverTimestamp(),
       };
       await updateDoc(exercisesRef, updateData);
       res.status(200).send({ message: "Exercises updated successfully!" });
     } catch (error) {
       console.error("Error in update:", error.message);
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -147,7 +168,7 @@ class ExerciseController {
       await updateDoc(exercisesRef, { ...data, updatedAt: serverTimestamp() });
       res.status(200).send({ message: "Exercises disabled successfully!" });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({ message: error.message });
     }
   };
 }
