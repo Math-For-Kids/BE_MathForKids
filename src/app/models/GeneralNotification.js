@@ -16,7 +16,7 @@ class GeneralNotification {
       data.title ?? {},
       data.content ?? {},
       data.isRead ?? false,
-      data.createdAt?.toDate().toLocaleString("vi-VN") ?? ''
+      data.createdAt?.toDate().toLocaleString("vi-VN")
     );
   }
 }

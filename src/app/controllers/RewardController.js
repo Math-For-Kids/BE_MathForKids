@@ -60,6 +60,18 @@ class RewardController {
     }
   };
 
+  getEnabledRewards = async (req, res) => {
+    try {
+      const rewardsRef = collection(db, "reward");
+      const q = query(rewardsRef, where("isDisabled", "==", false));
+      const snapshot = await getDocs(q);
+      const rewards = snapshot.docs.map(doc => Reward.fromFirestore(doc));
+      res.status(200).send(rewards);
+    } catch (error) {
+      res.status(400).send({ message: error.message });
+    }
+  };
+
   getById = async (req, res, next) => {
     try {
       const id = req.params.id;
@@ -76,51 +88,44 @@ class RewardController {
     }
   };
 
+
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const ref = doc(db, "reward", id);
-      const rewardSnapshot = await getDoc(ref);
+      const { isDisabled, name, description } = req.body;
+      console.log('req.files:', req.files);
+      const updateData = {
+        updatedAt: serverTimestamp(),
+      };
 
-      if (!rewardSnapshot.exists()) {
+      const ref = doc(db, "reward", id);
+      const currentReward = await getDoc(ref);
+      if (!currentReward.exists()) {
         return res.status(404).send({ message: "Reward not found!" });
       }
-
-      if (!req.files || req.files.length === 0) {
-        return res.status(400).send({ message: "Image file is required." });
-      }
-
-      const uploadedFiles = await uploadMultipleFiles(req.files);
-      const image = uploadedFiles["image"];
-      let { name, description } = req.body;
       const parsedName = typeof name === "string" ? JSON.parse(name) : name;
       const parsedDescription = typeof description === "string" ? JSON.parse(description) : description;
 
-      await updateDoc(ref, {
-        name: parsedName,
-        description: parsedDescription,
-        image,
-        isDisabled: false,
-        updatedAt: serverTimestamp(),
-      });
-
+      if (isDisabled !== undefined && !name && !description && !req.files) {
+        updateData.isDisabled = isDisabled;
+      } else {
+        updateData.name = parsedName;
+        updateData.description = parsedDescription;
+        // ✅ Nếu có files thì xử lý upload ảnh
+        if (req.files && Object.keys(req.files).length > 0) {
+          const uploadedFiles = await uploadMultipleFiles(req.files);
+          updateData.image = uploadedFiles.image;
+        } else {
+          updateData.image = currentReward.data().image;
+        }
+      }
+      await updateDoc(ref, updateData);
       res.status(200).send({ message: "Reward updated successfully!" });
     } catch (error) {
       res.status(400).send({ message: error.message });
     }
   };
 
-  delete = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      const { createdAt, ...data } = req.body;
-      const rewardRef = doc(db, "reward", id);
-      await updateDoc(rewardRef, { ...data, updatedAt: serverTimestamp() });
-      res.status(200).send({ message: "Reward disabled successfully!" });
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
-  };
 }
 
 module.exports = new RewardController();

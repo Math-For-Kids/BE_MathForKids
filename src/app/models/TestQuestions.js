@@ -35,7 +35,7 @@ class TestQuestion {
       data.exerciseId ?? '',
       data.level ?? {},
       data.question ?? {},
-      data.image ?? [],
+      data.image ?? '',
       data.option ?? [],
       data.correctAnswer ?? '',
       data.selectedAnswer ?? '',

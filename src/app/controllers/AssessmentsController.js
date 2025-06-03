@@ -88,7 +88,6 @@ class AssessmentController {
       res.status(400).send({ message: error.message });
     }
   };
-
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
@@ -99,40 +98,90 @@ class AssessmentController {
         return res.status(404).send({ message: "Assessment not found!" });
       }
       const oldData = docSnapshot.data();
-      const { levelId, grade, type, question, option: textOption, answer: textAnswer } = req.body;
-      let parsedType, parsedQuestion, parsedOption, parsedAnswer;
-      try {
-        parsedType = JSON.parse(type);
-        parsedQuestion = JSON.parse(question);
-        parsedOption = textOption ? JSON.parse(textOption) : null;
-        parsedAnswer = textAnswer || null;
-      } catch (error) {
-        return res.status(400).send({ message: "Invalid JSON format for type, question, option, or answer!" });
-      }
-      const { image, option: uploadedOption, answer: uploadedAnswer } = await uploadMultipleFiles(
-        req.files,
-        parsedOption,
-        parsedAnswer
-      );
-
-      const finalOption =
-        (uploadedOption && uploadedOption.length > 0) ? uploadedOption :
-          (parsedOption && parsedOption.length > 0) ? parsedOption :
-            oldData.option;
-
-      const finalAnswer = uploadedAnswer ?? parsedAnswer ?? oldData.answer;
-      const finalImage = image ?? oldData.image;
-
+      const { levelId, grade, type, question, option: textOption, answer: textAnswer, isDisabled } = req.body;
       const updateData = {
-        levelId,
-        grade: parseInt(grade),
-        type: parsedType,
-        question: parsedQuestion,
-        option: finalOption,
-        answer: finalAnswer,
-        image: finalImage,
         updatedAt: serverTimestamp(),
       };
+
+      // Handle isDisabled-only update
+      if (
+        typeof isDisabled !== "undefined" &&
+        !levelId &&
+        !grade &&
+        !type &&
+        !question &&
+        !textOption &&
+        !textAnswer &&
+        (!req.files || Object.keys(req.files).length === 0)
+      ) {
+        updateData.isDisabled = isDisabled === "true" || isDisabled === true;
+      } else {
+        let parsedType, parsedQuestion, parsedOption, parsedAnswer;
+
+        // Parse type
+        try {
+          parsedType = type ? JSON.parse(type) : oldData.type;
+        } catch (error) {
+          return res.status(400).send({ message: "Invalid JSON format for type!" });
+        }
+
+        // Parse question
+        try {
+          parsedQuestion = question ? JSON.parse(question) : oldData.question;
+        } catch (error) {
+          return res.status(400).send({ message: "Invalid JSON format for question!" });
+        }
+
+        // Parse textOption and textAnswer
+        try {
+          parsedOption = textOption
+            ? typeof textOption === "string" && textOption.startsWith("[")
+              ? JSON.parse(textOption)
+              : [textOption] // Treat as single-item array if plain text
+            : null;
+          parsedAnswer = textAnswer || null;
+        } catch (error) {
+          return res.status(400).send({ message: "Invalid format for option or answer!" });
+        }
+
+        // Process file uploads and text inputs
+        const { image, option: uploadedOption, answer: uploadedAnswer } = await uploadMultipleFiles(
+          req.files || {},
+          parsedOption,
+          parsedAnswer
+        );
+
+        // Determine final values for option and answer
+        const finalOption =
+          parsedOption && parsedOption.length > 0
+            ? parsedOption // Prioritize text option if provided
+            : uploadedOption && uploadedOption.length > 0
+              ? uploadedOption
+              : oldData.option;
+
+        const finalAnswer =
+          parsedAnswer !== null
+            ? parsedAnswer // Prioritize text answer if provided
+            : uploadedAnswer !== null
+              ? uploadedAnswer
+              : oldData.answer;
+
+        const finalImage = image !== null ? image : oldData.image;
+
+        // Build update data
+        updateData.levelId = levelId || oldData.levelId;
+        updateData.grade = grade ? parseInt(grade) : oldData.grade;
+        updateData.type = parsedType;
+        updateData.question = parsedQuestion;
+        updateData.option = finalOption;
+        updateData.answer = finalAnswer;
+        updateData.image = finalImage;
+
+        if (typeof isDisabled !== "undefined") {
+          updateData.isDisabled = isDisabled === "true" || isDisabled === true;
+        }
+      }
+
       await updateDoc(assessmentRef, updateData);
       res.status(200).send({ message: "Assessment updated successfully!" });
     } catch (error) {

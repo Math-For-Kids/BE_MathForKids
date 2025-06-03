@@ -28,6 +28,7 @@ class CompletedLessonController {
             res.status(400).send({ message: error.message });
         }
     };
+
     getAll = async (req, res, next) => {
         try {
             const complete_lesson = await getDocs(
@@ -41,6 +42,7 @@ class CompletedLessonController {
             res.status(400).send({ message: error.message });
         }
     };
+
     getByLessonId = async (req, res, next) => {
         try {
             const lessonId = req.params.lessonId;
@@ -69,6 +71,45 @@ class CompletedLessonController {
             } else {
                 res.status(404).send({ message: "Completed lesson not found!" });
             }
+        } catch (error) {
+            res.status(400).send({ message: error.message });
+        }
+    };
+    //Get completed lesson by pupil ID & lesson
+    getCompletedLessonByPupilLesson = async (req, res, next) => {
+        try {
+            const { pupilId, lessonId } = req.params;
+            if (!lessonId || !pupilId) {
+                return res.status(400).send({ message: "Both pupilId and lessonId are required" });
+            }
+            console.log("Querying for lessonId:", pupilId, "and lessonId", lessonId); // Debug log
+            const q = query(
+                collection(db, "completed_lessons"),
+                where("pupilId", "==", pupilId),
+                where("lessonId", "==", lessonId)
+            );
+            const completedlessonSnapshot = await getDocs(q);
+            const completedlessonArray = completedlessonSnapshot.docs.map((doc) => CompletedLesson.fromFirestore(doc));
+            res.status(200).send(completedlessonArray);
+        } catch (error) {
+            res.status(400).send({ message: error.message });
+        }
+    };
+    
+    getCompletedLessonByPupil = async (req, res, next) => {
+        try {
+            const pupilId = req.params.id;
+            if (!pupilId) {
+                return res.status(400).send({ message: "PupilId is required" });
+            }
+            console.log("Querying for pupilId:", pupilId); // Debug log
+            const q = query(
+                collection(db, "completed_lessons"),
+                where("PupilId", "==", pupilId)
+            );
+            const completedlessonSnapshot = await getDocs(q);
+            const completedlessonArray = completedlessonSnapshot.docs.map((doc) => CompletedLesson.fromFirestore(doc));
+            res.status(200).send(completedlessonArray);
         } catch (error) {
             res.status(400).send({ message: error.message });
         }
