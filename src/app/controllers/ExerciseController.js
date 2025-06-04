@@ -117,47 +117,140 @@ class ExerciseController {
     }
   };
 
+  // update = async (req, res, next) => {
+  //   try {
+  //     const id = req.params.id;
+  //     const exercisesRef = doc(db, "exercises", id);
+  //     const docSnapshot = await getDoc(exercisesRef);
+
+  //     if (!docSnapshot.exists()) {
+  //       return res.status(404).send({ message: "Exercise not found!" });
+  //     }
+  //     const oldData = docSnapshot.data();
+  //     const { levelId, lessonId, question, option: textOption, answer: textAnswer, isDisabled } = req.body;
+  //     let parsedQuestion, parsedOption, parsedAnswer;
+  //     try {
+  //       parsedQuestion = JSON.parse(question);
+  //       parsedOption = textOption ? JSON.parse(textOption) : null;
+  //       parsedAnswer = textAnswer || null;
+  //     } catch (error) {
+  //       return res.status(400).send({ message: "Invalid JSON format for type, question, option, or answer!" });
+  //     }
+  //     const { image, option: uploadedOption, answer: uploadedAnswer } = await uploadMultipleFiles(
+  //       req.files,
+  //       parsedOption,
+  //       parsedAnswer
+  //     );
+
+  //     const finalOption =
+  //       (uploadedOption && uploadedOption.length > 0) ? uploadedOption :
+  //         (parsedOption && parsedOption.length > 0) ? parsedOption :
+  //           oldData.option;
+
+  //     const finalAnswer = uploadedAnswer ?? parsedAnswer ?? oldData.answer;
+  //     const finalImage = image ?? oldData.image;
+
+  //     const updateData = {
+  //       levelId,
+  //       lessonId,
+  //       question: parsedQuestion,
+  //       option: finalOption,
+  //       answer: finalAnswer,
+  //       image: finalImage,
+  //       isDisabled,
+  //       updatedAt: serverTimestamp(),
+  //     };
+
+  //     // Handle isDisabled-only update
+  //     if (
+  //       typeof isDisabled !== "undefined" &&
+  //       !levelId &&
+  //       !lessonId &&
+  //       !question &&
+  //       !textOption &&
+  //       !textAnswer &&
+  //       (!req.files || Object.keys(req.files).length === 0)
+  //     ) {
+  //       updateData.isDisabled = isDisabled === "true" || isDisabled === true;
+  //     } else {
+  //       let parsedQuestion, parsedOption, parsedAnswer;
+
+  //       // Parse question
+  //       try {
+  //         parsedQuestion = question ? JSON.parse(question) : oldData.question;
+  //       } catch (error) {
+  //         return res.status(400).send({ message: "Invalid JSON format for question!" });
+  //       }
+
+  //       // Parse textOption and textAnswer
+  //       try {
+  //         parsedOption = textOption
+  //           ? typeof textOption === "string" && textOption.startsWith("[")
+  //             ? JSON.parse(textOption)
+  //             : [textOption] // Treat as single-item array if plain text
+  //           : null;
+  //         parsedAnswer = textAnswer || null;
+  //       } catch (error) {
+  //         return res.status(400).send({ message: "Invalid format for option or answer!" });
+  //       }
+
+  //       // Process file uploads and text inputs
+  //       const { image, option: uploadedOption, answer: uploadedAnswer } = await uploadMultipleFiles(
+  //         req.files || {},
+  //         parsedOption,
+  //         parsedAnswer
+  //       );
+
+  //       // Determine final values for option and answer
+  //       const finalOption =
+  //         parsedOption && parsedOption.length > 0
+  //           ? parsedOption // Prioritize text option if provided
+  //           : uploadedOption && uploadedOption.length > 0
+  //             ? uploadedOption
+  //             : oldData.option;
+
+  //       const finalAnswer =
+  //         parsedAnswer !== null
+  //           ? parsedAnswer // Prioritize text answer if provided
+  //           : uploadedAnswer !== null
+  //             ? uploadedAnswer
+  //             : oldData.answer;
+
+  //       const finalImage = image !== null ? image : oldData.image;
+
+  //       // Build update data
+  //       updateData.levelId = levelId || oldData.levelId;
+  //       updateData.lessonId = lessonId || oldData.lessonId;
+  //       updateData.question = parsedQuestion;
+  //       updateData.option = finalOption;
+  //       updateData.answer = finalAnswer;
+  //       updateData.image = finalImage;
+
+  //       if (typeof isDisabled !== "undefined") {
+  //         updateData.isDisabled = isDisabled === "true" || isDisabled === true;
+  //       }
+  //     }
+
+  //     await updateDoc(exercisesRef, updateData);
+  //     res.status(200).send({ message: "Exercise updated successfully!" });
+  //   } catch (error) {
+  //     console.error("Error in update:", error.message);
+  //     res.status(500).send({ message: error.message });
+  //   }
+  // };
+
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const exercisesRef = doc(db, "exercises", id);
-      const docSnapshot = await getDoc(exercisesRef);
+      const exerciseRef = doc(db, "exercises", id);
+      const docSnapshot = await getDoc(exerciseRef);
 
       if (!docSnapshot.exists()) {
         return res.status(404).send({ message: "Exercise not found!" });
       }
       const oldData = docSnapshot.data();
       const { levelId, lessonId, question, option: textOption, answer: textAnswer, isDisabled } = req.body;
-      let parsedQuestion, parsedOption, parsedAnswer;
-      try {
-        parsedQuestion = JSON.parse(question);
-        parsedOption = textOption ? JSON.parse(textOption) : null;
-        parsedAnswer = textAnswer || null;
-      } catch (error) {
-        return res.status(400).send({ message: "Invalid JSON format for type, question, option, or answer!" });
-      }
-      const { image, option: uploadedOption, answer: uploadedAnswer } = await uploadMultipleFiles(
-        req.files,
-        parsedOption,
-        parsedAnswer
-      );
-
-      const finalOption =
-        (uploadedOption && uploadedOption.length > 0) ? uploadedOption :
-          (parsedOption && parsedOption.length > 0) ? parsedOption :
-            oldData.option;
-
-      const finalAnswer = uploadedAnswer ?? parsedAnswer ?? oldData.answer;
-      const finalImage = image ?? oldData.image;
-
       const updateData = {
-        levelId,
-        lessonId,
-        question: parsedQuestion,
-        option: finalOption,
-        answer: finalAnswer,
-        image: finalImage,
-        isDisabled,
         updatedAt: serverTimestamp(),
       };
 
@@ -231,13 +324,14 @@ class ExerciseController {
         }
       }
 
-      await updateDoc(exercisesRef, updateData);
+      await updateDoc(exerciseRef, updateData);
       res.status(200).send({ message: "Exercise updated successfully!" });
     } catch (error) {
       console.error("Error in update:", error.message);
       res.status(500).send({ message: error.message });
     }
   };
+
   getByLessonQuery = async (req, res, next) => {
     try {
       const lessonId = req.params.id; // Lấy lessonId từ query parameter
