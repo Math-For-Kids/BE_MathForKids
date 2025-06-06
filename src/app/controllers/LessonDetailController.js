@@ -234,7 +234,7 @@ class LessonDetailController {
           limit(pageSize)
         );
       } else {
-        const q = query(
+        q = query(
           collection(db, "lesson_details"),
           where("lessonId", "==", lessonId),
           orderBy("order"),
@@ -304,7 +304,7 @@ class LessonDetailController {
           limit(pageSize)
         );
       } else {
-        const q = query(
+        q = query(
           collection(db, "lesson_details"),
           where("lessonId", "==", lessonId),
           where("isDisabled", "==", data.isDisabled),

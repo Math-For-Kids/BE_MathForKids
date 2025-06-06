@@ -98,15 +98,15 @@ class ExerciseController {
         q = query(
           collection(db, "exercises"),
           where("lessonId", "==", lessonId),
-          orderBy("order"),
+          orderBy("createdAt", "desc"),
           startAfter(startDoc),
           limit(pageSize)
         );
       } else {
-        const q = query(
+        q = query(
           collection(db, "exercises"),
           where("lessonId", "==", lessonId),
-          orderBy("order"),
+          orderBy("createdAt","desc"),
           limit(pageSize)
         );
       }
@@ -164,16 +164,16 @@ class ExerciseController {
           collection(db, "exercises"),
           where("lessonId", "==", lessonId),
           where("levelID", "==", levelID),
-          orderBy("order"),
+          orderBy("createdAt","desc"),
           startAfter(startDoc),
           limit(pageSize)
         );
       } else {
-        const q = query(
+        q = query(
           collection(db, "exercises"),
           where("lessonId", "==", lessonId),
           where("levelID", "==", levelID),
-          orderBy("order"),
+          orderBy("createdAt","desc"),
           limit(pageSize)
         );
       }
@@ -299,15 +299,15 @@ class ExerciseController {
           parsedOption && parsedOption.length > 0
             ? parsedOption // Prioritize text option if provided
             : uploadedOption && uploadedOption.length > 0
-            ? uploadedOption
-            : oldData.option;
+              ? uploadedOption
+              : oldData.option;
 
         const finalAnswer =
           parsedAnswer !== null
             ? parsedAnswer // Prioritize text answer if provided
             : uploadedAnswer !== null
-            ? uploadedAnswer
-            : oldData.answer;
+              ? uploadedAnswer
+              : oldData.answer;
 
         const finalImage = image !== null ? image : oldData.image;
 
