@@ -11,6 +11,10 @@ router.get("/:id", userMiddleware.checkUserExistById, userController.getById);
 router.get("/countuser", userController.countUsers);
 // Count new users by month
 router.get("/countusersbymonth", userController.countUsersByMonth);
+// Count new users by week
+router.get("/countusersbyweek", userController.countUsersByWeek);
+// Count new users by year
+router.get("/countusersbyyear", userController.countUsersByYear);
 // Create user
 router.post(
   "/",

@@ -15,15 +15,13 @@ const {
   writeBatch,
   deleteField,
 } = require("firebase/firestore");
-
 const db = getFirestore();
 const { PutObjectCommand } = require("@aws-sdk/client-s3");
 const { s3 } = require("../services/AwsService");
 const { v4: uuidv4 } = require("uuid");
-const { smsService } = require("../services/SmsService");
-const { mailService } = require("../services/MailService");
 
 class UserController {
+  // Get all users
   getAll = async (req, res, next) => {
     try {
       const usersSnapshot = await getDocs(collection(db, "users"));
@@ -33,196 +31,46 @@ class UserController {
       }));
       res.status(200).send(users);
     } catch (error) {
-      res.status(500).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
+
+  // Get an user by ID
   getById = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      const userRef = doc(db, "users", id);
-      const snapshot = await getDoc(userRef);
-
-      if (snapshot.exists()) {
-        const userData = snapshot.data();
-        res.status(200).send({ id: snapshot.id, ...userData }); // ✅ avatar sẽ có ở đây
-      } else {
-        res.status(404).send({ message: "User not found!" });
-      }
-    } catch (error) {
-      res.status(500).send({ message: error.message });
-    }
+    const id = req.params.id;
+    const user = req.user;
+    res.status(200).send({ id: id, ...user });
   };
 
-  create = async (req, res, next) => {
-    try {
-      const data = req.body;
-      const date = new Date(data.dateOfBirth);
-      const dateOfBirthTimestamp = Timestamp.fromDate(date);
-      const userData = {
-        ...data,
-        dateOfBirth: dateOfBirthTimestamp,
-        role: "user",
-        isVerify: false,
-        otpCode: null,
-        otpExpiration: null,
-        volume: 100,
-        language: "en",
-        mode: "light",
-        isDisabled: false,
-        image: "",
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      };
-
-      const docRef = await addDoc(collection(db, "users"), userData);
-
-      res.status(200).send({
-        message: "User created successfully!",
-        id: docRef.id,
-        role: userData.role,
-      });
-    } catch (error) {
-      res.status(500).send({ message: error.message });
-    }
-  };
-
-  update = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      const { isDisabled, createdAt, dateOfBirth, ...data } = req.body;
-
-      const updateData = {
-        ...data,
-        updatedAt: serverTimestamp(),
-      };
-      if (dateOfBirth) {
-        const date = new Date(dateOfBirth);
-        if (!isNaN(date)) {
-          updateData.dateOfBirth = Timestamp.fromDate(date);
-        } else {
-          throw new Error("Invalid dateOfBirth format");
-        }
-      }
-      if (isDisabled !== undefined) {
-        updateData.isDisabled = isDisabled;
-      }
-      const userRef = doc(db, "users", id);
-      await updateDoc(userRef, updateData);
-      if (isDisabled !== undefined) {
-        const pupilQuery = query(collection(db, "pupils"), where("userId", "==", id));
-        const pupilSnapshot = await getDocs(pupilQuery);
-
-        const batch = writeBatch(db);
-        pupilSnapshot.forEach(docSnap => {
-          const pupilRef = doc(db, "pupils", docSnap.id);
-          batch.update(pupilRef, {
-            isDisabled: isDisabled,
-            updatedAt: serverTimestamp(),
-          });
-        });
-
-        await batch.commit();
-      }
-
-      res.status(200).send({ message: "User updated successfully!" });
-    } catch (error) {
-      res.status(500).send({ message: error.message });
-    }
-  };
-
-
-  delete = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      const { createdAt, ...data } = req.body;
-      const userRef = doc(db, "users", id);
-      await updateDoc(userRef, { ...data, updatedAt: serverTimestamp() });
-
-      const pupilQuery = query(
-        collection(db, "pupils"),
-        where("userId", "==", id)
-      );
-      const pupilSnapshot = await getDocs(pupilQuery);
-
-      const batch = writeBatch(db);
-      pupilSnapshot.forEach((docSnap) => {
-        const pupilRef = doc(db, "pupils", docSnap.id);
-        batch.update(pupilRef, {
-          ...data,
-          updatedAt: serverTimestamp(),
-        });
-      });
-
-      await batch.commit();
-
-      res
-        .status(200)
-        .send({ message: "User and related pupils disabled successfully!" });
-    } catch (error) {
-      res.status(500).send({ message: error.message });
-    }
-  };
-
+  // Count all exist user
   countUsers = async (req, res, next) => {
     try {
       const usersSnapshot = await getDocs(collection(db, "users"));
       const userCount = usersSnapshot.size;
       res.status(200).send({ count: userCount });
     } catch (error) {
-      res.status(500).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
-  countUsersByMonth = async (req, res, next) => {
-    try {
-      const { month, year } = req.query; // ví dụ: month=05, year=2025
-      if (!month || !/^\d{2}$/.test(month) || !year || !/^\d{4}$/.test(year)) {
-        return res.status(400).send({ message: "Invalid month or year format. Use month=MM and year=YYYY" });
-      }
-
-      const yearNum = parseInt(year);
-      const monthIndex = parseInt(month) - 1;
-
-      const currentStart = new Date(yearNum, monthIndex, 1);
-      const currentEnd = new Date(yearNum, monthIndex + 1, 1);
-
-      const prevMonthIndex = (monthIndex - 1 + 12) % 12;
-      const prevYear = monthIndex === 0 ? yearNum - 1 : yearNum;
-      const prevStart = new Date(prevYear, prevMonthIndex, 1);
-      const prevEnd = new Date(prevYear, prevMonthIndex + 1, 1);
-
-      const usersSnapshot = await getDocs(collection(db, "users"));
-      let currentMonthCount = 0;
-      let previousMonthCount = 0;
-
-      usersSnapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        if (data.createdAt && data.createdAt.toDate) {
-          const createdAt = data.createdAt.toDate();
-          if (createdAt >= currentStart && createdAt < currentEnd) {
-            currentMonthCount++;
-          } else if (createdAt >= prevStart && createdAt < prevEnd) {
-            previousMonthCount++;
-          }
-        }
-      });
-
-      res.status(200).send({
-        month,
-        year: yearNum,
-        currentMonthCount,
-        previousMonthCount,
-      });
-    } catch (error) {
-      res.status(500).send({ message: error.message });
-    }
-  };
-
+  // Count new users by week
   countUsersByWeek = async (req, res, next) => {
     try {
       const { week, year } = req.query; // ví dụ: week=45, year=2025
       if (!week || !/^\d{1,2}$/.test(week) || !year || !/^\d{4}$/.test(year)) {
-        return res.status(400).send({ message: "Invalid week or year format. Use week=WW and year=YYYY" });
+        return res.status(400).send({
+          message: "Invalid week or year format. Use week=WW and year=YYYY",
+        });
       }
 
       const weekNum = parseInt(week);
@@ -231,7 +79,9 @@ class UserController {
       // Tính ngày bắt đầu và kết thúc của tuần
       const firstDayOfYear = new Date(yearNum, 0, 1);
       const firstMonday = new Date(firstDayOfYear);
-      firstMonday.setDate(firstDayOfYear.getDate() + ((8 - firstDayOfYear.getDay()) % 7));
+      firstMonday.setDate(
+        firstDayOfYear.getDate() + ((8 - firstDayOfYear.getDay()) % 7)
+      );
 
       const weekStart = new Date(firstMonday);
       weekStart.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
@@ -247,7 +97,7 @@ class UserController {
       let currentWeekCount = 0;
       let previousWeekCount = 0;
 
-      usersSnapshot.forEach(docSnap => {
+      usersSnapshot.forEach((docSnap) => {
         const data = docSnap.data();
         if (data.createdAt && data.createdAt.toDate) {
           const createdAt = data.createdAt.toDate();
@@ -266,15 +116,76 @@ class UserController {
         previousWeekCount,
       });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(400).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
+  // Count new users by month
+  countUsersByMonth = async (req, res, next) => {
+    try {
+      const { month } = req.query; // ví dụ: "05"
+      if (!month || !/^\d{2}$/.test(month)) {
+        return res
+          .status(400)
+          .send({ message: "Invalid month format. Use MM" });
+      }
+
+      const now = new Date();
+      const year = now.getFullYear();
+      const monthIndex = parseInt(month) - 1;
+
+      const currentStart = new Date(year, monthIndex, 1);
+      const currentEnd = new Date(year, monthIndex + 1, 1);
+
+      const prevMonthIndex = (monthIndex - 1 + 12) % 12;
+      const prevYear = monthIndex === 0 ? year - 1 : year;
+      const prevStart = new Date(prevYear, prevMonthIndex, 1);
+      const prevEnd = new Date(prevYear, prevMonthIndex + 1, 1);
+
+      const usersSnapshot = await getDocs(collection(db, "users"));
+      let currentCount = 0;
+      let previousCount = 0;
+
+      usersSnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.createdAt && data.createdAt.toDate) {
+          const createdAt = data.createdAt.toDate();
+          if (createdAt >= currentStart && createdAt < currentEnd) {
+            currentCount++;
+          } else if (createdAt >= prevStart && createdAt < prevEnd) {
+            previousCount++;
+          }
+        }
+      });
+
+      res.status(200).send({
+        month,
+        currentMonthCount: currentCount,
+        previousMonthCount: previousCount,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Count new users by year
   countUsersByYear = async (req, res, next) => {
     try {
       const { year } = req.query; // ví dụ: year=2025
       if (!year || !/^\d{4}$/.test(year)) {
-        return res.status(400).send({ message: "Invalid year format. Use year=YYYY" });
+        return res
+          .status(400)
+          .send({ message: "Invalid year format. Use year=YYYY" });
       }
 
       const yearNum = parseInt(year);
@@ -287,7 +198,7 @@ class UserController {
       let currentYearCount = 0;
       let previousYearCount = 0;
 
-      usersSnapshot.forEach(docSnap => {
+      usersSnapshot.forEach((docSnap) => {
         const data = docSnap.data();
         if (data.createdAt && data.createdAt.toDate) {
           const createdAt = data.createdAt.toDate();
@@ -305,10 +216,95 @@ class UserController {
         previousYearCount,
       });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(400).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
-  }
-  uploadAvatarToS3 = async (req, res, next) => {
+  };
+
+  // Create user
+  create = async (req, res, next) => {
+    try {
+      const data = req.body;
+      const date = new Date(data.dateOfBirth);
+      const dateOfBirthTimestamp = Timestamp.fromDate(date);
+      const userData = {
+        ...data,
+        email: data.email.toLowerCase(),
+        dateOfBirth: dateOfBirthTimestamp,
+        role: data.role ? data.role : "user",
+        isVerify: false,
+        otpCode: null,
+        otpExpiration: null,
+        pin: data.pin,
+        volume: 100,
+        language: "en",
+        mode: "light",
+        isDisabled: false,
+        image: "",
+        createdAt: serverTimestamp(),
+      };
+
+      const docRef = await addDoc(collection(db, "users"), userData);
+
+      res.status(201).send({
+        message: {
+          en: "User created successfully!",
+          vi: "Tạo người dùng thành công!",
+        },
+        id: docRef.id,
+        phoneNumber: userData.phoneNumber,
+        role: userData.role,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Update user
+  update = async (req, res, next) => {
+    try {
+      const id = req.params.id;
+      const data = req.body;
+
+      // Nếu có trường dateOfBirth thì chuyển thành Timestamp
+      if (data.dateOfBirth) {
+        const date = new Date(data.dateOfBirth);
+        data.dateOfBirth = Timestamp.fromDate(date);
+      }
+
+      const userRef = doc(db, "users", id);
+      await updateDoc(userRef, {
+        ...data,
+        email: data.email.toLowerCase(),
+        updatedAt: serverTimestamp(),
+      });
+      res.status(200).send({
+        message: {
+          en: "User information updated successfully!",
+          vi: "Cập nhật thông tin người dùng thành công!",
+        },
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Update image profile
+  uploadImageProfileToS3 = async (req, res, next) => {
     try {
       const id = req.params.id;
       const file = req.file;
@@ -318,7 +314,7 @@ class UserController {
       }
 
       const fileExt = file.originalname.split(".").pop();
-      const key = `avatars/${id}_${uuidv4()}.${fileExt}`;
+      const key = `image_profile/${id}_${uuidv4()}.${fileExt}`;
 
       const command = new PutObjectCommand({
         Bucket: process.env.S3_BUCKET_NAME,
@@ -339,219 +335,20 @@ class UserController {
       });
 
       res.status(200).json({
-        message: "Profile image  uploaded successfully!",
+        message: {
+          en: "Image profile uploaded successfully!",
+          vi: "Cập nhật ảnh hồ sơ thành công!",
+        },
         image: publicUrl,
       });
     } catch (error) {
       console.error("S3 upload error:", error);
-      res.status(500).json({ message: "Upload failed", error });
-    }
-  };
-
-  changePin = async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { newPin, oldPin } = req.body;
-
-      if (!newPin || !oldPin) {
-        return res.status(400).json({ message: "Missing newPin or oldPin" });
-      }
-
-      const userRef = doc(db, "users", id);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const userData = userSnap.data();
-
-      if (userData.pin !== oldPin) {
-        return res.status(403).json({ message: "Incorrect old PIN" });
-      }
-
-      await updateDoc(userRef, {
-        pin: newPin,
-        updatedAt: serverTimestamp(),
+      res.status(500).json({
+        message: {
+          en: "Upload failed: " + error.message,
+          vi: "Đẩy ảnh lên S3 không thành công!",
+        },
       });
-
-      return res.status(200).json({ message: "PIN updated successfully!" });
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
-  };
-  // update otp
-  updateUserData = async (userDoc, otpCode) => {
-    await updateDoc(doc(db, "users", userDoc.id), {
-      otpCode,
-      otpExpiration: Timestamp.fromDate(new Date(Date.now() + 5 * 60 * 1000)),
-      updatedAt: serverTimestamp(),
-    });
-  };
-
-  // Gửi OTP qua SMS đến số điện thoại (số cũ)
-  sendOtpToPhone = async (userDoc, phoneNumber, message) => {
-    const otp = Math.floor(1000 + Math.random() * 9000).toString();
-    await smsService(
-      phoneNumber,
-      `Your OTP is ${otp}. Please do not send this to anyone.`,
-      2,
-      "5087a0dcd4ccd3a2"
-    );
-
-    await this.updateUserData(userDoc, otp);
-
-    return otp;
-  };
-
-  //Gửi OTP để xác thực đổi số điện thoại mới
-  sendOTPForPhoneChange = async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { newPhoneNumber } = req.body;
-
-      if (!newPhoneNumber) {
-        return res.status(400).json({ message: "Missing newPhoneNumber" });
-      }
-
-      const userRef = doc(db, "users", id);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      await updateDoc(userRef, {
-        pendingPhoneNumber: newPhoneNumber,
-        otpExpiration: Timestamp.fromDate(new Date(Date.now() + 5 * 60 * 1000)),
-        updatedAt: serverTimestamp(),
-      });
-
-      return res.status(200).json({ message: "OTP sent to old phone number" });
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
-  };
-  // Xác thực OTP đổi số điện thoại và cập nhật số mới
-  verifyPhoneChange = async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { otpCode } = req.body;
-
-      const userRef = doc(db, "users", id);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const user = userSnap.data();
-
-      if (user.otpCode !== otpCode) {
-        return res.status(400).json({ message: "OTP is invalid!" });
-      }
-
-      const now = new Date();
-      const expiration = user.otpExpiration?.toDate?.() || new Date(0);
-      if (now > expiration) {
-        return res.status(400).json({ message: "OTP expired" });
-      }
-
-      if (!user.pendingPhoneNumber) {
-        return res.status(400).json({ message: "No pending phone number" });
-      }
-
-      await updateDoc(userRef, {
-        phoneNumber: user.pendingPhoneNumber,
-        pendingPhoneNumber: deleteField(),
-        updatedAt: serverTimestamp(),
-      });
-
-      return res
-        .status(200)
-        .json({ message: "Phone number updated successfully" });
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
-  };
-  // Gửi OTP tới email cũ
-  sendOTPForEmailChange = async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { newEmail } = req.body;
-
-      if (!newEmail) {
-        return res.status(400).json({ message: "Missing newEmail" });
-      }
-
-      const userRef = doc(db, "users", id);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const userDoc = userSnap;
-      const oldEmail = userDoc.data().email;
-
-      const otp = Math.floor(1000 + Math.random() * 9000).toString();
-
-      const response = await mailService(oldEmail, otp);
-      if (response.status !== 200) {
-        return res.status(500).json({ message: response.message });
-      }
-
-      await this.updateUserData(userDoc, otp);
-
-      await updateDoc(userRef, {
-        pendingEmail: newEmail,
-        otpExpiration: Timestamp.fromDate(new Date(Date.now() + 5 * 60 * 1000)),
-        updatedAt: serverTimestamp(),
-      });
-
-      return res.status(200).json({ message: "OTP sent to old email" });
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
-    }
-  };
-  // Xác thực OTP đổi email và cập nhật email mới
-  verifyEmailChange = async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { otpCode } = req.body;
-
-      const userRef = doc(db, "users", id);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      const user = userSnap.data();
-
-      if (user.otpCode !== otpCode) {
-        return res.status(400).json({ message: "OTP is invalid!" });
-      }
-
-      const now = new Date();
-      const expiration = user.otpExpiration?.toDate?.() || new Date(0);
-      if (now > expiration) {
-        return res.status(400).json({ message: "OTP expired" });
-      }
-
-      if (!user.pendingEmail) {
-        return res.status(400).json({ message: "No pending email" });
-      }
-
-      await updateDoc(userRef, {
-        email: user.pendingEmail,
-        pendingEmail: deleteField(),
-        updatedAt: serverTimestamp(),
-      });
-
-      return res.status(200).json({ message: "Email updated successfully" });
-    } catch (error) {
-      return res.status(500).json({ message: error.message });
     }
   };
 }

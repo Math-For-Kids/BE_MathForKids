@@ -1,6 +1,7 @@
 class Lesson {
-  constructor(id, name, grade, type, isDisabled, createdAt, updatedAt) {
+  constructor(id, order, name, grade, type, isDisabled, createdAt, updatedAt) {
     (this.id = id),
+      (this.order = order),
       (this.name = name),
       (this.grade = grade),
       (this.type = type),
@@ -13,6 +14,7 @@ class Lesson {
     const data = doc.data();
     return new Lesson(
       doc.id,
+      data.order,
       data.name,
       data.grade,
       data.type,

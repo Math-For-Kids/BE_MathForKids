@@ -7,18 +7,18 @@ const {
   getDoc,
   getDocs,
   updateDoc,
-  deleteDoc,
   serverTimestamp,
   query,
   where,
   Timestamp,
 } = require("firebase/firestore");
-
 const db = getFirestore();
 const { PutObjectCommand } = require("@aws-sdk/client-s3");
 const { s3 } = require("../services/AwsService");
 const { v4: uuidv4 } = require("uuid");
+
 class PupilController {
+  // Create pupil
   create = async (req, res, next) => {
     try {
       const data = req.body;
@@ -28,54 +28,72 @@ class PupilController {
         ...data,
         dateOfBirth: dateOfBirthTimestamp,
         isDisabled: false,
-        assess: false,
+        isAssess: false,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
       });
-      res.status(200).send({ message: "Pupil created successfully!" });
+      res.status(201).send({
+        message: {
+          en: "Pupil created successfully!",
+          vi: "Tạo học sinh thành công!",
+        },
+      });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
+  // Get all pupils
   getAll = async (req, res, next) => {
     try {
       const pupils = await getDocs(collection(db, "pupils"));
       const pupilArray = pupils.docs.map((doc) => Pupil.fromFirestore(doc));
       res.status(200).send(pupilArray);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
+  // Get a pupil by ID
   getById = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      const pupilRef = doc(db, "pupils", id);
-      const data = await getDoc(pupilRef);
-      if (data.exists()) {
-        const pupilData = Pupil.fromFirestore(data);
-        res.status(200).send(pupilData);
-      } else {
-        res.status(404).send({ message: "Pupil not found!" });
-      }
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
+    const id = req.params.id;
+    const pupil = req.pupil;
+    res.status(200).send({ id: id, ...pupil });
   };
 
-  getEnabledPupil = async (req, res) => {
+  // Get enabled pupils by user ID
+  getEnabledPupilByUserId = async (req, res) => {
     try {
+      const userId = req.params.userId;
       const pupilsRef = collection(db, "pupils");
-      const q = query(pupilsRef, where("isDisabled", "==", false));
+      const q = query(
+        pupilsRef,
+        where("userId", "==", userId),
+        where("isDisabled", "==", false)
+      );
       const snapshot = await getDocs(q);
       const pupils = snapshot.docs.map((doc) => Pupil.fromFirestore(doc));
       res.status(200).send(pupils);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
+  // Update pupil information
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
@@ -94,27 +112,48 @@ class PupilController {
         }
       }
       // If only isDisabled is provided, update only that field
-      if (isDisabled !== undefined && Object.keys(data).length === 0 && !dateOfBirth) {
+      if (
+        isDisabled !== undefined &&
+        Object.keys(data).length === 0 &&
+        !dateOfBirth
+      ) {
         updateData.isDisabled = isDisabled;
       }
       const pupilRef = doc(db, "pupils", id);
       await updateDoc(pupilRef, updateData);
-      res.status(200).send({ message: "Pupil updated successfully!" });
+      res.status(200).send({
+        message: {
+          en: "Profile information updated successfully!",
+          vi: "Cập nhật thông tin hồ sơ thành công!",
+        },
+      });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
+  // Count all pupils
   countPupils = async (req, res, next) => {
     try {
       const pupilSnapshot = await getDocs(collection(db, "pupils"));
       const pupilCount = pupilSnapshot.size;
       res.status(200).send({ count: pupilCount });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
+  // Count pupils by grade
   countPupilsByGrade = async (req, res, next) => {
     try {
       const pupilsRef = collection(db, "pupils");
@@ -139,15 +178,23 @@ class PupilController {
 
       res.status(200).send(result);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
+  // Count new pupils by month
   countPupilsByMonth = async (req, res, next) => {
     try {
       const { month, year } = req.query; // ví dụ "2024-12"
       if (!month || !/^\d{2}$/.test(month) || !year || !/^\d{4}$/.test(year)) {
-        return res.status(400).send({ message: "Invalid month format. Use YYYY-MM" });
+        return res
+          .status(400)
+          .send({ message: "Invalid month format. Use YYYY-MM" });
       }
 
       const yearNum = parseInt(year);
@@ -184,15 +231,23 @@ class PupilController {
         previousMonthCount,
       });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
+  // Count new pupils by week
   countPupilsByWeek = async (req, res, next) => {
     try {
       const { week, year } = req.query; // ví dụ: week=45, year=2025
       if (!week || !/^\d{1,2}$/.test(week) || !year || !/^\d{4}$/.test(year)) {
-        return res.status(400).send({ message: "Invalid week or year format. Use week=WW and year=YYYY" });
+        return res.status(400).send({
+          message: "Invalid week or year format. Use week=WW and year=YYYY",
+        });
       }
 
       const weekNum = parseInt(week);
@@ -200,7 +255,9 @@ class PupilController {
 
       const firstDayOfYear = new Date(yearNum, 0, 1);
       const firstMonday = new Date(firstDayOfYear);
-      firstMonday.setDate(firstDayOfYear.getDate() + ((8 - firstDayOfYear.getDay()) % 7));
+      firstMonday.setDate(
+        firstDayOfYear.getDate() + ((8 - firstDayOfYear.getDay()) % 7)
+      );
 
       const weekStart = new Date(firstMonday);
       weekStart.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
@@ -215,7 +272,7 @@ class PupilController {
       let currentWeekCount = 0;
       let previousWeekCount = 0;
 
-      pupilsSnapshot.forEach(docSnap => {
+      pupilsSnapshot.forEach((docSnap) => {
         const data = docSnap.data();
         if (data.createdAt && data.createdAt.toDate) {
           const createdAt = data.createdAt.toDate();
@@ -234,15 +291,23 @@ class PupilController {
         previousWeekCount,
       });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
-  
+
+  // Count new pupils by year
   countPupilsByYear = async (req, res, next) => {
     try {
       const { year } = req.query; // ví dụ: year=2025
       if (!year || !/^\d{4}$/.test(year)) {
-        return res.status(400).send({ message: "Invalid year format. Use year=YYYY" });
+        return res
+          .status(400)
+          .send({ message: "Invalid year format. Use year=YYYY" });
       }
 
       const yearNum = parseInt(year);
@@ -255,7 +320,7 @@ class PupilController {
       let currentYearCount = 0;
       let previousYearCount = 0;
 
-      pupilsSnapshot.forEach(docSnap => {
+      pupilsSnapshot.forEach((docSnap) => {
         const data = docSnap.data();
         if (data.createdAt && data.createdAt.toDate) {
           const createdAt = data.createdAt.toDate();
@@ -273,10 +338,17 @@ class PupilController {
         previousYearCount,
       });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
-  uploadAvatarToS3 = async (req, res, next) => {
+
+  // Update image profile
+  uploadImageProfileToS3 = async (req, res, next) => {
     try {
       const id = req.params.id;
       const file = req.file;
@@ -286,7 +358,7 @@ class PupilController {
       }
 
       const fileExt = file.originalname.split(".").pop();
-      const key = `profile-images/${id}_${uuidv4()}.${fileExt}`;
+      const key = `image_profile/${id}_${uuidv4()}.${fileExt}`;
 
       const command = new PutObjectCommand({
         Bucket: process.env.S3_BUCKET_NAME,
@@ -307,12 +379,20 @@ class PupilController {
       });
 
       res.status(200).json({
-        message: "Profile image uploaded successfully!",
+        message: {
+          en: "Image profile uploaded successfully!",
+          vi: "Cập nhật ảnh hồ sơ thành công!",
+        },
         image: publicUrl,
       });
     } catch (error) {
       console.error("S3 upload error:", error);
-      res.status(500).json({ message: "Upload failed", error });
+      res.status(500).json({
+        message: {
+          en: "Upload failed: " + error.message,
+          vi: "Đẩy ảnh lên S3 không thành công!",
+        },
+      });
     }
   };
 }

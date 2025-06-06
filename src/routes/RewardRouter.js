@@ -1,18 +1,30 @@
 const express = require("express");
 const rewardController = require("../app/controllers/RewardController");
+const rewardMiddleware = require("../app/middlewares/RewardMiddleware");
 const router = express.Router();
 const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 // Map multiple file fields
-const uploadFields = upload.fields([
-    { name: 'image', maxCount: 1 },
-]);
+const uploadFields = upload.fields([{ name: "image", maxCount: 1 }]);
 
+// Create reward
 router.post("/", uploadFields, rewardController.create);
-router.get("/enabled", rewardController.getEnabledRewards);
+// Get enabled rewards
+router.get("/getEnabledRewards", rewardController.getEnabledRewards);
+// Get all rewards
 router.get("/", rewardController.getAll);
-router.get("/:id", rewardController.getById);
-router.put("/:id", uploadFields, rewardController.update);
-// router.put("/disable/:id", rewardController.delete);
+// Get reward by ID
+router.get(
+  "/:id",
+  rewardMiddleware.checkRewardExistById(),
+  rewardController.getById
+);
+// Update reward
+router.patch(
+  "/:id",
+  rewardMiddleware.checkRewardExistById(),
+  uploadFields,
+  rewardController.update
+);
 
 module.exports = router;

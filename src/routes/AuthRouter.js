@@ -1,16 +1,38 @@
 const express = require("express");
 const authController = require("../app/controllers/AuthController");
+const authMiddleware = require("../app/middlewares/AuthMiddleware");
+const userMiddleware = require("../app/middlewares/UserMiddleware");
 const router = express.Router();
 
+// Send OTP by phone number
 router.post(
-  "/sendOTPByPhoneNumber/:phoneNumber",
+  "/sendOtpByPhone/:phoneNumber/:userRole",
+  userMiddleware.checkUserExistByPhone,
+  authMiddleware.checkRole,
+  userMiddleware.checkIsDisabled,
   authController.sendOTPByPhoneNumber
 );
-router.post("/sendOTPByEmail/:email", authController.sendOTPByEmail);
-router.post("/sendOTPByEmailChange/:email", authController.sendOTPByEmailChange);
-router.post("/verifyOTP", authController.verifyOTP);
-router.get("/logout", authController.logout);
-router.post("/verify/:id", authController.verifyOtpAndAuthenticate);
+// Send OTP by email
+router.post(
+  "/sendOtpByEmail/:email/:userRole",
+  userMiddleware.checkUserExistByEmail,
+  authMiddleware.checkRole,
+  userMiddleware.checkIsDisabled,
+  authController.sendOTPByEmail
+);
+// Verify only OTP
+router.post(
+  "/verifyOTP/:id",
+  userMiddleware.checkUserExistById(),
+  authController.verifyOTP
+);
+// Verify and authentication
+router.post(
+  "/verifyAndAuthentication/:id",
+  userMiddleware.checkUserExistById(),
+  authController.verifyOtpAndAuthenticate
+);
+// Logout
 router.post("/logout", authController.logout);
 
 module.exports = router;

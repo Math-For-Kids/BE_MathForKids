@@ -1,12 +1,22 @@
 const express = require("express");
-const testquestionController = require("../app/controllers/TestQuestionController");
+const testQuestionController = require("../app/controllers/TestQuestionController");
+const testMiddleware = require("../app/middlewares/TestMiddleware");
+const testQuestionMiddleware = require("../app/middlewares/TestQuestionMiddleware");
 const router = express.Router();
 
-router.post("/", testquestionController.create);
-router.get("/getTestQuestionByTest/:id",testquestionController.getTestQuestionByTest);
-// router.get("/",testquestionController.getAll);
-router.get("/:id", testquestionController.getById);
-router.put("/:id",testquestionController.update);
-// router.delete("/:id", testquestionController.delete);
+// Create multiple test questions
+router.post("/", testQuestionController.createMultiple);
+// Get test questions by test ID
+router.get(
+  "/getByTest/:testId",
+  testMiddleware.checkTestExistById("testId"),
+  testQuestionController.getByTest
+);
+// Get test question by ID
+router.get(
+  "/:id",
+  testQuestionMiddleware.checkTestQuestionExistById,
+  testQuestionController.getById
+);
 
 module.exports = router;

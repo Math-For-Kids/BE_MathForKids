@@ -53,6 +53,63 @@ class UserController {
     }
   };
 
+  // Count new users by week
+  countUsersByWeek = async (req, res, next) => {
+    try {
+      const { week, year } = req.query; // ví dụ: week=45, year=2025
+      if (!week || !/^\d{1,2}$/.test(week) || !year || !/^\d{4}$/.test(year)) {
+        return res.status(400).send({
+          message: "Invalid week or year format. Use week=WW and year=YYYY",
+        });
+      }
+
+      const weekNum = parseInt(week);
+      const yearNum = parseInt(year);
+
+      // Tính ngày bắt đầu và kết thúc của tuần
+      const firstDayOfYear = new Date(yearNum, 0, 1);
+      const firstMonday = new Date(firstDayOfYear);
+      firstMonday.setDate(
+        firstDayOfYear.getDate() + ((8 - firstDayOfYear.getDay()) % 7)
+      );
+
+      const weekStart = new Date(firstMonday);
+      weekStart.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 7);
+
+      // Tính tuần trước
+      const prevWeekStart = new Date(weekStart);
+      prevWeekStart.setDate(weekStart.getDate() - 7);
+      const prevWeekEnd = new Date(weekStart);
+
+      const usersSnapshot = await getDocs(collection(db, "users"));
+      let currentWeekCount = 0;
+      let previousWeekCount = 0;
+
+      usersSnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.createdAt && data.createdAt.toDate) {
+          const createdAt = data.createdAt.toDate();
+          if (createdAt >= weekStart && createdAt < weekEnd) {
+            currentWeekCount++;
+          } else if (createdAt >= prevWeekStart && createdAt < prevWeekEnd) {
+            previousWeekCount++;
+          }
+        }
+      });
+
+      res.status(200).send({
+        week: weekNum,
+        year: yearNum,
+        currentWeekCount,
+        previousWeekCount,
+      });
+    } catch (error) {
+      res.status(400).send({ message: error.message });
+    }
+  };
+
   // Count new users by month
   countUsersByMonth = async (req, res, next) => {
     try {
@@ -101,6 +158,48 @@ class UserController {
     }
   };
 
+  // Count new users by year
+  countUsersByYear = async (req, res, next) => {
+      try {
+        const { year } = req.query; // ví dụ: year=2025
+        if (!year || !/^\d{4}$/.test(year)) {
+          return res
+            .status(400)
+            .send({ message: "Invalid year format. Use year=YYYY" });
+        }
+  
+        const yearNum = parseInt(year);
+        const yearStart = new Date(yearNum, 0, 1);
+        const yearEnd = new Date(yearNum + 1, 0, 1);
+        const prevYearStart = new Date(yearNum - 1, 0, 1);
+        const prevYearEnd = new Date(yearNum, 0, 1);
+  
+        const usersSnapshot = await getDocs(collection(db, "users"));
+        let currentYearCount = 0;
+        let previousYearCount = 0;
+  
+        usersSnapshot.forEach((docSnap) => {
+          const data = docSnap.data();
+          if (data.createdAt && data.createdAt.toDate) {
+            const createdAt = data.createdAt.toDate();
+            if (createdAt >= yearStart && createdAt < yearEnd) {
+              currentYearCount++;
+            } else if (createdAt >= prevYearStart && createdAt < prevYearEnd) {
+              previousYearCount++;
+            }
+          }
+        });
+  
+        res.status(200).send({
+          year: yearNum,
+          currentYearCount,
+          previousYearCount,
+        });
+      } catch (error) {
+        res.status(400).send({ message: error.message });
+      }
+    };
+
   // Create user
   create = async (req, res, next) => {
     try {
@@ -111,7 +210,7 @@ class UserController {
         ...data,
         email: data.email.toLowerCase(),
         dateOfBirth: dateOfBirthTimestamp,
-        role: "user",
+        role: data.role ? data.role : "user",
         isVerify: false,
         otpCode: null,
         otpExpiration: null,

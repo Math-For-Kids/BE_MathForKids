@@ -10,7 +10,6 @@ const authRouter = require("../routes/AuthRouter");
 const userRouter = require("../routes/UserRouter");
 const pupilRouter = require("../routes/PupilRouter");
 const pupilnotificationRouter = require("../routes/PupilNotificationRouter");
-const usernotificationRouter = require("../routes/UserNotificationRouter");
 const assessmentRouter = require("../routes/AssessmentRouter");
 const levelRouter = require("../routes/LevelRouter");
 const testquestionRouter = require("../routes/TestQuestionRouter");
@@ -18,6 +17,8 @@ const generalnotificationRouter = require("../routes/GeneralNotificationRouter")
 const dailytaskRouter = require("../routes/DailyTaskRouter");
 const completedTaskRouter = require("../routes/CompletedTaskRouter");
 const userNotificationRouter = require("../routes/UserNotificationRouter");
+const completedExerciseRouter = require("../routes/CompletedExerciseRouter");
+const completedQuestionRouter = require("../routes/CompletedQuestionRouter");
 
 function route(app) {
   app.use("/lesson", lessonRouter);
@@ -32,15 +33,15 @@ function route(app) {
   app.use("/user", userRouter);
   app.use("/pupil", pupilRouter);
   app.use("/pupilnotification", pupilnotificationRouter);
-  app.use("/usernotification", usernotificationRouter);
+  app.use("/usernotification", userNotificationRouter);
   app.use("/assessment", assessmentRouter);
   app.use("/level", levelRouter);
   app.use("/testquestion", testquestionRouter);
   app.use("/generalnotification", generalnotificationRouter);
-  app.use("/usernotification", userNotificationRouter);
   app.use("/dailytask", dailytaskRouter);
-  app.use("/completetask", completedTaskRouter);
-
+  app.use("/completedtask", completedTaskRouter);
+  app.use("/completedexercise", completedExerciseRouter);
+  app.use("/completedquestion", completedQuestionRouter);
 }
 
 module.exports = route;
