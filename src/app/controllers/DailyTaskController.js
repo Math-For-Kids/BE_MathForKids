@@ -12,10 +12,10 @@ const {
   query,
   where,
 } = require("firebase/firestore");
-
 const db = getFirestore();
 
 class DailyTaskController {
+  // Create daily task
   create = async (req, res, next) => {
     try {
       const data = req.body;
@@ -23,13 +23,24 @@ class DailyTaskController {
         ...data,
         isDisabled: false,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
       });
-      res.status(200).send({ message: "Daily Task created successfully!" });
+      res.status(201).send({
+        message: {
+          en: "Daily task created successfully!",
+          vi: "Tạo nhiệm vụ hằng ngày thành công!",
+        },
+      });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
+
+  // Get all daily tasks
   getAll = async (req, res, next) => {
     try {
       const dailyTaskSnapshot = await getDocs(collection(db, "daily_tasks"));
@@ -38,58 +49,64 @@ class DailyTaskController {
       );
       res.status(200).send(dailyTasks);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
-  getByExercise = async (req, res, next) => {
+
+  // Get enable daily tasks
+  getEnabledDailyTask = async (req, res, next) => {
     try {
-      const exerciseId = req.params.exerciseId;
       const q = query(
         collection(db, "daily_tasks"),
-        where("exerciseId", "==", exerciseId)
+        where("isDisabled", "==", false)
       );
       const dailyTasks = await getDocs(q);
-      const result = dailyTasks.docs.map((doc) => DailyTask.fromFirestore(doc));
-      res.status(200).send(result);
+      const dailyTaskArray = dailyTasks.docs.map((doc) =>
+        DailyTask.fromFirestore(doc)
+      );
+      res.status(200).send(dailyTaskArray);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
+
+  // Get a daily task by ID
   getById = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      const ref = doc(db, "daily_tasks", id);
-      const docSnap = await getDoc(ref);
-      if (!docSnap.exists()) {
-        return res.status(404).send({ message: "DailyTask not found!" });
-      }
-      const dailyTask = DailyTask.fromFirestore(docSnap);
-      res.status(200).send(dailyTask);
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
+    const id = req.params.id;
+    const dailyTask = req.dailyTask;
+    res.status(200).send({ id: id, ...dailyTask });
   };
+
+  // Update daily task
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
       const { createdAt, ...data } = req.body;
       const ref = doc(db, "daily_tasks", id);
       await updateDoc(ref, { ...data, updatedAt: serverTimestamp() });
-      res.status(200).send({ message: "DailyTask updated successfully!" });
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
-  };
-  delete = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      await deleteDoc(doc(db, "daily_tasks", id));
-      await updateDoc(deleteDoc, {
-        isDisabled: true,  // Đánh dấu là đã xóa
+      res.status(200).send({
+        message: {
+          en: "Daily task updated successfully!",
+          vi: "Cập nhật nhiệm vụ hằng ngày thành công!",
+        },
       });
-      res.status(200).send({ message: "DailyTask deleted successfully!" });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 }

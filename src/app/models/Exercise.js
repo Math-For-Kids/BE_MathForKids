@@ -7,6 +7,7 @@ class Exercise {
     image,
     option,
     answer,
+    solution,
     isDisabled,
     createdAt,
     updatedAt
@@ -18,6 +19,7 @@ class Exercise {
       (this.image = image),
       (this.option = option),
       (this.answer = answer),
+      (this.solution = solution),
       (this.isDisabled = isDisabled),
       (this.createdAt = createdAt),
       (this.updatedAt = updatedAt);
@@ -33,6 +35,7 @@ class Exercise {
       data.image,
       data.option,
       data.answer,
+      data.solution,
       data.isDisabled,
       data.createdAt?.toDate().toLocaleString("vi-VN"),
       data.updatedAt?.toDate().toLocaleString("vi-VN")

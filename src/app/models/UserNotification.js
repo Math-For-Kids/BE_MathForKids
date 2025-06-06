@@ -1,5 +1,5 @@
 class UserNotification {
-  constructor(id, userId, title, content, goalId, type, isRead, createdAt, updatedAt) {
+  constructor(id, userId, title, content, goalId, type, isRead, createdAt) {
     this.id = id;
     this.userId = userId;
     this.title = title;
@@ -8,7 +8,6 @@ class UserNotification {
     this.type = type;
     this.isRead = isRead;
     this.createdAt = createdAt;
-    this.updatedAt = updatedAt;
   }
 
   static fromFirestore(doc) {
@@ -21,8 +20,7 @@ class UserNotification {
       data.goalId,
       data.type,
       data.isRead,
-      data.createdAt?.toDate().toLocaleString("vi-VN"),
-      data.updatedAt?.toDate().toLocaleString("vi-VN")
+      data.createdAt?.toDate().toLocaleString("vi-VN")
     );
   }
 }

@@ -10,6 +10,10 @@ const {
   deleteDoc,
   query,
   where,
+  orderBy,
+  limit,
+  startAfter,
+  getCountFromServer,
 } = require("firebase/firestore");
 
 const LessonDetail = require("../models/LessonDetail");
@@ -31,7 +35,7 @@ class LessonDetailController {
       updatedAt: data.updatedAt,
     };
   }
-  // Tạo 1 phần
+  // Create a lesson detail
   create = async (req, res) => {
     try {
       const { lessonId, order, title, content } = req.body;
@@ -54,38 +58,67 @@ class LessonDetailController {
         image,
         isDisabled: false,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
       });
-      res.status(200).send({ message: "Lesson detail created successfully!" });
+      res.status(201).send({
+        message: {
+          en: "Lesson detail created successfully!",
+          vi: "Tạo chi tiết bài học thành công!",
+        },
+      });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
-  // Tạo liền 3 phần: Define, Example, Remember
+  // Create full lesson details (Define, Example, Remember)
   createFullLesson = async (req, res) => {
     try {
-      console.log('Dữ liệu nhận được:', { body: req.body, files: Object.keys(req.files || {}) });
+      console.log("Dữ liệu nhận được:", {
+        body: req.body,
+        files: Object.keys(req.files || {}),
+      });
       const { lessonId, contents } = req.body;
 
       // Kiểm tra các trường bắt buộc
       if (!lessonId || !contents) {
-        console.error('Lỗi: Thiếu lessonId hoặc contents', { lessonId, contents });
-        return res.status(400).send({ message: "Thiếu lessonId hoặc contents." });
+        console.error("Lỗi: Thiếu lessonId hoặc contents", {
+          lessonId,
+          contents,
+        });
+        return res
+          .status(400)
+          .send({ message: "Thiếu lessonId hoặc contents." });
       }
 
       // Parse contents
       let parsedContents;
       try {
-        parsedContents = typeof contents === "string" ? JSON.parse(contents) : contents;
-        console.log('Parsed contents:', parsedContents);
-        if (!parsedContents.define || !parsedContents.example || !parsedContents.remember) {
-          console.error('Lỗi: Contents thiếu define, example hoặc remember', parsedContents);
-          return res.status(400).send({ message: "Contents thiếu define, example hoặc remember." });
+        parsedContents =
+          typeof contents === "string" ? JSON.parse(contents) : contents;
+        console.log("Parsed contents:", parsedContents);
+        if (
+          !parsedContents.define ||
+          !parsedContents.example ||
+          !parsedContents.remember
+        ) {
+          console.error(
+            "Lỗi: Contents thiếu define, example hoặc remember",
+            parsedContents
+          );
+          return res
+            .status(400)
+            .send({ message: "Contents thiếu define, example hoặc remember." });
         }
       } catch (error) {
-        console.error('Lỗi khi parse contents:', error);
-        return res.status(400).send({ message: "Dữ liệu contents không hợp lệ: " + error.message });
+        console.error("Lỗi khi parse contents:", error);
+        return res
+          .status(400)
+          .send({ message: "Dữ liệu contents không hợp lệ: " + error.message });
       }
 
       // Xử lý file upload
@@ -93,10 +126,15 @@ class LessonDetailController {
       if (req.files && Object.keys(req.files).length > 0) {
         try {
           uploadedFiles = await uploadMultipleFiles(req.files);
-          console.log('File đã upload:', uploadedFiles);
+          console.log("File đã upload:", uploadedFiles);
         } catch (error) {
-          console.error('Lỗi khi upload file:', error);
-          return res.status(400).send({ message: "Lỗi khi upload file: " + error.message });
+          console.error("Lỗi khi upload file:", error);
+          return res.status(400).send({
+            message: {
+              en: "Upload file fail: " + error.message,
+              vi: "Lỗi khi upload file.",
+            },
+          });
         }
       }
 
@@ -117,7 +155,7 @@ class LessonDetailController {
           content: parsedContents.define,
           image: uploadedFiles.define || null,
         }).catch((err) => {
-          console.error('Lỗi khi thêm Define:', err);
+          console.error("Lỗi khi thêm Define:", err);
           throw err;
         }),
         addDoc(collectionRef, {
@@ -127,7 +165,7 @@ class LessonDetailController {
           content: parsedContents.example,
           image: uploadedFiles.example || null,
         }).catch((err) => {
-          console.error('Lỗi khi thêm Example:', err);
+          console.error("Lỗi khi thêm Example:", err);
           throw err;
         }),
         addDoc(collectionRef, {
@@ -137,19 +175,167 @@ class LessonDetailController {
           content: parsedContents.remember,
           image: uploadedFiles.remember || null,
         }).catch((err) => {
-          console.error('Lỗi khi thêm Remember:', err);
+          console.error("Lỗi khi thêm Remember:", err);
           throw err;
         }),
       ]);
 
-      res.status(200).send({ message: "Tạo full lesson thành công!" });
+      res.status(200).send({
+        message: {
+          en: "Full lesson details created successfully!",
+          vi: "Tạo toàn bộ chi tiết bài học thành công!",
+        },
+      });
     } catch (error) {
-      console.error('Lỗi trong createFullLesson:', error);
-      res.status(400).send({ message: `Lỗi khi tạo full lesson: ${error.message}` });
+      console.error("Lỗi trong createFullLesson:", error);
+      res.status(500).send({
+        message: {
+          en: `Fail when create full lesson details: ${error.message}`,
+          vi: "Lỗi khi tạo toàn bộ chi tiết bài học.",
+        },
+      });
     }
   };
-  // Lấy theo lessonId
-  getByLessonId = async (req, res) => {
+
+  // Count all lesson details by lesson ID
+  countByLesson = async (req, res, next) => {
+    try {
+      const { lessonId } = req.params;
+      const q = query(
+        collection(db, "lesson_details"),
+        where("lessonId", "==", lessonId)
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send(snapshot.data().count);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Get all paginated lesson details by lesson ID
+  getByLesson = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10; // số bài học mỗi trang
+      const startAfterId = req.query.startAfterId || null; // ID của document bắt đầu sau đó
+      const { lessonId } = req.params;
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "lesson_details", startAfterId));
+        q = query(
+          collection(db, "lesson_details"),
+          where("lessonId", "==", lessonId),
+          orderBy("order"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        const q = query(
+          collection(db, "lesson_details"),
+          where("lessonId", "==", lessonId),
+          orderBy("order"),
+          limit(pageSize)
+        );
+      }
+      const snapshot = await getDocs(q);
+      const lessonDetails = snapshot.docs.map((doc) =>
+        LessonDetail.fromFirestore(doc)
+      );
+
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: lessonDetails,
+        nextPageToken: lastVisibleId, // Dùng làm startAfterId cho trang kế
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Count all lesson details by lesson ID & disabled state
+  countByLessonAndDisabledState = async (req, res, next) => {
+    try {
+      const { lessonId } = req.params;
+      const data = req.body;
+      const q = query(
+        collection(db, "lesson_details"),
+        where("lessonId", "==", lessonId),
+        where("isDisabled", "==", data.isDisabled)
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send(snapshot.data().count);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Filter all paginated lesson details by lesson ID & disabled state
+  filterByLessonAndDisabledState = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10; // số bài học mỗi trang
+      const startAfterId = req.query.startAfterId || null; // ID của document bắt đầu sau đó
+      const { lessonId } = req.params;
+      const data = req.body;
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "lesson_details", startAfterId));
+        q = query(
+          collection(db, "lesson_details"),
+          where("lessonId", "==", lessonId),
+          where("isDisabled", "==", data.isDisabled),
+          orderBy("order"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        const q = query(
+          collection(db, "lesson_details"),
+          where("lessonId", "==", lessonId),
+          where("isDisabled", "==", data.isDisabled),
+          orderBy("order"),
+          limit(pageSize)
+        );
+      }
+      const snapshot = await getDocs(q);
+      const lessonDetails = snapshot.docs.map((doc) =>
+        LessonDetail.fromFirestore(doc)
+      );
+
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: lessonDetails,
+        nextPageToken: lastVisibleId, // Dùng làm startAfterId cho trang kế
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Get enable lesson details by lesson ID
+  getEnabledByLesson = async (req, res) => {
     try {
       const { lessonId } = req.params;
       const q = query(
@@ -163,26 +349,23 @@ class LessonDetailController {
         .sort((a, b) => a.order - b.order);
       res.status(200).send(list);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
-  // Lấy theo ID
+  // Get a lesson detail by ID
   getById = async (req, res) => {
-    try {
-      const { id } = req.params;
-      const docRef = doc(db, "lesson_details", id);
-      const docSnap = await getDoc(docRef);
-      if (!docSnap.exists()) {
-        return res.status(404).send({ message: "Lesson detail not found!" });
-      }
-      res.status(200).send(LessonDetail.fromFirestore(docSnap));
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
+    const id = req.params.id;
+    const lessonDetail = req.lessonDetail;
+    res.status(200).send({ id: id, ...lessonDetail });
   };
 
-  // Cập nhật
+  // Update lesson detail
   update = async (req, res) => {
     try {
       const { id } = req.params;
@@ -207,9 +390,19 @@ class LessonDetailController {
         updatedAt: serverTimestamp(),
       });
 
-      res.status(200).send({ message: "Lesson detail updated successfully!" });
+      res.status(200).send({
+        message: {
+          en: "Lesson detail updated successfully!",
+          vi: "Cập nhật chi tiết bài học thành công!",
+        },
+      });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 }

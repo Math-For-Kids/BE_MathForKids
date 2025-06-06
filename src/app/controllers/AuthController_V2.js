@@ -20,12 +20,17 @@ const { smsService } = require("../services/SmsService");
 const { mailService } = require("../services/MailService");
 const jwt = require("jsonwebtoken");
 
+// Create new OTP code
+const generateOTPCode = () => Math.floor(1000 + Math.random() * 9000).toString();
+
+// Exchange date to timestamp
 const convertToTimeStamp = (timePlus) => {
   const now = new Date();
   const expiration = new Date(now.getTime() + timePlus);
   return Timestamp.fromDate(expiration);
 };
 
+// Verify if OTP matches and if the OTP has expired 
 const verify = (user, otpCode) => {
   const error = new Error();
   // Kiểm tra OTP có khớp không
@@ -49,6 +54,16 @@ const verify = (user, otpCode) => {
   }
 };
 
+// Update OTP when send OTP or verify successfully
+const updateOTP = async (userId, otpCode, otpExpiration) => {
+  const userRef = doc(db, "users", userId);
+  await updateDoc(userRef, {
+    otpCode,
+    otpExpiration,
+  });
+};
+
+// Create new token
 const generateAuthResponse = (userId, userInfo) => {
   const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRE,
@@ -76,7 +91,7 @@ class AuthController {
     try {
       const { phoneNumber } = req.params;
       const { id } = req.user;
-      const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
+      const otpCode = generateOTPCode();
       const otpExpiration = convertToTimeStamp(5 * 60 * 1000);
       await smsService(
         phoneNumber,
@@ -84,11 +99,7 @@ class AuthController {
         2,
         "5087a0dcd4ccd3a2"
       );
-      const userRef = doc(db, "users", id);
-      await updateDoc(userRef, {
-        otpCode: otpCode,
-        otpExpiration: otpExpiration,
-      });
+      await updateOTP(id, otpCode, otpExpiration);
       return res.status(200).json({
         message: {
           en: "Send OTP successfully!",
@@ -110,21 +121,16 @@ class AuthController {
     try {
       const { email } = req.params;
       const { id } = req.user;
-      const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
+      const otpCode = generateOTPCode();
       const otpExpiration = convertToTimeStamp(5 * 60 * 1000);
       await mailService(email, otpCode);
-      const userRef = doc(db, "users", id);
-      await updateDoc(userRef, {
-        otpCode: otpCode,
-        otpExpiration: otpExpiration,
-      });
+      await updateOTP(id, otpCode, otpExpiration);
       return res.status(200).json({
         message: {
           en: "Send OTP successfully!",
           vi: "Gửi OTP thành công!",
         },
       });
-      return next();
     } catch (error) {
       res.status(500).send({
         message: {
@@ -138,10 +144,19 @@ class AuthController {
   // Verify OTP
   verifyOTP = async (req, res, next) => {
     try {
+      const { id } = req.params;
       const user = req.user;
       const { otpCode } = req.body;
       // Verify
       verify(user, otpCode);
+      // Update OTP code
+      await updateOTP(id, null, null);
+      return res.status(200).json({
+        message: {
+          en: "Verify OTP successfully!",
+          vi: "Xác minh OTP thành công!",
+        },
+      });
     } catch (error) {
       const status = error.statusCode || 500;
       return res.status(status).json({
@@ -163,6 +178,8 @@ class AuthController {
       const { otpCode } = req.body;
       // Verify OTP
       verify(user, otpCode);
+      // Update OTP code
+      await updateOTP(id, null, null);
       // Gửi token về client
       const generate = generateAuthResponse(id, user);
       res

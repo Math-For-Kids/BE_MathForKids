@@ -1,103 +1,112 @@
 const Level = require("../models/Level");
 const {
-    getFirestore,
-    collection,
-    doc,
-    addDoc,
-    getDoc,
-    getDocs,
-    updateDoc,
-    deleteDoc,
-    serverTimestamp,
-    query,
-    where
+  getFirestore,
+  collection,
+  doc,
+  addDoc,
+  getDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  serverTimestamp,
+  query,
+  where,
 } = require("firebase/firestore");
 
 const db = getFirestore();
 
 class LevelController {
+  // Create level
+  create = async (req, res) => {
+    try {
+      const data = req.body;
+      const newDocRef = await addDoc(collection(db, "levels"), {
+        ...data,
+        isDisabled: false,
+        createdAt: serverTimestamp(),
+      });
+      res.status(201).send({
+        message: {
+          en: "Level created successfully!",
+          vi: "Tạo cấp độ thành công!",
+        },
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
 
-    create = async (req, res) => {
-        try {
-            const data = req.body;
-            const newDocRef = await addDoc(collection(db, "levels"), {
-                ...data,
-                isDisabled: false,
-                createdAt: serverTimestamp(),
-                updatedAt: serverTimestamp(),
-            });
-            const newDocSnapshot = await getDoc(newDocRef);
-            const level = Level.fromFirestore(newDocSnapshot);
-            res.status(200).send(level);
-        } catch (error) {
-            res.status(400).send({ message: error.message });
-        }
-    };
+  // Get all levels
+  getAll = async (req, res) => {
+    try {
+      const snapshot = await getDocs(collection(db, "levels"));
+      const levels = snapshot.docs.map((doc) => Level.fromFirestore(doc));
+      res.status(200).send(levels);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
 
-    getAll = async (req, res) => {
-        try {
-            const snapshot = await getDocs(collection(db, "levels"));
-            const levels = snapshot.docs.map(doc => Level.fromFirestore(doc));
-            res.status(200).send(levels);
-        } catch (error) {
-            res.status(400).send({ message: error.message });
-        }
-    };
+  // Get enabled levels
+  getEnabledLevels = async (req, res) => {
+    try {
+      const levelsRef = collection(db, "levels");
+      const q = query(levelsRef, where("isDisabled", "==", false));
+      const snapshot = await getDocs(q);
+      const levels = snapshot.docs.map((doc) => Level.fromFirestore(doc));
+      res.status(200).send(levels);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
 
-    getEnabledLevels = async (req, res) => {
-        try {
-            const levelsRef = collection(db, "levels");
-            const q = query(levelsRef, where("isDisabled", "==", false));
-            const snapshot = await getDocs(q);
-            const levels = snapshot.docs.map(doc => Level.fromFirestore(doc));
-            res.status(200).send(levels);
-        } catch (error) {
-            res.status(400).send({ message: error.message });
-        }
-    };
+  // Get level by ID
+  getById = async (req, res) => {
+    const id = req.params.id;
+    const level = req.level;
+    res.status(200).send({ id: id, ...level });
+  };
 
-
-    getById = async (req, res) => {
-        try {
-            const levelId = req.params.id;
-            const docRef = doc(db, "levels", levelId);
-            const snapshot = await getDoc(docRef);
-            if (!snapshot.exists()) {
-                return res.status(404).send({ message: "Level not found" });
-            }
-            const level = Level.fromFirestore(snapshot);
-            res.status(200).send(level);
-        } catch (error) {
-            res.status(400).send({ message: error.message });
-        }
-    };
-
-    update = async (req, res) => {
-        try {
-            const levelId = req.params.id;
-            const data = req.body;
-            const docRef = doc(db, "levels", levelId);
-            await updateDoc(docRef, {
-                ...data,
-                updatedAt: serverTimestamp(),
-            });
-            const updatedDoc = await getDoc(docRef);
-            const level = Level.fromFirestore(updatedDoc);
-            res.status(200).send(level);
-        } catch (error) {
-            res.status(400).send({ message: error.message });
-        }
-    };
-
-    delete = async (req, res) => {
-        try {
-            const levelId = req.params.id;
-            await deleteDoc(doc(db, "levels", levelId));
-            res.status(200).send({ message: "Level deleted successfully!" });
-        } catch (error) {
-            res.status(400).send({ message: error.message });
-        }
-    };
+  // Update level
+  update = async (req, res) => {
+    try {
+      const levelId = req.params.id;
+      const data = req.body;
+      const docRef = doc(db, "levels", levelId);
+      await updateDoc(docRef, {
+        ...data,
+        updatedAt: serverTimestamp(),
+      });
+      res.status(200).send({
+        message: {
+          en: "Level updated successfully!",
+          vi: "Cập nhật cấp độ thành công!",
+        },
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
 }
 
 module.exports = new LevelController();

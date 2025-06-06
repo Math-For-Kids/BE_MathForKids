@@ -9,9 +9,8 @@ class TestQuestion {
     option,
     correctAnswer,
     selectedAnswer,
-    isDisabled,
-    createdAt,
-    updatedAt
+    solution,
+    createdAt
   ) {
     this.id = id;
     this.testId = testId;
@@ -22,26 +21,24 @@ class TestQuestion {
     this.option = option;
     this.correctAnswer = correctAnswer;
     this.selectedAnswer = selectedAnswer;
-    this.isDisabled = isDisabled;
+    this.solution = solution;
     this.createdAt = createdAt;
-    this.updatedAt = updatedAt;
   }
 
   static fromFirestore(doc) {
     const data = doc.data();
     return new TestQuestion(
       doc.id,
-      data.testId ?? '',
-      data.exerciseId ?? '',
+      data.testId ?? "",
+      data.exerciseId ?? "",
       data.level ?? {},
       data.question ?? {},
-      data.image ?? '',
+      data.image ?? "",
       data.option ?? [],
-      data.correctAnswer ?? '',
-      data.selectedAnswer ?? '',
-      data.isDisabled ?? false,
-      data.createdAt?.toDate().toLocaleString('vi-VN') ?? '',
-      data.updatedAt?.toDate().toLocaleString('vi-VN') ?? ''
+      data.correctAnswer ?? "",
+      data.selectedAnswer ?? "",
+      data.solution ?? "",
+      data.createdAt?.toDate().toLocaleString("vi-VN") ?? ""
     );
   }
 }

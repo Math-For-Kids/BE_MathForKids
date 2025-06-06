@@ -1,10 +1,9 @@
 class GeneralNotification {
-  constructor(id, senderId, title, content, isRead, createdAt) {
+  constructor(id, senderId, title, content, createdAt) {
     this.id = id;
     this.senderId = senderId;
     this.title = title;
     this.content = content;
-    this.isRead = isRead;
     this.createdAt = createdAt;
   }
 
@@ -15,7 +14,6 @@ class GeneralNotification {
       data.senderId ?? '',
       data.title ?? {},
       data.content ?? {},
-      data.isRead ?? false,
       data.createdAt?.toDate().toLocaleString("vi-VN")
     );
   }

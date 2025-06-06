@@ -2,30 +2,39 @@ const {
   getFirestore,
   collection,
   doc,
-  addDoc,
   getDoc,
   getDocs,
-  updateDoc,
-  deleteDoc,
   serverTimestamp,
   query,
   where,
   Timestamp,
-  writeBatch,
-  deleteField,
 } = require("firebase/firestore");
 const db = getFirestore();
+
+const queryPhoneNumber = async (phoneNumber) => {
+  const q = query(
+    collection(db, "users"),
+    where("phoneNumber", "==", phoneNumber.trim())
+  );
+  const querySnapshot = await getDocs(q);
+  return querySnapshot;
+};
+
+const queryEmail = async (email) => {
+  const q = query(
+    collection(db, "users"),
+    where("email", "==", email.trim().toLowerCase())
+  );
+  const querySnapshot = await getDocs(q);
+  return querySnapshot;
+};
 
 class UserMiddleware {
   // When create user, check phone number is already exist or not
   checkPhoneExistForCreate = async (req, res, next) => {
     try {
       const { phoneNumber } = req.body;
-      const q = query(
-        collection(db, "users"),
-        where("phoneNumber", "==", phoneNumber.trim())
-      );
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await queryPhoneNumber(phoneNumber);
       if (!querySnapshot.empty)
         return res.status(409).json({
           message: {
@@ -49,11 +58,7 @@ class UserMiddleware {
   checkEmailExistForCreate = async (req, res, next) => {
     try {
       const { email } = req.body;
-      const q = query(
-        collection(db, "users"),
-        where("email", "==", email.trim().toLowerCase())
-      );
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await queryEmail(email);
       if (!querySnapshot.empty)
         return res.status(409).json({
           message: {
@@ -77,11 +82,7 @@ class UserMiddleware {
   checkUserExistByPhone = async (req, res, next) => {
     try {
       const { phoneNumber } = req.params;
-      const q = query(
-        collection(db, "users"),
-        where("phoneNumber", "==", phoneNumber.trim())
-      );
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await queryPhoneNumber(phoneNumber);
       if (querySnapshot.empty)
         return res.status(404).json({
           message: {
@@ -109,11 +110,7 @@ class UserMiddleware {
   checkUserExistByEmail = async (req, res, next) => {
     try {
       const { email } = req.params;
-      const q = query(
-        collection(db, "users"),
-        where("email", "==", email.trim().toLowerCase())
-      );
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await queryEmail(email);
       if (querySnapshot.empty)
         return res.status(404).json({
           message: {
@@ -138,30 +135,32 @@ class UserMiddleware {
   };
 
   // Check user is already exist or not by ID
-  checkUserExistById = async (req, res, next) => {
-    try {
-      const userId = req.params.id;
-      const userRef = doc(db, "users", userId);
-      const userSnap = await getDoc(userRef);
+  checkUserExistById = (paramName = "id") => {
+    return async (req, res, next) => {
+      try {
+        const userId = req.params[paramName];
+        const userRef = doc(db, "users", userId);
+        const userSnap = await getDoc(userRef);
 
-      if (!userSnap.exists()) {
-        return res.status(404).json({
+        if (!userSnap.exists()) {
+          return res.status(404).json({
+            message: {
+              en: "User not found!",
+              vi: "Không tìm thấy người dùng!",
+            },
+          });
+        }
+        req.user = userSnap.data();
+        return next();
+      } catch (error) {
+        return res.status(500).json({
           message: {
-            en: "User not found!",
-            vi: "Không tìm thấy người dùng!",
+            en: error.message,
+            vi: "Đã xảy ra lỗi nội bộ.",
           },
         });
       }
-      req.user = userSnap.data();
-      return next();
-    } catch (error) {
-      return res.status(500).json({
-        message: {
-          en: error.message,
-          vi: "Đã xảy ra lỗi nội bộ.",
-        },
-      });
-    }
+    };
   };
 
   // When update phone number, check new phone is already exist or not
@@ -169,11 +168,7 @@ class UserMiddleware {
     try {
       const id = req.params.id;
       const { newPhoneNumber } = req.body;
-      const q = query(
-        collection(db, "users"),
-        where("phoneNumber", "==", newPhoneNumber.trim())
-      );
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await queryPhoneNumber(newPhoneNumber);
       const conflict = querySnapshot.docs.find((doc) => doc.id !== id);
       if (conflict)
         return res.status(409).json({
@@ -183,7 +178,7 @@ class UserMiddleware {
           },
         });
       req.body = {
-        phoneNumber: newPhoneNumber,
+        phoneNumber: newPhoneNumber.trim(),
       };
       return next();
     } catch (error) {
@@ -201,11 +196,7 @@ class UserMiddleware {
     try {
       const id = req.params.id;
       const { newEmail } = req.body;
-      const q = query(
-        collection(db, "users"),
-        where("email", "==", newEmail.trim().toLowerCase())
-      );
-      const querySnapshot = await getDocs(q);
+      const querySnapshot = await queryEmail(newEmail);
       const conflict = querySnapshot.docs.find((doc) => doc.id !== id);
       if (conflict)
         return res.status(409).json({

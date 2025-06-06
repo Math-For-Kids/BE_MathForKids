@@ -1,11 +1,28 @@
 const express = require("express");
-const ownedrewardController = require("../app/controllers/OwnedRewardsController");
+const ownedRewardController = require("../app/controllers/OwnedRewardsController");
+const pupilMiddleware = require("../app/middlewares/PupilMiddleware");
+const rewardMiddleware = require("../app/middlewares/RewardMiddleware");
+const ownedRewardMiddleware = require("../app/middlewares/OwnedRewardMiddleware");
 const router = express.Router();
 
-router.post("/", ownedrewardController.create);
-router.get("/:id", ownedrewardController.getById);
-// router.get("/",ownedrewardController.getAll);
-router.put("/:id",ownedrewardController.update);
-// router.delete("/:id", ownedrewardController.delete);
+// Create or update owned reward
+router.post(
+  "/create/:pupilId/:rewardId",
+  pupilMiddleware.checkPupilExistById("pupilId"),
+  rewardMiddleware.checkRewardExistById("rewardId"),
+  ownedRewardController.createOrUpdate
+);
+// Get owned rewards by pupil ID
+router.get(
+  "/getByPupilId/:pupilId",
+  pupilMiddleware.checkPupilExistById("pupilId"),
+  ownedRewardController.getByPupilId
+);
+// Get an owned reward by ID
+router.get(
+  "/:id",
+  ownedRewardMiddleware.checkOwnedRewardExistById,
+  ownedRewardController.getById
+);
 
 module.exports = router;

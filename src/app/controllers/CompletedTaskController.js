@@ -11,11 +11,13 @@ const {
   serverTimestamp,
   query,
   where,
+  orderBy,
 } = require("firebase/firestore");
 
 const db = getFirestore();
 
 class CompleteTaskController {
+  // Create completed task
   create = async (req, res, next) => {
     try {
       const { pupilId, taskId, lessonId, isCompleted } = req.body;
@@ -23,14 +25,23 @@ class CompleteTaskController {
         pupilId,
         taskId,
         lessonId,
-        isCompleted: isCompleted ?? false,
+        isCompleted: false,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
       };
       await addDoc(collection(db, "complete_tasks"), taskData);
-      res.status(200).send({ message: "Complete task created successfully!" });
+      res.status(201).send({
+        message: {
+          en: "Complete task created successfully!",
+          vi: "Thêm nhiệm vụ mới thành công!",
+        },
+      });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
   getAll = async (req, res, next) => {
@@ -41,15 +52,27 @@ class CompleteTaskController {
       );
       res.status(200).send(tasks);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
-  getByStudentId = async (req, res, next) => {
+
+  // Get completed tasks within 7 days by pupil ID
+  getWithin7DaysByPupilId = async (req, res, next) => {
     try {
-      const studentId = req.params.studentId;
+      const pupilId = req.params.pupilId;
+      const sevenDaysAgo = Timestamp.fromDate(
+        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      );
       const q = query(
         collection(db, "complete_tasks"),
-        where("studentId", "==", studentId)
+        where("pupilId", "==", pupilId),
+        where("createdAt", ">=", sevenDaysAgo),
+        orderBy("createdAt", "desc")
       );
       const taskSnapshot = await getDocs(q);
       const tasks = taskSnapshot.docs.map((doc) =>
@@ -57,9 +80,16 @@ class CompleteTaskController {
       );
       res.status(200).send(tasks);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
+
+  // Get a completed task by ID
   getById = async (req, res, next) => {
     try {
       const id = req.params.id;
@@ -71,32 +101,37 @@ class CompleteTaskController {
       const task = CompleteTask.fromFirestore(docSnap);
       res.status(200).send(task);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
-  update = async (req, res, next) => {
+
+  // Update completed task status
+  updateStatus = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const { studentId, taskId, isCompleted } = req.body;
       const ref = doc(db, "complete_tasks", id);
       await updateDoc(ref, {
-        studentId,
-        taskId,
-        isCompleted,
+        isCompleted: true,
         updatedAt: serverTimestamp(),
       });
-      res.status(200).send({ message: "Complete task updated successfully!" });
+      res.status(200).send({
+        message: {
+          en: "Complete task updated successfully!",
+          vi: "Đã cập nhật trạng thái hoàn thành nhiệm vụ!",
+        },
+      });
     } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
-  };
-  delete = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      await deleteDoc(doc(db, "complete_tasks", id));
-      res.status(200).send({ message: "Complete task deleted successfully!" });
-    } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 }
