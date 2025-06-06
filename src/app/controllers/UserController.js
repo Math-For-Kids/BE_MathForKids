@@ -274,19 +274,23 @@ class UserController {
     try {
       const id = req.params.id;
       const data = req.body;
-
-      // Nếu có trường dateOfBirth thì chuyển thành Timestamp
+      console.log("email", data.email);
       if (data.dateOfBirth) {
         const date = new Date(data.dateOfBirth);
         data.dateOfBirth = Timestamp.fromDate(date);
+      }
+      if (data.email) {
+        data.email = data.email.toLowerCase();
+      } else {
+        data.email = "";
       }
 
       const userRef = doc(db, "users", id);
       await updateDoc(userRef, {
         ...data,
-        email: data.email.toLowerCase(),
         updatedAt: serverTimestamp(),
       });
+
       res.status(200).send({
         message: {
           en: "User information updated successfully!",
@@ -294,6 +298,7 @@ class UserController {
         },
       });
     } catch (error) {
+      console.error("Update user error:", error);
       res.status(500).send({
         message: {
           en: error.message,

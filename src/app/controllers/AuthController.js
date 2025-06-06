@@ -56,12 +56,11 @@ const verify = (user, otpCode) => {
 };
 
 // Update OTP when send OTP or verify successfully
-const updateOTP = async (userId, otpCode, otpExpiration, isVerify = false) => {
+const updateOTP = async (userId, otpCode, otpExpiration) => {
   const userRef = doc(db, "users", userId);
   await updateDoc(userRef, {
     otpCode,
     otpExpiration,
-    ...(isVerify && { isVerify: true }),
   });
 };
 
@@ -85,6 +84,7 @@ class AuthController {
           en: "Send OTP successfully!",
           vi: "Gửi OTP thành công!",
         },
+        userId: id,
       });
     } catch (error) {
       return res.status(500).json({
@@ -110,6 +110,7 @@ class AuthController {
           en: "Send OTP successfully!",
           vi: "Gửi OTP thành công!",
         },
+        userId: id,
       });
     } catch (error) {
       res.status(500).send({
@@ -130,7 +131,7 @@ class AuthController {
       // Verify
       verify(user, otpCode);
       // Update OTP code
-      await updateOTP(id, null, null, true);
+      await updateOTP(id, null, null);
       return res.status(200).json({
         message: {
           en: "Verify OTP successfully!",
@@ -160,10 +161,10 @@ class AuthController {
       await verify(user, otpCode);
 
       // Update OTP code
-      await updateOTP(id, null, null, true);
+      await updateOTP(id, null, null);
 
       // Gửi token về client
-      const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
+      const token = jwt.sign({ id: id }, process.env.JWT_SECRET, {
         expiresIn: process.env.JWT_EXPIRE,
       });
 
@@ -177,7 +178,7 @@ class AuthController {
         .cookie("token", token, options)
         .json({
           token,
-          id: user.id,
+          id: id,
           fullName: user.fullName,
           role: user.role,
           image: user.image || "",
