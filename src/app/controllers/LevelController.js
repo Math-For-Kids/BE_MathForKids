@@ -11,6 +11,8 @@ const {
   serverTimestamp,
   query,
   where,
+  limit,
+  startAfter
 } = require("firebase/firestore");
 
 const db = getFirestore();
@@ -41,12 +43,38 @@ class LevelController {
     }
   };
 
-  // Get all levels
+  // Get all paginated levels
   getAll = async (req, res) => {
     try {
-      const snapshot = await getDocs(collection(db, "levels"));
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+
+      let q;
+
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "levels", startAfterId));
+        q = query(
+          collection(db, "levels"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "levels"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
       const levels = snapshot.docs.map((doc) => Level.fromFirestore(doc));
-      res.status(200).send(levels);
+
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: levels,
+        nextPageToken: lastVisibleId, // dùng cho trang kế tiếp
+      });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -81,6 +109,55 @@ class LevelController {
     const level = req.level;
     res.status(200).send({ id: id, ...level });
   };
+
+
+// Filter all paginated levels by disabled state
+filterAll = async (req, res) => {
+  try {
+    const pageSize = parseInt(req.query.pageSize) || 10;
+    const startAfterId = req.query.startAfterId || null;
+    const { isDisabled } = req.body;
+
+    let q;
+
+    if (startAfterId) {
+      const startDoc = await getDoc(doc(db, "levels", startAfterId));
+      q = query(
+        collection(db, "levels"),
+        where("isDisabled", "==", isDisabled),
+        startAfter(startDoc),
+        limit(pageSize)
+      );
+    } else {
+      q = query(
+        collection(db, "levels"),
+        where("isDisabled", "==", isDisabled),
+        limit(pageSize)
+      );
+    }
+
+    const snapshot = await getDocs(q);
+    const levels = snapshot.docs.map((doc) => Level.fromFirestore(doc));
+
+    const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+    const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+    res.status(200).send({
+      data: levels,
+      nextPageToken: lastVisibleId,
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: {
+        en: error.message,
+        vi: "Đã xảy ra lỗi nội bộ.",
+      },
+    });
+  }
+};
+
+
+
 
   // Update level
   update = async (req, res) => {
