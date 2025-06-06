@@ -85,7 +85,7 @@ class LessonController {
           limit(pageSize)
         );
       } else {
-        const q = query(
+        q = query(
           collection(db, "lessons"),
           where("grade", "==", data.grade),
           where("type", "==", data.type),
@@ -155,7 +155,7 @@ class LessonController {
           limit(pageSize)
         );
       } else {
-        const q = query(
+        q = query(
           collection(db, "lessons"),
           where("grade", "==", data.grade),
           where("type", "==", data.type),

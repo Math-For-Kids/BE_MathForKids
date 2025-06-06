@@ -84,6 +84,7 @@ class AuthController {
           en: "Send OTP successfully!",
           vi: "Gửi OTP thành công!",
         },
+        userId: id,
       });
     } catch (error) {
       return res.status(500).json({
@@ -109,6 +110,7 @@ class AuthController {
           en: "Send OTP successfully!",
           vi: "Gửi OTP thành công!",
         },
+        userId: id,
       });
     } catch (error) {
       res.status(500).send({
@@ -142,9 +144,9 @@ class AuthController {
         message: error.statusCode
           ? error.message
           : {
-              en: error.message,
-              vi: "Đã xảy ra lỗi nội bộ.",
-            },
+            en: error.message,
+            vi: "Đã xảy ra lỗi nội bộ.",
+          },
       });
     }
   };
@@ -160,7 +162,7 @@ class AuthController {
       // Update OTP code
       await updateOTP(id, null, null);
       // Gửi token về client
-      const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+      const token = jwt.sign({ id: id }, process.env.JWT_SECRET, {
         expiresIn: process.env.JWT_EXPIRE,
       });
       const options = {
@@ -172,13 +174,13 @@ class AuthController {
         .cookie("token", token, options)
         .json({
           token,
-          id: userInfo.id,
-          fullName: userInfo.fullName,
-          role: userInfo.role,
-          image: userInfo.image || "",
-          volume: userInfo.volume,
-          language: userInfo.language,
-          mode: userInfo.mode,
+          id: id,
+          fullName: user.fullName,
+          role: user.role,
+          image: user.image || "",
+          volume: user.volume,
+          language: user.language,
+          mode: user.mode,
         });
     } catch (error) {
       const status = error.statusCode || 500;
@@ -186,9 +188,9 @@ class AuthController {
         message: error.statusCode
           ? error.message
           : {
-              en: error.message,
-              vi: "Đã xảy ra lỗi nội bộ.",
-            },
+            en: error.message,
+            vi: "Đã xảy ra lỗi nội bộ.",
+          },
       });
     }
   };
