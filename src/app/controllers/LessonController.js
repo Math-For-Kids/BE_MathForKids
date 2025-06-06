@@ -45,7 +45,7 @@ class LessonController {
       const lessonsRef = collection(db, "lessons");
       const q = query(lessonsRef, where("isDisabled", "==", false));
       const snapshot = await getDocs(q);
-      const lessons = snapshot.docs.map(doc => Lesson.fromFirestore(doc));
+      const lessons = snapshot.docs.map((doc) => Lesson.fromFirestore(doc));
       res.status(200).send(lessons);
     } catch (error) {
       res.status(400).send({ message: error.message });
@@ -88,12 +88,12 @@ class LessonController {
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const data = req.body;
+      const { createdAt, ...data } = req.body;
       const lesson = doc(db, "lessons", id);
       await updateDoc(lesson, { ...data, updatedAt: serverTimestamp() });
       res.status(200).send({ message: "Lesson updated successfully!" });
     } catch (error) {
-      res.status(500).send({ message: error.message });
+      res.status(400).send({ message: error.message });
     }
   };
 
