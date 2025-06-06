@@ -11,291 +11,210 @@ const {
   serverTimestamp,
   query,
   where,
-  setDoc,
+  Timestamp,
+  writeBatch,
+  deleteField,
 } = require("firebase/firestore");
+const db = getFirestore();
 const { smsService } = require("../services/SmsService");
 const { mailService } = require("../services/MailService");
 const jwt = require("jsonwebtoken");
-const db = getFirestore();
-const otpStore = {};
 
-const sendTokenResponse = (user, statusCode, res) => {
-  const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE,
-  });
+// Create new OTP code
+const generateOTPCode = () =>
+  Math.floor(1000 + Math.random() * 9000).toString();
 
-  const options = {
-    expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    httpOnly: true,
-  };
-
-  res
-    .status(statusCode)
-    .cookie("token", token, options)
-    .json({
-      success: true,
-      id: user.id,
-      fullName: user.fullName,
-      role: user.role,
-      image: user.image || "",
-      volume: user.volume,
-      language: user.language,
-      mode: user.mode,
-      token,
-    });
-};
-
-const checkUserExist = async (phoneNumber, email) => {
-  let q;
-  if (phoneNumber) {
-    q = query(collection(db, "users"), where("phoneNumber", "==", phoneNumber));
-  } else if (email) {
-    q = query(collection(db, "users"), where("email", "==", email));
-  }
-  const querySnapshot = await getDocs(q);
-  if (querySnapshot.empty) return null;
-  else return querySnapshot.docs[0];
-};
-
-const updateUserData = async (userDoc, otp) => {
-  // Tính thời gian hết hạn (hiện tại + 5 phút)
+// Exchange date to timestamp
+const convertToTimeStamp = (timePlus) => {
   const now = new Date();
-  const expiration = new Date(now.getTime() + 5 * 60 * 1000); // 5 phút
-  const userRef = doc(db, "users", userDoc.id);
-  await updateDoc(userRef, {
-    otpCode: otp,
-    otpExpiration: expiration,
-  });
+  const expiration = new Date(now.getTime() + timePlus);
+  return Timestamp.fromDate(expiration);
 };
 
-const storeOTPInFirestore = async (email, otp) => {
-  const expiration = new Date(Date.now() + 5 * 60 * 1000); // 5 phút
-  const otpDocRef = doc(db, "otps", email); // email làm ID document
-  await setDoc(otpDocRef, {
-    email,
-    otp,
-    expire: expiration,
-    createdAt: serverTimestamp(),
-  }, { merge: true }); // merge true để không ghi đè toàn bộ nếu có trường khác
-};
-
-const getOTPFromFirestore = async (email) => {
-  const otpDocRef = doc(db, "otps", email);
-  const otpDocSnap = await getDoc(otpDocRef);
-
-  if (otpDocSnap.exists()) {
-    return otpDocSnap.data();
-  } else {
-    return null;
+// Verify if OTP matches and if the OTP has expired
+const verify = (user, otpCode) => {
+  const error = new Error();
+  // Kiểm tra OTP có khớp không
+  if (user.otpCode !== otpCode) {
+    error.statusCode = 400;
+    error.message = {
+      en: "The OTP is incorrect. Please try again.",
+      vi: "Mã OTP không chính xác. Vui lòng thử lại.",
+    };
+    throw error;
+  }
+  // Kiểm tra thời gian hết hạn
+  const now = convertToTimeStamp(0);
+  if (now.toMillis() > user.otpExpiration.toMillis()) {
+    error.statusCode = 400;
+    error.message = {
+      en: "The OTP has expired. Please resend a new one.",
+      vi: "Mã OTP đã hết hạn. Vui lòng gửi lại mã mới.",
+    };
+    throw error;
   }
 };
 
-const deleteOTPFromFirestore = async (email) => {
-  await deleteDoc(doc(db, "otps", email));
+// Update OTP when send OTP or verify successfully
+const updateOTP = async (userId, otpCode, otpExpiration) => {
+  const userRef = doc(db, "users", userId);
+  await updateDoc(userRef, {
+    otpCode,
+    otpExpiration,
+  });
 };
 
 class AuthController {
+  // Send OTP by phone number
   sendOTPByPhoneNumber = async (req, res, next) => {
     try {
-      const phoneNumber = req.params.phoneNumber;
-      const userDoc = await checkUserExist(phoneNumber, null);
-      if (userDoc && userDoc.data().isVerify) {
-        const otp = Math.floor(1000 + Math.random() * 9000).toString();
-        await smsService(
-          phoneNumber,
-          `Your OTP is ${otp}. Please do not send this to anyone.`,
-          2,
-          "5087a0dcd4ccd3a2"
-        );
-        await updateUserData(userDoc, otp);
-        return res.status(200).json({
-          message: "OTP send successfully!",
-          userId: userDoc.data().id,
-        });
-      } else if (!userDoc.data().isVerify) {
-        return res.status(403).json({
-          message: "User account is not verified. Please sign up again.",
-        });
-      } else {
-        return res.status(404).json({
-          message: "User is not found!",
-        });
-      }
+      const { phoneNumber } = req.params;
+      const { id } = req.user;
+      const otpCode = generateOTPCode();
+      const otpExpiration = convertToTimeStamp(5 * 60 * 1000);
+      await smsService(
+        phoneNumber,
+        `Your OTP is ${otpCode}. Please do not send this to anyone.`,
+        2,
+        "5087a0dcd4ccd3a2"
+      );
+      await updateOTP(id, otpCode, otpExpiration);
+      return res.status(200).json({
+        message: {
+          en: "Send OTP successfully!",
+          vi: "Gửi OTP thành công!",
+        },
+      });
     } catch (error) {
-      console.error(error.message);
       return res.status(500).json({
-        message: "OTP send fail: " + error.message,
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
       });
     }
   };
 
+  // Send OTP by email
   sendOTPByEmail = async (req, res, next) => {
     try {
-      const email = req.params.email;
-      const userDoc = await checkUserExist(null, email);
-      if (userDoc && userDoc.data().isVerify) {
-        const otp = Math.floor(1000 + Math.random() * 9000).toString();
-        await mailService(email, otp);
-        if (userDoc) {
-          await updateUserData(userDoc, otp);
-          return res.status(200).json({
-            message: "success",
-            userId: userDoc.id,
-          });
-        } else if (!userDoc.data().isVerify) {
-          return res.status(403).json({
-            message: "User account is not verified. Please sign up again.",
-          });
-        } else {
-          return res.status(500).json({
-            message: "fail",
-          });
-        }
-      } else {
-        return res.status(404).json({
-          message: "User is not found!",
-        });
-      }
+      const { email } = req.params;
+      const { id } = req.user;
+      const otpCode = generateOTPCode();
+      const otpExpiration = convertToTimeStamp(5 * 60 * 1000);
+      await mailService(email, otpCode);
+      await updateOTP(id, otpCode, otpExpiration);
+      return res.status(200).json({
+        message: {
+          en: "Send OTP successfully!",
+          vi: "Gửi OTP thành công!",
+        },
+      });
     } catch (error) {
-      res.status(500).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
+  // Verify OTP
+  verifyOTP = async (req, res, next) => {
+    try {
+      const { id } = req.params;
+      const user = req.user;
+      const { otpCode } = req.body;
+      // Verify
+      verify(user, otpCode);
+      // Update OTP code
+      await updateOTP(id, null, null);
+      return res.status(200).json({
+        message: {
+          en: "Verify OTP successfully!",
+          vi: "Xác minh OTP thành công!",
+        },
+      });
+    } catch (error) {
+      const status = error.statusCode || 500;
+      return res.status(status).json({
+        message: error.statusCode
+          ? error.message
+          : {
+              en: error.message,
+              vi: "Đã xảy ra lỗi nội bộ.",
+            },
+      });
+    }
+  };
+
+  // Verify and Authentication
   verifyOtpAndAuthenticate = async (req, res, next) => {
     try {
       const { id } = req.params;
+      const user = req.user;
       const { otpCode } = req.body;
-
-      const userRef = doc(db, "users", id);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists()) {
-        return res
-          .status(404)
-          .json({ success: false, message: "User not found" });
-      }
-
-      const userData = User.fromFirestore(userSnap);
-
-      // Kiểm tra OTP có khớp không
-      if (userData.otpCode !== otpCode) {
-        return res
-          .status(400)
-          .json({ success: false, message: "OTP is invalid!" });
-      }
-
-      // Kiểm tra thời gian hết hạn
-      const now = new Date();
-
-      let expiration;
-      if (userData.otpExpiration?.toDate) {
-        expiration = userData.otpExpiration.toDate();
-      } else if (
-        typeof userData.otpExpiration === "string" ||
-        typeof userData.otpExpiration === "number"
-      ) {
-        expiration = new Date(userData.otpExpiration);
-      } else {
-        return res.status(500).json({
-          success: false,
-          message: "OTP expiration is invalid",
-        });
-      }
-
-      if (now > expiration) {
-        return res
-          .status(400)
-          .json({ success: false, message: "OTP is expired!" });
-      }
-
+      // Verify OTP
+      verify(user, otpCode);
+      // Update OTP code
+      await updateOTP(id, null, null);
       // Gửi token về client
-      sendTokenResponse(userData, 200, res);
+      const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+        expiresIn: process.env.JWT_EXPIRE,
+      });
+      const options = {
+        expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        httpOnly: true,
+      };
+      res
+        .status(200)
+        .cookie("token", token, options)
+        .json({
+          token,
+          id: userInfo.id,
+          fullName: userInfo.fullName,
+          role: userInfo.role,
+          image: userInfo.image || "",
+          volume: userInfo.volume,
+          language: userInfo.language,
+          mode: userInfo.mode,
+        });
     } catch (error) {
-      return res.status(500).json({ success: false, message: error.message });
+      const status = error.statusCode || 500;
+      return res.status(status).json({
+        message: error.statusCode
+          ? error.message
+          : {
+              en: error.message,
+              vi: "Đã xảy ra lỗi nội bộ.",
+            },
+      });
     }
   };
 
-  // logout = async (req, res, next) => {
-  //   try {
-  //     res.status(200).json({
-  //       success: true,
-  //       message: 'Logged out successfully',
-  //     });
-  //   } catch (err) {
-  //     res.status(400).json({ success: false, message: err.message });
-  //   }
-  // };
+  // Logout
   logout = async (req, res, next) => {
     try {
       res.cookie("token", "none", {
         expires: new Date(Date.now() + 10 * 1000),
         httpOnly: true,
       });
-
-      res.status(200).json({
-        success: true,
+      return res.status(200).json({
+        message: {
+          en: "Logout successfully!",
+          vi: "Đăng xuất thành công!",
+        },
       });
-    } catch (err) {
-      res.status(500).json({ success: false, message: err.message });
-    }
-  };
-
-
-
-  sendOTPByEmailChange = async (req, res) => {
-    try {
-      const email = req.params.email;
-
-      // Kiểm tra email trùng lặp
-      const existingUser = await checkUserExist(null, email);
-      if (existingUser) {
-        return res.status(400).json({ success: false, message: 'Email is already in use' });
-      }
-
-      const otp = Math.floor(1000 + Math.random() * 9000).toString();
-      const response = await mailService(email, otp);
-      if (response.status === 200) {
-        await storeOTPInFirestore(email, otp);
-        return res.status(200).json({
-          success: true,
-          message: 'OTP sent successfully',
-          email,
-        });
-      }
-      return res.status(500).json({ success: false, message: 'Failed to send email' });
     } catch (error) {
-      return res.status(500).json({ success: false, message: error.message });
+      return res.status(500).json({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
-  verifyOTP = async (req, res) => {
-    try {
-      const { email, otp } = req.body;
-      console.log(email, otp)
-      if (!email || !otp) {
-        return res.status(400).json({ success: false, message: 'Email and OTP are required' });
-      }
-
-      const record = await getOTPFromFirestore(email);
-      if (!record) {
-        return res.status(400).json({ success: false, message: 'OTP not found. Please request a new one.' });
-      }
-
-      if (Date.now() > record.expire.toDate().getTime()) {
-        await deleteOTPFromFirestore(email);
-        return res.status(400).json({ success: false, message: 'OTP expired. Please request a new one.' });
-      }
-
-      if (record.otp !== otp) {
-        return res.status(400).json({ success: false, message: 'Invalid OTP' });
-      }
-
-      await deleteOTPFromFirestore(email); // Xóa OTP sau khi xác thực
-      return res.status(200).json({ success: true, message: 'OTP verified successfully' });
-    } catch (error) {
-      return res.status(500).json({ success: false, message: error.message });
-    }
-  };
-
 }
 
 module.exports = new AuthController();

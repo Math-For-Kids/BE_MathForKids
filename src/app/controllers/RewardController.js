@@ -16,6 +16,7 @@ const { uploadMultipleFiles } = require("./fileController");
 const db = getFirestore();
 
 class RewardController {
+  // Create reward
   create = async (req, res, next) => {
     try {
       const { name, description } = req.body;
@@ -34,84 +35,88 @@ class RewardController {
         image,
         isDisabled: false,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
       });
 
       res.status(201).send({
-        message: "Reward created successfully!",
+        message: {
+          en: "Reward created successfully!",
+          vi: "Tạo phần thưởng thành công!",
+        },
         id: rewardRef.id,
       });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
+  // Get all rewards
   getAll = async (req, res, next) => {
     try {
-      const rewardSnapshot = await getDocs(
-        collection(db, "reward")
-      );
+      const rewardSnapshot = await getDocs(collection(db, "reward"));
       const rewards = rewardSnapshot.docs.map((doc) =>
         Reward.fromFirestore(doc)
       );
       res.status(200).send(rewards);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
+  // Get enabled rewards
   getEnabledRewards = async (req, res) => {
     try {
       const rewardsRef = collection(db, "reward");
       const q = query(rewardsRef, where("isDisabled", "==", false));
       const snapshot = await getDocs(q);
-      const rewards = snapshot.docs.map(doc => Reward.fromFirestore(doc));
+      const rewards = snapshot.docs.map((doc) => Reward.fromFirestore(doc));
       res.status(200).send(rewards);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
+  // Get reward by ID
   getById = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      const reward = doc(db, "reward", id);
-      const data = await getDoc(reward);
-      const rewardData = Reward.fromFirestore(data);
-      if (data.exists()) {
-        res.status(200).send(rewardData);
-      } else {
-        res.status(404).send({ message: "Reward not found!" });
-      }
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
+    const id = req.params.id;
+    const reward = req.reward;
+    res.status(200).send({ id: id, ...reward });
   };
 
-
+  // Update reward
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
       const { isDisabled, name, description } = req.body;
-      console.log('req.files:', req.files);
+      console.log("req.files:", req.files);
       const updateData = {
         updatedAt: serverTimestamp(),
       };
-
-      const ref = doc(db, "reward", id);
-      const currentReward = await getDoc(ref);
-      if (!currentReward.exists()) {
-        return res.status(404).send({ message: "Reward not found!" });
-      }
+      const currentReward = req.reward;
       const parsedName = typeof name === "string" ? JSON.parse(name) : name;
-      const parsedDescription = typeof description === "string" ? JSON.parse(description) : description;
+      const parsedDescription =
+        typeof description === "string" ? JSON.parse(description) : description;
 
       if (isDisabled !== undefined && !name && !description && !req.files) {
         updateData.isDisabled = isDisabled;
       } else {
         updateData.name = parsedName;
         updateData.description = parsedDescription;
-        // ✅ Nếu có files thì xử lý upload ảnh
+        // Nếu có files thì xử lý upload ảnh
         if (req.files && Object.keys(req.files).length > 0) {
           const uploadedFiles = await uploadMultipleFiles(req.files);
           updateData.image = uploadedFiles.image;
@@ -120,12 +125,21 @@ class RewardController {
         }
       }
       await updateDoc(ref, updateData);
-      res.status(200).send({ message: "Reward updated successfully!" });
+      res.status(200).send({
+        message: {
+          en: "Reward updated successfully!",
+          vi: "Cập nhật phần thưởng thành công!",
+        },
+      });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
-
 }
 
 module.exports = new RewardController();

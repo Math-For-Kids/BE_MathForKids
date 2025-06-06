@@ -10,116 +10,73 @@ const {
   deleteDoc,
   serverTimestamp,
   query,
-  where
+  where,
+  orderBy,
 } = require("firebase/firestore");
 
 const db = getFirestore();
 
 class TestQuestionController {
-
-  create = async (req, res) => {
+  // Create multiple test questions
+  createMultiple = async (req, res) => {
     try {
       const data = req.body;
-      const newDocRef = await addDoc(collection(db, "testquestions"), {
-        ...data,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+      // Dùng Promise.all để tạo song song
+      await Promise.all(
+        data.map((item) =>
+          addDoc(collection(db, "test_questions"), {
+            ...item,
+            createdAt: serverTimestamp(),
+          })
+        )
+      );
+      res.status(201).send({
+        message: {
+          en: "Test questions created successfully!",
+          vi: "Tạo các câu hỏi cho bài kiểm thành công",
+        },
       });
-      const newDocSnapshot = await getDoc(newDocRef);
-      const testQuestion = TestQuestion.fromFirestore(newDocSnapshot);
-      res.status(200).send(testQuestion);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
-  getAll = async (req, res) => {
-    try {
-      const snapshot = await getDocs(collection(db, "testquestions"));
-      const list = snapshot.docs.map(doc => TestQuestion.fromFirestore(doc));
-      res.status(200).send(list);
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
-  };
-
+  // Get test question by ID
   getById = async (req, res) => {
-    try {
-      const id = req.params.id;
-      const docRef = doc(db, "testquestions", id);
-      const snapshot = await getDoc(docRef);
-      if (snapshot.exists()) {
-        const testQuestion = TestQuestion.fromFirestore(snapshot);
-        res.status(200).send(testQuestion);
-      } else {
-        res.status(404).send({ message: "TestQuestion not found!" });
-      }
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
+    const id = req.params.id;
+    const testQuestion = req.testQuestion;
+    res.status(200).send({ id: id, ...testQuestion });
   };
 
-  getTestQuestionByTest = async (req, res, next) => {
+  // Get test questions by test ID
+  getByTest = async (req, res, next) => {
     try {
-      const testId = req.params.id;
-      if (!testId) {
-        return res.status(400).send({ message: "TestId is required" });
-      }
+      const testId = req.params.testId;
       console.log("Querying for TestId:", testId); // Debug log
       const q = query(
-        collection(db, "testquestions"),
-        where("testId", "==", testId)
+        collection(db, "test_questions"),
+        where("testId", "==", testId),
+        orderBy("createdAt", "desc")
       );
       const testQuestionSnapshot = await getDocs(q);
-      const testQuestionArray = testQuestionSnapshot.docs.map((doc) => TestQuestion.fromFirestore(doc));
+      const testQuestionArray = testQuestionSnapshot.docs.map((doc) =>
+        TestQuestion.fromFirestore(doc)
+      );
       res.status(200).send(testQuestionArray);
     } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
-  };
-
-  getEnabledTestQuestion = async (req, res) => {
-    try {
-      const testQuestionsRef = collection(db, "testquestions");
-      const q = query(testQuestionsRef, where("isDisabled", "==", false));
-      const snapshot = await getDocs(q);
-      const testQuestions = snapshot.docs.map(doc => TestQuestion.fromFirestore(doc));
-      res.status(200).send(testQuestions);
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
-  };
-
-  update = async (req, res) => {
-    try {
-      const id = req.params.id;
-      const data = req.body;
-      const docRef = doc(db, "testquestions", id);
-      await updateDoc(docRef, {
-        ...data,
-        updatedAt: serverTimestamp(),
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
       });
-      const updatedDoc = await getDoc(docRef);
-      const testQuestion = TestQuestion.fromFirestore(updatedDoc);
-      res.status(200).send(testQuestion);
-    } catch (error) {
-      res.status(400).send({ message: error.message });
     }
   };
-
-  delete = async (req, res) => {
-    try {
-      const id = req.params.id;
-      await deleteDoc(doc(db, "testquestions", id));
-      res.status(200).send({ message: "TestQuestion deleted successfully!" });
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
-  };
-
-
 }
-
-
 
 module.exports = new TestQuestionController();

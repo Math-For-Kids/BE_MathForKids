@@ -9,82 +9,87 @@ const {
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  orderBy,
 } = require("firebase/firestore");
 
 const db = getFirestore();
 
 class GeneralNotificationController {
-
-  create = async (req, res) => {
+  // Create general notification
+  create = async (req, res, next) => {
     try {
       const data = req.body;
       const newDocRef = await addDoc(collection(db, "general_notifications"), {
         ...data,
-        isRead: data.isRead ?? false,
         createdAt: serverTimestamp(),
       });
-      const newDocSnapshot = await getDoc(newDocRef);
-      const notification = GeneralNotification.fromFirestore(newDocSnapshot);
-      res.status(200).send(notification);
+      res.status(201).send({
+        message: {
+          en: "General notification created successfully!",
+          vi: "Tạo thông báo chung thành công!",
+        },
+      });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
-  getAll = async (req, res) => {
+  getAll = async (req, res, next) => {
     try {
-      const querySnapshot = await getDocs(collection(db, "general_notifications"));
+      const querySnapshot = await getDocs(
+        collection(db, "general_notifications")
+      );
       const notifications = [];
-      querySnapshot.forEach(doc => {
+      querySnapshot.forEach((doc) => {
         notifications.push(GeneralNotification.fromFirestore(doc));
       });
       res.status(200).send(notifications);
     } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
-  };
-
-  getById = async (req, res) => {
-    try {
-      const id = req.params.id;
-      const docRef = doc(db, "general_notifications", id);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const notification = GeneralNotification.fromFirestore(docSnap);
-        res.status(200).send(notification);
-      } else {
-        res.status(404).send({ message: "Notification not found!" });
-      }
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
-  };
-
-  update = async (req, res) => {
-    try {
-      const id = req.params.id;
-      const data = req.body;
-      const docRef = doc(db, "general_notifications", id);
-      await updateDoc(docRef, {
-        ...data
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
       });
-      const updatedDoc = await getDoc(docRef);
-      const notification = GeneralNotification.fromFirestore(updatedDoc);
-      res.status(200).send(notification);
-    } catch (error) {
-      res.status(400).send({ message: error.message });
     }
   };
 
-  delete = async (req, res) => {
+  getAllWithin30Days = async (req, res, next) => {
     try {
-      const id = req.params.id;
-      const docRef = doc(db, "general_notifications", id);
-      await deleteDoc(docRef);
-      res.status(200).send({ message: "Notification deleted successfully!" });
+      const thirtyDaysAgo = Timestamp.fromDate(
+        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      );
+      const q = query(
+        collection(db, "general_notifications"),
+        where("createdAt", ">=", thirtyDaysAgo),
+        orderBy("createdAt", "desc")
+      );
+      const querySnapshot = await getDocs(q);
+      const notifications = [];
+      querySnapshot.forEach((doc) => {
+        notifications.push(GeneralNotification.fromFirestore(doc));
+      });
+      res.status(200).send(notifications);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
+  };
+
+  // Get general notification by ID
+  getById = async (req, res, next) => {
+    const id = req.params.id;
+    const generalNotification = req.generalNotification;
+    res.status(200).send({ id: id, ...generalNotification });
   };
 }
 

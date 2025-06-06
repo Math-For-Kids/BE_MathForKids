@@ -10,22 +10,34 @@ const {
   deleteDoc,
   serverTimestamp,
   query,
-  where
+  where,
 } = require("firebase/firestore");
 
 const db = getFirestore();
 const { uploadMultipleFiles } = require("./fileController");
 
 class AssessmentController {
+  // Create assessment
   create = async (req, res, next) => {
     try {
-      const { levelId, grade, type, question, option: textOption, answer: textAnswer } = req.body;
+      const {
+        levelId,
+        grade,
+        type,
+        question,
+        option: textOption,
+        answer: textAnswer,
+      } = req.body;
       // Parse JSON fields
       const parsedType = JSON.parse(type);
       const parsedQuestion = JSON.parse(question);
 
       // Upload files and get image, option, and answer
-      const { image, option, answer } = await uploadMultipleFiles(req.files, textOption, textAnswer);
+      const { image, option, answer } = await uploadMultipleFiles(
+        req.files,
+        textOption,
+        textAnswer
+      );
 
       // Prepare assessment data
       const assessmentRef = await addDoc(collection(db, "assessments"), {
@@ -38,67 +50,86 @@ class AssessmentController {
         image,
         isDisabled: false,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
       });
 
       res.status(201).send({
-        message: "Assessment created successfully!",
+        message: {
+          en: "Assessment created successfully!",
+          vi: "Tạo bài kiểm tra đầu vào thành công!",
+        },
         data: assessmentRef.id,
       });
     } catch (error) {
       console.error("Error in create:", error.message);
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
+  // Get all assessments
   getAll = async (req, res, next) => {
     try {
       const assessments = await getDocs(collection(db, "assessments"));
-      const assessmentArray = assessments.docs.map((doc) => Assessment.fromFirestore(doc));
+      const assessmentArray = assessments.docs.map((doc) =>
+        Assessment.fromFirestore(doc)
+      );
       res.status(200).send(assessmentArray);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
-  getEnabledAssessment = async (req, res) => {
+  // Get enabled assessments
+  getEnabledAssessments = async (req, res, next) => {
     try {
       const assessmentsRef = collection(db, "assessments");
       const q = query(assessmentsRef, where("isDisabled", "==", false));
       const snapshot = await getDocs(q);
-      const assessments = snapshot.docs.map(doc => Assessment.fromFirestore(doc));
+      const assessments = snapshot.docs.map((doc) =>
+        Assessment.fromFirestore(doc)
+      );
       res.status(200).send(assessments);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
+  // Get assessment by ID
   getById = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      const assessmentRef = doc(db, "assessments", id);
-      const data = await getDoc(assessmentRef);
-      if (data.exists()) {
-        const assessmentData = Assessment.fromFirestore(data);
-        res.status(200).send(assessmentData);
-      } else {
-        res.status(404).send({ message: "Assessment not found!" });
-      }
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
+    const id = req.params.id;
+    const assessment = req.vv;
+    res.status(200).send({ id: id, ...assessment });
   };
+
+  // Update assessment
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
       const assessmentRef = doc(db, "assessments", id);
-      const docSnapshot = await getDoc(assessmentRef);
-
-      if (!docSnapshot.exists()) {
-        return res.status(404).send({ message: "Assessment not found!" });
-      }
-      const oldData = docSnapshot.data();
-      const { levelId, grade, type, question, option: textOption, answer: textAnswer, isDisabled } = req.body;
+      const oldData = req.assessment;
+      const {
+        levelId,
+        grade,
+        type,
+        question,
+        option: textOption,
+        answer: textAnswer,
+        isDisabled,
+      } = req.body;
       const updateData = {
         updatedAt: serverTimestamp(),
       };
@@ -122,14 +153,18 @@ class AssessmentController {
         try {
           parsedType = type ? JSON.parse(type) : oldData.type;
         } catch (error) {
-          return res.status(400).send({ message: "Invalid JSON format for type!" });
+          return res
+            .status(400)
+            .send({ message: "Invalid JSON format for type!" });
         }
 
         // Parse question
         try {
           parsedQuestion = question ? JSON.parse(question) : oldData.question;
         } catch (error) {
-          return res.status(400).send({ message: "Invalid JSON format for question!" });
+          return res
+            .status(400)
+            .send({ message: "Invalid JSON format for question!" });
         }
 
         // Parse textOption and textAnswer
@@ -141,11 +176,17 @@ class AssessmentController {
             : null;
           parsedAnswer = textAnswer || null;
         } catch (error) {
-          return res.status(400).send({ message: "Invalid format for option or answer!" });
+          return res
+            .status(400)
+            .send({ message: "Invalid format for option or answer!" });
         }
 
         // Process file uploads and text inputs
-        const { image, option: uploadedOption, answer: uploadedAnswer } = await uploadMultipleFiles(
+        const {
+          image,
+          option: uploadedOption,
+          answer: uploadedAnswer,
+        } = await uploadMultipleFiles(
           req.files || {},
           parsedOption,
           parsedAnswer
@@ -156,15 +197,15 @@ class AssessmentController {
           parsedOption && parsedOption.length > 0
             ? parsedOption // Prioritize text option if provided
             : uploadedOption && uploadedOption.length > 0
-              ? uploadedOption
-              : oldData.option;
+            ? uploadedOption
+            : oldData.option;
 
         const finalAnswer =
           parsedAnswer !== null
             ? parsedAnswer // Prioritize text answer if provided
             : uploadedAnswer !== null
-              ? uploadedAnswer
-              : oldData.answer;
+            ? uploadedAnswer
+            : oldData.answer;
 
         const finalImage = image !== null ? image : oldData.image;
 
@@ -183,22 +224,20 @@ class AssessmentController {
       }
 
       await updateDoc(assessmentRef, updateData);
-      res.status(200).send({ message: "Assessment updated successfully!" });
+      res.status(200).send({
+        message: {
+          en: "Assessment updated successfully!",
+          vi: "Cập nhật bài kiểm tra đầu vào thành công!",
+        },
+      });
     } catch (error) {
       console.error("Error in update:", error.message);
-      res.status(400).send({ message: error.message });
-    }
-  };
-
-  delete = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      const { createdAt, ...data } = req.body;
-      const assessmentRef = doc(db, "assessments", id);
-      await updateDoc(assessmentRef, { ...data, updatedAt: serverTimestamp() });
-      res.status(200).send({ message: "Assessments disabled successfully!" });
-    } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 }

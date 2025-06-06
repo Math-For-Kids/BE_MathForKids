@@ -1,4 +1,4 @@
-const Notification = require("../models/PupilNotification");
+const PupilNotification = require("../models/PupilNotification");
 const {
   getFirestore,
   collection,
@@ -11,100 +11,92 @@ const {
   serverTimestamp,
   where,
   query,
+  orderBy,
 } = require("firebase/firestore");
 
 const db = getFirestore();
 
 class PupilNotificationController {
+  // Create pupil notification
   create = async (req, res, next) => {
     try {
       const data = req.body;
       await addDoc(collection(db, "pupil_notifications"), {
         ...data,
-        isRead: data.isRead ?? false,
+        isRead: false,
         createdAt: serverTimestamp(),
       });
-      res.status(200).send({ message: "Notification created successfully!" });
+      res.status(201).send({
+        message: {
+          en: "Pupil notification created successfully!",
+          vi: "Tạo thông báo cho học sinh thành công!",
+        },
+      });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
-  getAll = async (req, res, next) => {
-    try {
-      const pupil_notifications = await getDocs(
-        collection(db, "pupil_notifications")
-      );
-      const notificationArray = pupil_notifications.docs.map((doc) =>
-        Notification.fromFirestore(doc)
-      );
-      res.status(200).send(notificationArray);
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
-  };
-
-  getByPupilId = async (req, res, next) => {
+  // Get pupil notifications within 30 days by pupil ID
+  getWithin30DaysByPupilId = async (req, res, next) => {
     try {
       const pupilId = req.params.pupilId;
+      const thirtyDaysAgo = Timestamp.fromDate(
+        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+      );
       const q = query(
         collection(db, "pupil_notifications"),
-        where("pupilId", "==", pupilId)
+        where("pupilId", "==", pupilId),
+        where("createdAt", ">=", thirtyDaysAgo),
+        orderBy("createdAt", "desc")
       );
       const notificationSnapshot = await getDocs(q);
       const notifications = notificationSnapshot.docs.map((doc) =>
-        Notification.fromFirestore(doc)
+        PupilNotification.fromFirestore(doc)
       );
       res.status(200).send(notifications);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
+  // Get pupil notification by ID
   getById = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      const notificationRef = doc(db, "pupil_notifications", id);
-      const data = await getDoc(notificationRef);
-      if (data.exists()) {
-        const notification = Notification.fromFirestore(data);
-        res.status(200).send(notification);
-      } else {
-        res.status(404).send({ message: "Notification not found!" });
-      }
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
+    const id = req.params.id;
+    const pupilNotification = req.pupilNotification;
+    res.status(200).send({ id: id, ...pupilNotification });
   };
-  update = async (req, res, next) => {
+
+  updateStatus = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const { pupilId, title, content, isRead } = req.body;
       const ref = doc(db, "pupil_notifications", id);
-      await updateDoc(ref, {
-        pupilId,
-        title,
-        content,
-        isRead,
-        // updatedAt: serverTimestamp(),
+      await updateDoc(ref, { isRead: true });
+      res.status(200).send({
+        message: {
+          en: "Pupil notification status updated successfully!",
+          vi: "Trạng thái thông báo của học sinh đã cập nhật thành công!",
+        },
       });
-      res
-        .status(200)
-        .send({ message: "User notification updated successfully!" });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
-  delete = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      await deleteDoc(doc(db, "pupil_notifications", id));
-      res.status(200).send({ message: "Notification deleted successfully!" });
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
-  };
- 
 }
 
 module.exports = new PupilNotificationController();

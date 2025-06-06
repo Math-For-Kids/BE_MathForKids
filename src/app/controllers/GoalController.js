@@ -16,92 +16,91 @@ const {
 const db = getFirestore();
 
 class GoalController {
-
+  // Create goal
   create = async (req, res, next) => {
     try {
-      const { studentID, dateStart, dateEnd, type } = req.body;
+      const data = req.body;
       const goalData = {
-        studentID,
-        dateStart,
-        dateEnd,
-        type,
+        ...data,
         isCompleted: false,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
       };
       await addDoc(collection(db, "goal"), goalData);
-      res
-        .status(200)
-        .send({ message: "Goal created successfully!" });
+      res.status(201).send({
+        message: {
+          en: "Goal created successfully!",
+          vi: "Tạo mục tiêu thành công!",
+        },
+      });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
-
-  getAll = async (req, res, next) => {
+  // Get goals within 30 days by pupil ID
+  getWithin30DaysByPupilId = async (req, res, next) => {
     try {
-      const goalSnapshot = await getDocs(
-        collection(db, "goal")
+      const pupilId = req.params.pupilId;
+      // Tính timestamp 30 ngày trước
+      const thirtyDaysAgo = Timestamp.fromDate(
+        new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
       );
-      const goals = goalSnapshot.docs.map((doc) =>
-        Goal.fromFirestore(doc)
+      const q = query(
+        collection(db, "goal"),
+        where("pupilId", "==", pupilId),
+        where("createdAt", ">=", thirtyDaysAgo),
+        orderBy("createdAt", "desc")
       );
+      const goalSnapshot = await getDocs(q);
+      const goals = goalSnapshot.docs.map((doc) => Goal.fromFirestore(doc));
       res.status(200).send(goals);
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
 
-
+  // Get a goal by ID
   getById = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      const goal = doc(db, "goal", id);
-      const data = await getDoc(goal);
-      const goalData = Goal.fromFirestore(data);
-      if (data.exists()) {
-        res.status(200).send(goalData);
-      } else {
-        res.status(404).send({ message: "goal not found!" });
-      }
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
+    const id = req.params.id;
+    const goal = req.goal;
+    res.status(200).send({ id: id, ...goal });
   };
 
+  // Update goal
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const { studentID, dateStart, dateEnd, type } = req.body;
+      const data = req.body;
       const ref = doc(db, "goal", id);
       await updateDoc(ref, {
-        studentID,
-        dateStart,
-        dateEnd,
-        type,
+        ...data,
         updatedAt: serverTimestamp(),
       });
-      res
-        .status(200)
-        .send({ message: "Goal updated successfully!" });
+      res.status(200).send({
+        message: {
+          en: "Goal updated successfully!",
+          vi: "Cập nhật mục tiêu thành công!",
+        },
+      });
     } catch (error) {
-      res.status(400).send({ message: error.message });
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
     }
   };
-
-  delete = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      await deleteDoc(doc(db, "goal", id));
-      res
-        .status(200)
-        .send({ message: "Goal deleted successfully!" });
-    } catch (error) {
-      res.status(400).send({ message: error.message });
-    }
-  };
-
 }
 
 module.exports = new GoalController();

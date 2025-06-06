@@ -1,12 +1,25 @@
 const express = require("express");
+const levelController = require("../app/controllers/LevelController");
+const levelMiddleware = require("../app/middlewares/LevelMiddleware");
 const router = express.Router();
-const LevelController = require("../app/controllers/LevelController");
 
-router.post("/", LevelController.create);
-router.get("/enabled", LevelController.getEnabledLevels);
-router.get("/", LevelController.getAll);
-router.get("/:id", LevelController.getById);
-router.put("/:id", LevelController.update);
-// router.delete("/:id", LevelController.delete);
+// Create level
+router.post("/", levelController.create);
+// Get all levels
+router.get("/", levelController.getAll);
+// Get enabled levels
+router.get("/getEnabledLevels", levelController.getEnabledLevels);
+// Get level by ID
+router.get(
+  "/:id",
+  levelMiddleware.checkLevelExistById(),
+  levelController.getById
+);
+// Update level
+router.patch(
+  "/:id",
+  levelMiddleware.checkLevelExistById(),
+  levelController.update
+);
 
 module.exports = router;

@@ -14,7 +14,7 @@ class Pupil {
     mode,
     theme,
     isDisabled,
-    assess,
+    isAssess,
     createdAt,
     updatedAt
   ) {
@@ -32,7 +32,7 @@ class Pupil {
     this.mode = mode;
     this.theme = theme;
     this.isDisabled = isDisabled;
-    this.assess = assess;
+    this.isAssess = isAssess;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
@@ -54,7 +54,7 @@ class Pupil {
       data.mode ?? false,
       data.theme ?? "",
       data.isDisabled ?? false,
-      data.assess ?? false,
+      data.isAssess ?? false,
       data.createdAt?.toDate().toLocaleString("vi-VN") ?? "",
       data.updatedAt?.toDate().toLocaleString("vi-VN") ?? ""
     );
