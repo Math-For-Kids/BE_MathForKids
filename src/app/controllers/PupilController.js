@@ -23,79 +23,15 @@ const { v4: uuidv4 } = require("uuid");
 
 class PupilController {
 
-  countByDisabledStatus = async (req, res, next) => {
-    try {
-      const data = req.body;
-      const q = query(
-        collection(db, "pupils"),
-        where("isDisabled", "==", data.isDisabled)
-      );
-      const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
-    } catch (error) {
-      res.status(500).send({
-        message: {
-          en: error.message,
-          vi: "Đã xảy ra lỗi nội bộ.",
-        },
-      });
-    }
-  };
-
-  filterByDisabledStatus = async (req, res) => {
-    try {
-      const pageSize = parseInt(req.query.pageSize) || 10;
-      const startAfterId = req.query.startAfterId || null;
-      const data = req.body;
-
-      let q;
-
-      if (startAfterId) {
-        const startDoc = await getDoc(doc(db, "pupils", startAfterId));
-        q = query(
-          collection(db, "pupils"),
-          where("isDisabled", "==", data.isDisabled),
-          orderBy("createdAt", "desc"),
-          startAfter(startDoc),
-          limit(pageSize)
-        );
-      } else {
-        q = query(
-          collection(db, "pupils"),
-          where("isDisabled", "==", data.isDisabled),
-          orderBy("createdAt", "desc"),
-          limit(pageSize)
-        );
-      }
-
-      const snapshot = await getDocs(q);
-      const pupils = snapshot.docs.map((doc) => Pupil.fromFirestore(doc));
-      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
-      const lastVisibleId = lastVisible ? lastVisible.id : null;
-
-      res.status(200).send({
-        data: pupils,
-        nextPageToken: lastVisibleId,
-      });
-    } catch (error) {
-      res.status(500).send({
-        message: {
-          en: error.message,
-          vi: "Đã xảy ra lỗi nội bộ.",
-        },
-      });
-    }
-  };
-
   countByGrade = async (req, res, next) => {
     try {
-      const data = req.body;
+      const { grade } = req.query;
       const q = query(
         collection(db, "pupils"),
-        where("grade", "==", data.grade),
+        where("grade", "==", parseInt(grade)),
       );
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -110,7 +46,7 @@ class PupilController {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
-      const data = req.body;
+      const { grade } = req.query;
 
       let q;
 
@@ -118,7 +54,7 @@ class PupilController {
         const startDoc = await getDoc(doc(db, "pupils", startAfterId));
         q = query(
           collection(db, "pupils"),
-          where("grade", "==", data.grade),
+          where("grade", "==", parseInt(grade)),
           orderBy("createdAt", "desc"),
           startAfter(startDoc),
           limit(pageSize)
@@ -126,7 +62,7 @@ class PupilController {
       } else {
         q = query(
           collection(db, "pupils"),
-          where("grade", "==", data.grade),
+          where("grade", "==", parseInt(grade)),
           orderBy("createdAt", "desc"),
           limit(pageSize)
         );
@@ -136,7 +72,6 @@ class PupilController {
       const pupils = snapshot.docs.map((doc) => Pupil.fromFirestore(doc));
       const lastVisible = snapshot.docs[snapshot.docs.length - 1];
       const lastVisibleId = lastVisible ? lastVisible.id : null;
-
       res.status(200).send({
         data: pupils,
         nextPageToken: lastVisibleId,
@@ -153,14 +88,14 @@ class PupilController {
 
   countByGradeAndDisabledStatus = async (req, res, next) => {
     try {
-      const data = req.body;
+      const { grade, isDisabled } = req.query;
       const q = query(
         collection(db, "pupils"),
-        where("grade", "==", data.grade),
-        where("isDisabled", "==", data.isDisabled),
+        where("grade", "==", parseInt(grade)),
+        where("isDisabled", "==", isDisabled === "true"),
       );
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -171,12 +106,12 @@ class PupilController {
     }
   };
 
-  // 
+
   filterByGradeAndDisabledStatus = async (req, res) => {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
-      const data = req.body;
+      const { grade, isDisabled } = req.query;
 
       let q;
 
@@ -184,8 +119,8 @@ class PupilController {
         const startDoc = await getDoc(doc(db, "pupils", startAfterId));
         q = query(
           collection(db, "pupils"),
-          where("grade", "==", data.grade),
-          where("isDisabled", "==", data.isDisabled),
+          where("grade", "==", parseInt(grade)),
+          where("isDisabled", "==", isDisabled === "true"),
           orderBy("createdAt", "desc"),
           startAfter(startDoc),
           limit(pageSize)
@@ -193,9 +128,8 @@ class PupilController {
       } else {
         q = query(
           collection(db, "pupils"),
-          where("grade", "==", data.grade),
-          where("isDisabled", "==", data.isDisabled),
-          orderBy("createdAt", "desc"),
+          where("grade", "==", parseInt(grade)),
+          where("isDisabled", "==", isDisabled === "true"),
           limit(pageSize)
         );
       }
@@ -220,6 +154,70 @@ class PupilController {
   };
 
 
+  countByDisabledStatus = async (req, res, next) => {
+    try {
+      const { isDisabled } = req.query;
+      const q = query(
+        collection(db, "pupils"),
+        where("isDisabled", "==", isDisabled === "true")
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  filterByDisabledStatus = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { isDisabled } = req.query;
+
+      let q;
+
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "pupils", startAfterId));
+        q = query(
+          collection(db, "pupils"),
+          where("isDisabled", "==", isDisabled === "true"),
+          orderBy("createdAt", "desc"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "pupils"),
+          where("isDisabled", "==", isDisabled === "true"),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const pupils = snapshot.docs.map((doc) => Pupil.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: pupils,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
   // Create pupil
   create = async (req, res, next) => {
     try {
@@ -231,6 +229,11 @@ class PupilController {
         dateOfBirth: dateOfBirthTimestamp,
         isDisabled: false,
         isAssess: false,
+        volume: 100,
+        language: "en",
+        mode: "light",
+        point: 0,
+        theme: "theme1",
         createdAt: serverTimestamp(),
       });
       res.status(201).send({
@@ -251,11 +254,9 @@ class PupilController {
 
   countAll = async (req, res, next) => {
     try {
-      const q = query(
-        collection(db, "pupils"),
-      );
+      const q = query(collection(db, "pupils"));
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -320,7 +321,6 @@ class PupilController {
       });
     }
   };
-
 
   // Get a pupil by ID
   getById = async (req, res, next) => {

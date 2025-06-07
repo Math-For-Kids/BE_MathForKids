@@ -9,9 +9,12 @@ const {
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  getCountFromServer,
   query,
   where,
   orderBy,
+  limit,
+  startAfter,
 } = require("firebase/firestore");
 const db = getFirestore();
 
@@ -40,22 +43,6 @@ class TestController {
     }
   };
 
-  // Get all tests
-  getAll = async (req, res, next) => {
-    try {
-      const tests = await getDocs(collection(db, "tests"));
-      const testData = tests.docs.map((doc) => Tests.fromFirestore(doc));
-      res.status(200).send(testData);
-    } catch (error) {
-      res.status(500).send({
-        message: {
-          en: error.message,
-          vi: "Đã xảy ra lỗi nội bộ.",
-        },
-      });
-    }
-  };
-
   // Get test by ID
   getById = async (req, res, next) => {
     const id = req.params.id;
@@ -63,21 +50,14 @@ class TestController {
     res.status(200).send({ id: id, ...test });
   };
 
-  // Get tests by pupil ID
-  getTestByPupilId = async (req, res, next) => {
+  // Count all test
+  countAll = async (req, res, next) => {
     try {
-      const pupilId = req.params.id;
-      console.log("Querying for pupilId:", pupilId); // Debug log
       const q = query(
         collection(db, "tests"),
-        where("pupilId", "==", pupilId),
-        orderBy("createdAt", "desc")
       );
-      const testSnapshot = await getDocs(q);
-      const testArray = testSnapshot.docs.map((doc) =>
-        Tests.fromFirestore(doc)
-      );
-      res.status(200).send(testArray);
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -88,37 +68,38 @@ class TestController {
     }
   };
 
-  // Get tests by lesson ID
-  getTestsByLesson = async (req, res, next) => {
+  // Get all paginated tests
+  getAll = async (req, res) => {
     try {
-      const lessonId = req.params.lessonId;
-      console.log("Querying for lessonId:", lessonId); // Debug log
-      const q = query(
-        collection(db, "tests"),
-        where("lessonId", "==", lessonId)
-      );
-      const testSnapshot = await getDocs(q);
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
 
-      const allTests = testSnapshot.docs.map((doc) => Tests.fromFirestore(doc));
-      // Lấy test mới nhất theo pupilId
-      const latestTestsByPupil = {};
-
-      for (const test of allTests) {
-        const pupilId = test.pupilId;
-        const current = latestTestsByPupil[pupilId];
-
-        // Nếu chưa có hoặc test mới hơn => cập nhật
-        if (
-          !current ||
-          new Date(test.createdAt) > new Date(current.createdAt)
-        ) {
-          latestTestsByPupil[pupilId] = test;
-        }
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "tests", startAfterId));
+        q = query(
+          collection(db, "tests"),
+          startAfter(startDoc),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "tests"),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
       }
 
-      // Trả về mảng kết quả
-      const result = Object.values(latestTestsByPupil);
-      res.status(200).send(result);
+      const snapshot = await getDocs(q);
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: tests,
+        nextPageToken: lastVisibleId,
+      });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -129,21 +110,333 @@ class TestController {
     }
   };
 
-  // Get test by pupil ID & lesson ID
-  getTestsByPupilIdAndLesson = async (req, res, next) => {
+  // Count tests by pupil ID
+  countTestsByPupilID = async (req, res, next) => {
     try {
-      const { pupilId, lessonId } = req.params;
-      console.log("Querying for lessonId:", pupilId, "and lessonId", lessonId); // Debug log
+      const { pupilId } = req.params;
       const q = query(
         collection(db, "tests"),
         where("pupilId", "==", pupilId),
-        where("lessonId", "==", lessonId)
       );
-      const testSnapshot = await getDocs(q);
-      const testArray = testSnapshot.docs.map((doc) =>
-        Tests.fromFirestore(doc)
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  //Filter paginated tests by pupilID
+  filterByPupilID = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { pupilID } = req.params;
+
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "tests", startAfterId));
+        q = query(
+          collection(db, "tests"),
+          where("pupilId", "==", pupilID),
+          startAfter(startDoc),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "tests"),
+          where("pupilId", "==", pupilID),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: tests,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Count tests by lesson ID
+  countTestsByLessonID = async (req, res, next) => {
+    try {
+      const { lessonId } = req.params;
+      const q = query(
+        collection(db, "tests"),
+        where("lessonId", "==", lessonId),
       );
-      res.status(200).send(testArray);
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  //Filter by lessonID
+  filterByLessonID = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { lessonID } = req.params;
+
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "tests", startAfterId));
+        q = query(
+          collection(db, "tests"),
+          where("lessonId", "==", lessonID),
+          startAfter(startDoc),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "tests"),
+          where("lessonId", "==", lessonID),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: tests,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+
+  // Count tests by point
+  countTestsByPoint = async (req, res, next) => {
+    try {
+      const {condition, point } = req.query;
+      const q = query(
+        collection(db, "tests"),
+        where("point", condition, parseInt(point)),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  //Filter by point
+  filterByPoint = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { condition, point } = req.query;
+
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "tests", startAfterId));
+        q = query(
+          collection(db, "tests"),
+          where("point", condition, parseInt(point)),
+          startAfter(startDoc),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "tests"),
+          where("point", condition, parseInt(point)),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: tests,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Count tests by pupilID & lessonID
+  countTestsByPupilIdAndLessonId = async (req, res, next) => {
+    try {
+      const { lessonID, pupilID } = req.params;
+      const q = query(
+        collection(db, "tests"),
+        where("lessonID", "==", lessonID),
+        where("pupilID", "==", pupilID),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Filter by pupilID & lessonID
+  filterByPupilAndLesson = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { pupilID, lessonID } = req.params;
+
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "tests", startAfterId));
+        q = query(
+          collection(db, "tests"),
+          where("pupilId", "==", pupilID),
+          where("lessonId", "==", lessonID),
+          startAfter(startDoc),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "tests"),
+          where("pupilId", "==", pupilID),
+          where("lessonId", "==", lessonID),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: tests,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+  //Count tests by lessonID & point
+  countTestsByLessonIdAndPoint = async (req, res, next) => {
+    try {
+      const { lessonID } = req.params;
+      const { condition, point } = req.query;
+
+      const parsedPoint = parseInt(point);
+
+      const q = query(
+        collection(db, "tests"),
+        where("lessonID", "==", lessonID),
+        where("point", condition, parsedPoint),
+      );
+
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+
+  //Filter by lessonID & point
+  filterByLessonIDAndPoint = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { lessonID } = req.params;
+      const { condition, point } = req.query;
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "tests", startAfterId));
+        q = query(
+          collection(db, "tests"),
+          where("lessonId", "==", lessonID),
+          where("point", condition, parseInt(point)),
+          startAfter(startDoc),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "tests"),
+          where("lessonId", "==", lessonID),
+          where("point", condition, parseInt(point)),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: tests,
+        nextPageToken: lastVisibleId,
+      });
     } catch (error) {
       res.status(500).send({
         message: {

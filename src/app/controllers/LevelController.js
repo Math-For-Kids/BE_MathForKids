@@ -9,8 +9,12 @@ const {
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  getCountFromServer,
   query,
   where,
+  limit,
+  startAfter,
+  orderBy,
 } = require("firebase/firestore");
 
 const db = getFirestore();
@@ -41,12 +45,58 @@ class LevelController {
     }
   };
 
-  // Get all levels
+  // Count all levels
+  countAll = async (req, res, next) => {
+    try {
+      const q = query(
+        collection(db, "levels"),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Get all paginated levels
   getAll = async (req, res) => {
     try {
-      const snapshot = await getDocs(collection(db, "levels"));
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+
+      let q;
+
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "levels", startAfterId));
+        q = query(
+          collection(db, "levels"),
+          startAfter(startDoc),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "levels"),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
       const levels = snapshot.docs.map((doc) => Level.fromFirestore(doc));
-      res.status(200).send(levels);
+
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: levels,
+        nextPageToken: lastVisibleId, // dùng cho trang kế tiếp
+      });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -80,6 +130,73 @@ class LevelController {
     const id = req.params.id;
     const level = req.level;
     res.status(200).send({ id: id, ...level });
+  };
+
+  // Count levels by disabled state
+  countByDisabledStatus = async (req, res, next) => {
+    try {
+      const { isDisabled } = req.query;
+      const q = query(
+        collection(db, "levels"),
+        where("isDisabled", "==", isDisabled === "true"),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Filter all paginated levels by disabled state
+  filterByDisabledState = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { isDisabled } = req.query;
+
+      let q;
+
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "levels", startAfterId));
+        q = query(
+          collection(db, "levels"),
+          where("isDisabled", "==", isDisabled === "true"),
+          startAfter(startDoc),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "levels"),
+          where("isDisabled", "==", isDisabled === "true"),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const levels = snapshot.docs.map((doc) => Level.fromFirestore(doc));
+
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: levels,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
   };
 
   // Update level
