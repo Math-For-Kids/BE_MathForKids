@@ -353,7 +353,6 @@ class UserController {
         isVerify: false,
         otpCode: null,
         otpExpiration: null,
-        pin: data.pin,
         volume: 100,
         language: "en",
         mode: "light",
