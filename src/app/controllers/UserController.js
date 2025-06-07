@@ -233,7 +233,7 @@ class UserController {
       const dateOfBirthTimestamp = Timestamp.fromDate(date);
       const userData = {
         ...data,
-        email: data.email.toLowerCase(),
+        email: data.email ? data.email.toLowerCase() : "",
         dateOfBirth: dateOfBirthTimestamp,
         role: data.role ? data.role : "user",
         isVerify: false,

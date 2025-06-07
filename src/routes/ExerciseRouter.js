@@ -47,6 +47,9 @@ router.get(
   lessonMiddleware.checkLessonExistById("lessonId"),
   exerciseController.getEnabledByLesson
 );
+// Get enabled exercise by grade & type
+router.get("/getByGradeAndType", exerciseController.getByGradeAndType);
+
 // Get an exercise by ID
 router.get(
   "/:id",
