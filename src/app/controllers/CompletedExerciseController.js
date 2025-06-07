@@ -8,6 +8,7 @@ const {
   getDocs,
   updateDoc,
   deleteDoc,
+  getCountFromServer,
   serverTimestamp,
   query,
   where,
@@ -49,7 +50,23 @@ class CompletedExerciseController {
     res.status(200).send({ id: id, ...completedExercise });
   };
 
-
+  // Count all  completed exercises
+  countAll = async (req, res, next) => {
+    try {
+      const q = query(
+        collection(db, "completed_exercises"),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
 
   // Get all paginated completed exercises
   getAll = async (req, res) => {
@@ -83,6 +100,26 @@ class CompletedExerciseController {
         data: tests,
         nextPageToken: lastVisibleId,
       });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  //Count completed exercise by pupilID
+  countTestsByPupilID = async (req, res, next) => {
+    try {
+      const { pupilId } = req.params;
+      const q = query(
+        collection(db, "completed_exercises"),
+        where("pupilId", "==", pupilId),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -138,7 +175,28 @@ class CompletedExerciseController {
     }
   };
 
-  //Filter by lessonID
+
+  // Count completed exercise by lesson ID
+  countCompletedExerciseByLessonID = async (req, res, next) => {
+    try {
+      const { lessonId } = req.params;
+      const q = query(
+        collection(db, "completed_exercises"),
+        where("lessonId", "==", lessonId),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  //Filter completed exercise by lessonID
   filterByLessonID = async (req, res) => {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
@@ -183,7 +241,27 @@ class CompletedExerciseController {
     }
   };
 
-  //Filter by point
+  // Count completed exercise by point
+  countCompletedExerciseByPoint = async (req, res, next) => {
+      try {
+        const {condition, point } = req.query;
+        const q = query(
+          collection(db, "completed_exercises"),
+          where("point", condition, parseInt(point)),
+        );
+        const snapshot = await getCountFromServer(q);
+        res.status(200).send({ count: snapshot.data().count });
+      } catch (error) {
+        res.status(500).send({
+          message: {
+            en: error.message,
+            vi: "Đã xảy ra lỗi nội bộ.",
+          },
+        });
+      }
+    };
+
+  //Filter completed exercise by point
   filterByPoint = async (req, res) => {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
@@ -227,7 +305,28 @@ class CompletedExerciseController {
     }
   };
 
-  // Filter by pupilID & lessonID
+  // Count completed exercise by pupilID & lessonID
+  countCompletedExerciseByPupilIdAndLessonId = async (req, res, next) => {
+    try {
+      const { lessonID, pupilID } = req.params;
+      const q = query(
+        collection(db, "completed_exercises"),
+        where("lessonID", "==", lessonID),
+        where("pupilID", "==", pupilID),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Filter completed exercise by pupilID & lessonID
   filterByPupilAndLesson = async (req, res) => {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
@@ -274,7 +373,33 @@ class CompletedExerciseController {
     }
   };
 
-  //Filter by lessonID & point
+  // Filter completed exercise by lessonID & point
+  countCompletedExerciseByLessonIdAndPoint = async (req, res, next) => {
+    try {
+      const { lessonID } = req.params;
+      const { condition, point } = req.query;
+
+      const parsedPoint = parseInt(point);
+
+      const q = query(
+        collection(db, "completed_exercises"),
+        where("lessonID", "==", lessonID),
+        where("point", condition, parsedPoint),
+      );
+
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  //Filter completed exercise by lessonID & point
   filterByLessonIDAndPoint = async (req, res) => {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;

@@ -9,6 +9,7 @@ const {
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  getCountFromServer,
   query,
   where,
   orderBy,
@@ -49,6 +50,24 @@ class TestController {
     res.status(200).send({ id: id, ...test });
   };
 
+  // Count all test
+  countAll = async (req, res, next) => {
+    try {
+      const q = query(
+        collection(db, "tests"),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
   // Get all paginated tests
   getAll = async (req, res) => {
     try {
@@ -81,6 +100,26 @@ class TestController {
         data: tests,
         nextPageToken: lastVisibleId,
       });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Count tests by pupil ID
+  countTestsByPupilID = async (req, res, next) => {
+    try {
+      const { pupilId } = req.params;
+      const q = query(
+        collection(db, "tests"),
+        where("pupilId", "==", pupilId),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -136,6 +175,26 @@ class TestController {
     }
   };
 
+  // Count tests by lesson ID
+  countTestsByLessonID = async (req, res, next) => {
+    try {
+      const { lessonId } = req.params;
+      const q = query(
+        collection(db, "tests"),
+        where("lessonId", "==", lessonId),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
   //Filter by lessonID
   filterByLessonID = async (req, res) => {
     try {
@@ -181,6 +240,27 @@ class TestController {
     }
   };
 
+
+  // Count tests by point
+  countTestsByPoint = async (req, res, next) => {
+    try {
+      const {condition, point } = req.query;
+      const q = query(
+        collection(db, "tests"),
+        where("point", condition, parseInt(point)),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
   //Filter by point
   filterByPoint = async (req, res) => {
     try {
@@ -216,6 +296,27 @@ class TestController {
         data: tests,
         nextPageToken: lastVisibleId,
       });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Count tests by pupilID & lessonID
+  countTestsByPupilIdAndLessonId = async (req, res, next) => {
+    try {
+      const { lessonID, pupilID } = req.params;
+      const q = query(
+        collection(db, "tests"),
+        where("lessonID", "==", lessonID),
+        where("pupilID", "==", pupilID),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -272,6 +373,32 @@ class TestController {
       });
     }
   };
+  //Count tests by lessonID & point
+  countTestsByLessonIdAndPoint = async (req, res, next) => {
+    try {
+      const { lessonID } = req.params;
+      const { condition, point } = req.query;
+
+      const parsedPoint = parseInt(point);
+
+      const q = query(
+        collection(db, "tests"),
+        where("lessonID", "==", lessonID),
+        where("point", condition, parsedPoint),
+      );
+
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
 
   //Filter by lessonID & point
   filterByLessonIDAndPoint = async (req, res) => {

@@ -9,6 +9,7 @@ const {
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  getCountFromServer,
   orderBy,
   limit,
   startAfter,
@@ -42,6 +43,24 @@ class GeneralNotificationController {
       });
     }
   };
+  
+  // Count all generalNotification
+  countAll = async (req, res, next) => {
+      try {
+        const q = query(
+          collection(db, "general_notifications"),
+        );
+        const snapshot = await getCountFromServer(q);
+        res.status(200).send({ count: snapshot.data().count });
+      } catch (error) {
+        res.status(500).send({
+          message: {
+            en: error.message,
+            vi: "Đã xảy ra lỗi nội bộ.",
+          },
+        });
+      }
+    };
 
   getAll = async (req, res) => {
     try {

@@ -9,6 +9,7 @@ const {
   updateDoc,
   deleteDoc,
   serverTimestamp,
+  getCountFromServer,
   query,
   where,
   limit,
@@ -34,6 +35,24 @@ class LevelController {
           vi: "Tạo cấp độ thành công!",
         },
       });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Count all levels
+  countAll = async (req, res, next) => {
+    try {
+      const q = query(
+        collection(db, "levels"),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -113,8 +132,28 @@ class LevelController {
     res.status(200).send({ id: id, ...level });
   };
 
+  // Count levels by disabled state
+  countByDisabledStatus = async (req, res, next) => {
+    try {
+      const { isDisabled } = req.query;
+      const q = query(
+        collection(db, "levels"),
+        where("isDisabled", "==", isDisabled === "true"),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
   // Filter all paginated levels by disabled state
-  filterAll = async (req, res) => {
+  filterByDisabledState = async (req, res) => {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
