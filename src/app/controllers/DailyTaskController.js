@@ -8,6 +8,10 @@ const {
   getDocs,
   updateDoc,
   deleteDoc,
+  orderBy,
+  limit,
+  getCountFromServer,
+  startAfter,
   serverTimestamp,
   query,
   where,
@@ -15,6 +19,73 @@ const {
 const db = getFirestore();
 
 class DailyTaskController {
+
+  countByDisabledStatus = async (req, res, next) => {
+    try {
+      const data = req.body;
+      const q = query(
+        collection(db, "daily_tasks"),
+        where("isDisabled", "==", data.isDisabled)
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send(snapshot.data().count);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  filterByDisabledStatus = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const data = req.body;
+
+      let q;
+
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "daily_tasks", startAfterId));
+        q = query(
+          collection(db, "daily_tasks"),
+          where("isDisabled", "==", data.isDisabled),
+          orderBy("createdAt", "desc"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "daily_tasks"),
+          where("isDisabled", "==", data.isDisabled),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const tasks = snapshot.docs.map((doc) => DailyTask.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: tasks,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+
+
   // Create daily task
   create = async (req, res, next) => {
     try {
@@ -40,14 +111,13 @@ class DailyTaskController {
     }
   };
 
-  // Get all daily tasks
-  getAll = async (req, res, next) => {
+  countAll = async (req, res, next) => {
     try {
-      const dailyTaskSnapshot = await getDocs(collection(db, "daily_tasks"));
-      const dailyTasks = dailyTaskSnapshot.docs.map((doc) =>
-        DailyTask.fromFirestore(doc)
+      const q = query(
+        collection(db, "daily_tasks"),
       );
-      res.status(200).send(dailyTasks);
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send(snapshot.data().count);
     } catch (error) {
       res.status(500).send({
         message: {
@@ -57,6 +127,65 @@ class DailyTaskController {
       });
     }
   };
+
+  // Get all daily tasks
+  getAll = async (req, res, next) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+
+      let q;
+
+      if (startAfterId) {
+        // Lấy document bắt đầu sau đó
+        const startDocRef = doc(db, "daily_tasks", startAfterId);
+        const startDocSnap = await getDoc(startDocRef);
+
+        if (!startDocSnap.exists()) {
+          return res.status(400).send({
+            message: {
+              en: "Invalid startAfterId",
+              vi: "startAfterId không hợp lệ",
+            },
+          });
+        }
+
+        q = query(
+          collection(db, "daily_tasks"),
+          orderBy("createdAt", "desc"),
+          startAfter(startDocSnap),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "daily_tasks"),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const dailyTasks = snapshot.docs.map((doc) =>
+        DailyTask.fromFirestore(doc)
+      );
+
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: dailyTasks,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
 
   // Get enable daily tasks
   getEnabledDailyTask = async (req, res, next) => {
