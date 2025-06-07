@@ -220,7 +220,7 @@ class LessonDetailController {
   // Get all paginated lesson details by lesson ID
   getByLesson = async (req, res) => {
     try {
-      const pageSize = parseInt(req.query.pageSize) || 10; // số bài học mỗi trang
+      const pageSize = parseInt(req.query.pageSize); // số bài học mỗi trang
       const startAfterId = req.query.startAfterId || null; // ID của document bắt đầu sau đó
       const { lessonId } = req.params;
       let q;
@@ -291,14 +291,14 @@ class LessonDetailController {
       const pageSize = parseInt(req.query.pageSize) || 10; // số bài học mỗi trang
       const startAfterId = req.query.startAfterId || null; // ID của document bắt đầu sau đó
       const { lessonId } = req.params;
-      const isDisabled = req.query.isDisabled === 'true' ? true : req.query.isDisabled === 'false' ? false : undefined;
+      const data = req.body;
       let q;
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "lesson_details", startAfterId));
         q = query(
           collection(db, "lesson_details"),
           where("lessonId", "==", lessonId),
-          where("isDisabled", "==", isDisabled),
+          where("isDisabled", "==", data.isDisabled),
           orderBy("order"),
           startAfter(startDoc),
           limit(pageSize)
@@ -307,7 +307,7 @@ class LessonDetailController {
         q = query(
           collection(db, "lesson_details"),
           where("lessonId", "==", lessonId),
-          where("isDisabled", "==", isDisabled),
+          where("isDisabled", "==", data.isDisabled),
           orderBy("order"),
           limit(pageSize)
         );
