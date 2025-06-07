@@ -136,16 +136,15 @@ class ExerciseController {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
       const { lessonId } = req.params;
-      const data = req.body;
-      // const isDisabled = req.query.isDisabled ? req.query.isDisabled === 'true' : null; // Lấy từ query string
+      const { isDisabled } = req.query;
+
       let q;
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "exercises", startAfterId));
         q = query(
           collection(db, "exercises"),
           where("lessonId", "==", lessonId),
-          where("levelId", "==", data.levelId),
-          where("isDisabled", "==", data.isDisabled),
+          where("isDisabled", "==", isDisabled === "true"),
           orderBy("createdAt", "desc"),
           startAfter(startDoc),
           limit(pageSize)
@@ -154,8 +153,57 @@ class ExerciseController {
         q = query(
           collection(db, "exercises"),
           where("lessonId", "==", lessonId),
-          where("levelId", "==", data.levelId),
-          where("isDisabled", "==", data.isDisabled),
+          where("isDisabled", "==", isDisabled === "true"),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+      const snapshot = await getDocs(q);
+      const exercises = snapshot.docs.map((doc) => Exercise.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: exercises,
+        nextPageToken: lastVisibleId, // Dùng làm startAfterId cho trang kế
+      });
+    } catch (error) {
+      console.error("Error in filterByIsDisabled:", error.message);
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Filter exercises by isDisabled and level
+  filterByLevelAndIsDisabled = async (req, res, next) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { lessonId, levelId } = req.params;
+      const { isDisabled } = req.query;
+
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "exercises", startAfterId));
+        q = query(
+          collection(db, "exercises"),
+          where("lessonId", "==", lessonId),
+          where("levelId", "==", levelId),
+          where("isDisabled", "==", isDisabled === "true"),
+          orderBy("createdAt", "desc"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "exercises"),
+          where("lessonId", "==", lessonId),
+          where("levelId", "==", levelId),
+          where("isDisabled", "==", isDisabled === "true"),
           orderBy("createdAt", "desc"),
           limit(pageSize)
         );
