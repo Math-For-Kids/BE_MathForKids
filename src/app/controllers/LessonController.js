@@ -85,7 +85,7 @@ class LessonController {
           limit(pageSize)
         );
       } else {
-        const q = query(
+        q = query(
           collection(db, "lessons"),
           where("grade", "==", data.grade),
           where("type", "==", data.type),
@@ -185,39 +185,15 @@ class LessonController {
   };
 
   // Get enable lesson by grade & type
-  // getByGradeAndType = async (req, res, next) => {
-  //   try {
-  //     const data = req.body;
-  //     const q = query(
-  //       collection(db, "lessons"),
-  //       where("grade", "==", data.grade),
-  //       where("type", "==", data.type),
-  //       where("isDisabled", "==", false)
-  //     );
-  //     const lessons = await getDocs(q);
-  //     const lessonArray = lessons.docs.map((doc) => Lesson.fromFirestore(doc));
-  //     res.status(200).send(lessonArray);
-  //   } catch (error) {
-  //     res.status(500).send({
-  //       message: {
-  //         en: error.message,
-  //         vi: "Đã xảy ra lỗi nội bộ.",
-  //       },
-  //     });
-  //   }
-  // };
-  // Get enable lessons by grade & type (via query params)
   getByGradeAndType = async (req, res, next) => {
     try {
-      const { grade, type } = req.query;
-
+      const data = req.body;
       const q = query(
         collection(db, "lessons"),
-        where("grade", "==", Number(grade)), // ép kiểu vì query param là string
-        where("type", "==", type),
+        where("grade", "==", data.grade),
+        where("type", "==", data.type),
         where("isDisabled", "==", false)
       );
-
       const lessons = await getDocs(q);
       const lessonArray = lessons.docs.map((doc) => Lesson.fromFirestore(doc));
       res.status(200).send(lessonArray);

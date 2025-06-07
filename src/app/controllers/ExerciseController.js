@@ -136,15 +136,16 @@ class ExerciseController {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
       const { lessonId } = req.params;
-      // const { isDisabled } = req.body;
-      const isDisabled = req.query.isDisabled ? req.query.isDisabled === 'true' : null; // Lấy từ query string
+      const data = req.body;
+      // const isDisabled = req.query.isDisabled ? req.query.isDisabled === 'true' : null; // Lấy từ query string
       let q;
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "exercises", startAfterId));
         q = query(
           collection(db, "exercises"),
           where("lessonId", "==", lessonId),
-          where("isDisabled", "==", isDisabled),
+          where("levelId", "==", data.levelId),
+          where("isDisabled", "==", data.isDisabled),
           orderBy("createdAt", "desc"),
           startAfter(startDoc),
           limit(pageSize)
@@ -153,7 +154,8 @@ class ExerciseController {
         q = query(
           collection(db, "exercises"),
           where("lessonId", "==", lessonId),
-          where("isDisabled", "==", isDisabled),
+          where("levelId", "==", data.levelId),
+          where("isDisabled", "==", data.isDisabled),
           orderBy("createdAt", "desc"),
           limit(pageSize)
         );
@@ -373,15 +375,15 @@ class ExerciseController {
           parsedOption && parsedOption.length > 0
             ? parsedOption // Prioritize text option if provided
             : uploadedOption && uploadedOption.length > 0
-            ? uploadedOption
-            : oldData.option;
+              ? uploadedOption
+              : oldData.option;
 
         const finalAnswer =
           parsedAnswer !== null
             ? parsedAnswer // Prioritize text answer if provided
             : uploadedAnswer !== null
-            ? uploadedAnswer
-            : oldData.answer;
+              ? uploadedAnswer
+              : oldData.answer;
 
         const finalImage = image !== null ? image : oldData.image;
 

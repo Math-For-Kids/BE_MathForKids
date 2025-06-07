@@ -41,7 +41,7 @@ router.get(
   levelMiddleware.checkLevelExistById("levelId"),
   exerciseController.filterByLessonAndLevel
 );
-router.get(
+router.post(
   "/filterByIsDisabled/:lessonId",
   lessonMiddleware.checkLessonExistById("lessonId"),
   exerciseController.filterByIsDisabled
