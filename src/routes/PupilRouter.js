@@ -12,6 +12,14 @@ router.post("/", pupilController.create);
 router.get("/countByDisabledStatus", pupilController.countByDisabledStatus);
 // Filter by isDisabled with pagination
 router.get("/filterByDisabledStatus", pupilController.filterByDisabledStatus);
+// Get count by grade 
+router.get("/countByGrade", pupilController.countByGrade);
+// Filter by grade with pagination
+router.get("/filterByGrade", pupilController.filterByGrade);
+// Get count by grade and isDisabled status
+router.get("/countByGradeAndDisabledStatus", pupilController.countByGradeAndDisabledStatus);
+// Filter by grade and isDisabled with pagination
+router.get("/filterByGradeAndDisabledStatus", pupilController.filterByGradeAndDisabledStatus);
 // Get total count of all pupils
 router.get("/countAll", pupilController.countAll);
 // Get all pupils

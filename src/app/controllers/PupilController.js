@@ -22,7 +22,7 @@ const { s3 } = require("../services/AwsService");
 const { v4: uuidv4 } = require("uuid");
 
 class PupilController {
-  
+
   countByDisabledStatus = async (req, res, next) => {
     try {
       const data = req.body;
@@ -62,6 +62,138 @@ class PupilController {
       } else {
         q = query(
           collection(db, "pupils"),
+          where("isDisabled", "==", data.isDisabled),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const pupils = snapshot.docs.map((doc) => Pupil.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: pupils,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  countByGrade = async (req, res, next) => {
+    try {
+      const data = req.body;
+      const q = query(
+        collection(db, "pupils"),
+        where("grade", "==", data.grade),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send(snapshot.data().count);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  filterByGrade = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const data = req.body;
+
+      let q;
+
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "pupils", startAfterId));
+        q = query(
+          collection(db, "pupils"),
+          where("grade", "==", data.grade),
+          orderBy("createdAt", "desc"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "pupils"),
+          where("grade", "==", data.grade),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const pupils = snapshot.docs.map((doc) => Pupil.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: pupils,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  countByGradeAndDisabledStatus = async (req, res, next) => {
+    try {
+      const data = req.body;
+      const q = query(
+        collection(db, "pupils"),
+        where("grade", "==", data.grade),
+        where("isDisabled", "==", data.isDisabled),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send(snapshot.data().count);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // 
+  filterByGradeAndDisabledStatus = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const data = req.body;
+
+      let q;
+
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "pupils", startAfterId));
+        q = query(
+          collection(db, "pupils"),
+          where("grade", "==", data.grade),
+          where("isDisabled", "==", data.isDisabled),
+          orderBy("createdAt", "desc"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "pupils"),
+          where("grade", "==", data.grade),
           where("isDisabled", "==", data.isDisabled),
           orderBy("createdAt", "desc"),
           limit(pageSize)
