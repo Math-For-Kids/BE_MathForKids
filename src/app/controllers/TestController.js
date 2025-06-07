@@ -42,22 +42,6 @@ class TestController {
     }
   };
 
-  // Get all tests
-  getAll = async (req, res, next) => {
-    try {
-      const tests = await getDocs(collection(db, "tests"));
-      const testData = tests.docs.map((doc) => Tests.fromFirestore(doc));
-      res.status(200).send(testData);
-    } catch (error) {
-      res.status(500).send({
-        message: {
-          en: error.message,
-          vi: "Đã xảy ra lỗi nội bộ.",
-        },
-      });
-    }
-  };
-
   // Get test by ID
   getById = async (req, res, next) => {
     const id = req.params.id;
@@ -65,9 +49,8 @@ class TestController {
     res.status(200).send({ id: id, ...test });
   };
 
-
-  // Get tests pasge
-  getAllpasge = async (req, res) => {
+  // Get all paginated tests
+  getAll = async (req, res) => {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
@@ -78,11 +61,13 @@ class TestController {
         q = query(
           collection(db, "tests"),
           startAfter(startDoc),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       } else {
         q = query(
           collection(db, "tests"),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       }
@@ -120,12 +105,14 @@ class TestController {
           collection(db, "tests"),
           where("pupilId", "==", pupilID),
           startAfter(startDoc),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       } else {
         q = query(
           collection(db, "tests"),
           where("pupilId", "==", pupilID),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       }
@@ -163,12 +150,14 @@ class TestController {
           collection(db, "tests"),
           where("lessonId", "==", lessonID),
           startAfter(startDoc),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       } else {
         q = query(
           collection(db, "tests"),
           where("lessonId", "==", lessonID),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       }
@@ -194,55 +183,48 @@ class TestController {
 
   //Filter by point
   filterByPoint = async (req, res) => {
-  try {
-    const pageSize = parseInt(req.query.pageSize) || 10;
-    const startAfterId = req.query.startAfterId || null;
-    const point = parseFloat(req.params.point); // vì point là số
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { condition, point } = req.query;
 
-    if (isNaN(point)) {
-      return res.status(400).send({
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "tests", startAfterId));
+        q = query(
+          collection(db, "tests"),
+          where("point", condition, parseInt(point)),
+          startAfter(startDoc),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "tests"),
+          where("point", condition, parseInt(point)),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: tests,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
         message: {
-          en: "Invalid point value.",
-          vi: "Giá trị điểm không hợp lệ.",
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
         },
       });
     }
-
-    let q;
-    if (startAfterId) {
-      const startDoc = await getDoc(doc(db, "tests", startAfterId));
-      q = query(
-        collection(db, "tests"),
-        where("point", "==", point),
-        startAfter(startDoc),
-        limit(pageSize)
-      );
-    } else {
-      q = query(
-        collection(db, "tests"),
-        where("point", "==", point),
-        limit(pageSize)
-      );
-    }
-
-    const snapshot = await getDocs(q);
-    const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
-    const lastVisible = snapshot.docs[snapshot.docs.length - 1];
-    const lastVisibleId = lastVisible ? lastVisible.id : null;
-
-    res.status(200).send({
-      data: tests,
-      nextPageToken: lastVisibleId,
-    });
-  } catch (error) {
-    res.status(500).send({
-      message: {
-        en: error.message,
-        vi: "Đã xảy ra lỗi nội bộ.",
-      },
-    });
-  }
-};
+  };
 
   // Filter by pupilID & lessonID
   filterByPupilAndLesson = async (req, res) => {
@@ -259,6 +241,7 @@ class TestController {
           where("pupilId", "==", pupilID),
           where("lessonId", "==", lessonID),
           startAfter(startDoc),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       } else {
@@ -266,6 +249,7 @@ class TestController {
           collection(db, "tests"),
           where("pupilId", "==", pupilID),
           where("lessonId", "==", lessonID),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       }
@@ -291,69 +275,50 @@ class TestController {
 
   //Filter by lessonID & point
   filterByLessonIDAndPoint = async (req, res) => {
-  try {
-    const pageSize = parseInt(req.query.pageSize) || 10;
-    const startAfterId = req.query.startAfterId || null;
-    const { lessonID, point } = req.params;
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { lessonID } = req.params;
+      const { condition, point } = req.query;
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "tests", startAfterId));
+        q = query(
+          collection(db, "tests"),
+          where("lessonId", "==", lessonID),
+          where("point", condition, parseInt(point)),
+          startAfter(startDoc),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "tests"),
+          where("lessonId", "==", lessonID),
+          where("point", condition, parseInt(point)),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
 
-    if (!lessonID) {
-      return res.status(400).send({
+      const snapshot = await getDocs(q);
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: tests,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
         message: {
-          en: "Missing lessonID in URL parameters.",
-          vi: "Thiếu lessonID trong đường dẫn.",
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
         },
       });
     }
-
-    const pointNumber = parseFloat(point);
-    if (isNaN(pointNumber)) {
-      return res.status(400).send({
-        message: {
-          en: "Invalid point value.",
-          vi: "Giá trị điểm không hợp lệ.",
-        },
-      });
-    }
-
-    let q;
-    if (startAfterId) {
-      const startDoc = await getDoc(doc(db, "tests", startAfterId));
-      q = query(
-        collection(db, "tests"),
-        where("lessonId", "==", lessonID),
-        where("point", "==", pointNumber),
-        startAfter(startDoc),
-        limit(pageSize)
-      );
-    } else {
-      q = query(
-        collection(db, "tests"),
-        where("lessonId", "==", lessonID),
-        where("point", "==", pointNumber),
-        limit(pageSize)
-      );
-    }
-
-    const snapshot = await getDocs(q);
-    const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
-    const lastVisible = snapshot.docs[snapshot.docs.length - 1];
-    const lastVisibleId = lastVisible ? lastVisible.id : null;
-
-    res.status(200).send({
-      data: tests,
-      nextPageToken: lastVisibleId,
-    });
-  } catch (error) {
-    res.status(500).send({
-      message: {
-        en: error.message,
-        vi: "Đã xảy ra lỗi nội bộ.",
-      },
-    });
-  }
-};
-
-
+  };
 }
 
 module.exports = new TestController();

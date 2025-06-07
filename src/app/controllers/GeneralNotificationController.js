@@ -63,11 +63,13 @@ class GeneralNotificationController {
         q = query(
           collection(db, "general_notifications"),
           startAfter(startDoc),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       } else {
         q = query(
           collection(db, "general_notifications"),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       }

@@ -206,7 +206,7 @@ class LessonDetailController {
         where("lessonId", "==", lessonId)
       );
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -267,14 +267,14 @@ class LessonDetailController {
   countByLessonAndDisabledState = async (req, res, next) => {
     try {
       const { lessonId } = req.params;
-      const data = req.body;
+      const { isDisabled } = req.query;
       const q = query(
         collection(db, "lesson_details"),
         where("lessonId", "==", lessonId),
-        where("isDisabled", "==", data.isDisabled)
+        where("isDisabled", "==", isDisabled === "true")
       );
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -291,14 +291,14 @@ class LessonDetailController {
       const pageSize = parseInt(req.query.pageSize) || 10; // số bài học mỗi trang
       const startAfterId = req.query.startAfterId || null; // ID của document bắt đầu sau đó
       const { lessonId } = req.params;
-      const data = req.body;
+      const { isDisabled } = req.query;
       let q;
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "lesson_details", startAfterId));
         q = query(
           collection(db, "lesson_details"),
           where("lessonId", "==", lessonId),
-          where("isDisabled", "==", data.isDisabled),
+          where("isDisabled", "==", isDisabled === "true"),
           orderBy("order"),
           startAfter(startDoc),
           limit(pageSize)
@@ -307,7 +307,7 @@ class LessonDetailController {
         q = query(
           collection(db, "lesson_details"),
           where("lessonId", "==", lessonId),
-          where("isDisabled", "==", data.isDisabled),
+          where("isDisabled", "==", isDisabled === "true"),
           orderBy("order"),
           limit(pageSize)
         );

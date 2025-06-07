@@ -42,26 +42,6 @@ class CompletedExerciseController {
     }
   };
 
-  // Get all completed exercises
-  getAll = async (req, res, next) => {
-    try {
-      const completedExercises = await getDocs(
-        collection(db, "completed_exercises")
-      );
-      const completedExerciseData = completedExercises.docs.map((doc) =>
-        CompletedExercises.fromFirestore(doc)
-      );
-      res.status(200).send(completedExerciseData);
-    } catch (error) {
-      res.status(500).send({
-        message: {
-          en: error.message,
-          vi: "Đã xảy ra lỗi nội bộ.",
-        },
-      });
-    }
-  };
-
   // Get completed exercise by ID
   getById = async (req, res, next) => {
     const id = req.params.id;
@@ -71,8 +51,8 @@ class CompletedExerciseController {
 
 
 
-  // Get completed exercise pasge
-  getAllpasge = async (req, res) => {
+  // Get all paginated completed exercises
+  getAll = async (req, res) => {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
@@ -83,11 +63,13 @@ class CompletedExerciseController {
         q = query(
           collection(db, "completed_exercises"),
           startAfter(startDoc),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       } else {
         q = query(
           collection(db, "tests"),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       }
@@ -125,12 +107,14 @@ class CompletedExerciseController {
           collection(db, "completed_exercises"),
           where("pupilId", "==", pupilID),
           startAfter(startDoc),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       } else {
         q = query(
           collection(db, "completed_exercises"),
           where("pupilId", "==", pupilID),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       }
@@ -168,12 +152,14 @@ class CompletedExerciseController {
           collection(db, "completed_exercises"),
           where("lessonId", "==", lessonID),
           startAfter(startDoc),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       } else {
         q = query(
           collection(db, "completed_exercises"),
           where("lessonId", "==", lessonID),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       }
@@ -202,30 +188,22 @@ class CompletedExerciseController {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
-      const point = parseFloat(req.params.point); // vì point là số
-
-      if (isNaN(point)) {
-        return res.status(400).send({
-          message: {
-            en: "Invalid point value.",
-            vi: "Giá trị điểm không hợp lệ.",
-          },
-        });
-      }
-
+      const { condition, point } = req.query;
       let q;
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "completed_exercises", startAfterId));
         q = query(
           collection(db, "completed_exercises"),
-          where("point", "==", point),
+          where("point", condition, parseInt(point)),
           startAfter(startDoc),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       } else {
         q = query(
           collection(db, "completed_exercises"),
-          where("point", "==", point),
+          where("point", condition, parseInt(point)),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       }
@@ -264,6 +242,7 @@ class CompletedExerciseController {
           where("pupilId", "==", pupilID),
           where("lessonId", "==", lessonID),
           startAfter(startDoc),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       } else {
@@ -271,6 +250,7 @@ class CompletedExerciseController {
           collection(db, "completed_exercises"),
           where("pupilId", "==", pupilID),
           where("lessonId", "==", lessonID),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       }
@@ -299,42 +279,25 @@ class CompletedExerciseController {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
-      const { lessonID, point } = req.params;
-
-      if (!lessonID) {
-        return res.status(400).send({
-          message: {
-            en: "Missing lessonID in URL parameters.",
-            vi: "Thiếu lessonID trong đường dẫn.",
-          },
-        });
-      }
-
-      const pointNumber = parseFloat(point);
-      if (isNaN(pointNumber)) {
-        return res.status(400).send({
-          message: {
-            en: "Invalid point value.",
-            vi: "Giá trị điểm không hợp lệ.",
-          },
-        });
-      }
-
+      const { lessonID } = req.params;
+      const { condition, point } = req.query;
       let q;
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "completed_exercises", startAfterId));
         q = query(
           collection(db, "completed_exercises"),
           where("lessonId", "==", lessonID),
-          where("point", "==", pointNumber),
+          where("point", condition, parseInt(point)),
           startAfter(startDoc),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       } else {
         q = query(
           collection(db, "completed_exercises"),
           where("lessonId", "==", lessonID),
-          where("point", "==", pointNumber),
+          where("point", condition, parseInt(point)),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       }

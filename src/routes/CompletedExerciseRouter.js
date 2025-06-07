@@ -7,32 +7,45 @@ const router = express.Router();
 
 // Create completed exercise
 router.post("/", ceController.create);
-// Get all completed exercises
-router.get("/", ceController.getAll);
 // Get completed exercise by ID
 router.get(
   "/:id",
   ceMiddleware.checkCompletedExerciseExistById(),
   ceController.getById
 );
-
-//get all test pasge
-router.get("/getall", ceController.getAllpasge);
+// Get all paginated completed exercises
+router.get("/getAll", ceController.getAll);
 
 // Filter paginated completed exercise by pupilID
-router.get("/pupil/:pupilID", ceController.filterByPupilID);
+router.get(
+  "/filterByPupilID/:pupilID",
+  pupilMiddleware.checkPupilExistById("pupilID"),
+  ceController.filterByPupilID
+);
 
 // Filter paginated completed exercise by lessonID
-router.get("/lesson/:lessonID", ceController.filterByLessonID);
+router.get(
+  "/filterByLessonID/:lessonID",
+  lessonMiddleware.checkLessonExistById("lessonID"),
+  ceController.filterByLessonID
+);
 
 // Filter paginated completed exercise by point
-router.get("/point/:point", ceController.filterByPoint);
+router.get("/filterByPoint", ceController.filterByPoint);
 
 // Filter by pupilID & lessonID
-router.get("/pupil/:pupilID/lesson/:lessonID", ceController.filterByPupilAndLesson);
+router.get(
+  "/filterByPupilAndLesson/:pupilID/:lessonID",
+  pupilMiddleware.checkPupilExistById("pupilID"),
+  lessonMiddleware.checkLessonExistById("lessonID"),
+  ceController.filterByPupilAndLesson
+);
 
 // Filter by lessonID & point
-router.get("/lesson/:lessonID/point/:point", ceController.filterByLessonIDAndPoint);
-
+router.get(
+  "/filterByLessonIDAndPoint/:lessonID",
+  lessonMiddleware.checkLessonExistById("lessonID"),
+  ceController.filterByLessonIDAndPoint
+);
 
 module.exports = router;

@@ -19,16 +19,15 @@ const {
 const db = getFirestore();
 
 class DailyTaskController {
-
   countByDisabledStatus = async (req, res, next) => {
     try {
-      const data = req.body;
+      const { isDisabled } = req.query;
       const q = query(
         collection(db, "daily_tasks"),
-        where("isDisabled", "==", data.isDisabled)
+        where("isDisabled", "==", isDisabled === "true")
       );
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -43,15 +42,13 @@ class DailyTaskController {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
-      const data = req.body;
-
+      const { isDisabled } = req.query;
       let q;
-
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "daily_tasks", startAfterId));
         q = query(
           collection(db, "daily_tasks"),
-          where("isDisabled", "==", data.isDisabled),
+          where("isDisabled", "==", isDisabled === "true"),
           orderBy("createdAt", "desc"),
           startAfter(startDoc),
           limit(pageSize)
@@ -59,7 +56,7 @@ class DailyTaskController {
       } else {
         q = query(
           collection(db, "daily_tasks"),
-          where("isDisabled", "==", data.isDisabled),
+          where("isDisabled", "==", isDisabled === "true"),
           orderBy("createdAt", "desc"),
           limit(pageSize)
         );
@@ -83,8 +80,6 @@ class DailyTaskController {
       });
     }
   };
-
-
 
   // Create daily task
   create = async (req, res, next) => {
@@ -113,11 +108,9 @@ class DailyTaskController {
 
   countAll = async (req, res, next) => {
     try {
-      const q = query(
-        collection(db, "daily_tasks"),
-      );
+      const q = query(collection(db, "daily_tasks"));
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -185,7 +178,6 @@ class DailyTaskController {
       });
     }
   };
-
 
   // Get enable daily tasks
   getEnabledDailyTask = async (req, res, next) => {

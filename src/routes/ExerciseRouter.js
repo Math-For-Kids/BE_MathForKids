@@ -41,10 +41,18 @@ router.get(
   levelMiddleware.checkLevelExistById("levelId"),
   exerciseController.filterByLessonAndLevel
 );
-router.post(
+// Filter all paginated exercises by lesson ID and disabled state
+router.get(
   "/filterByIsDisabled/:lessonId",
   lessonMiddleware.checkLessonExistById("lessonId"),
   exerciseController.filterByIsDisabled
+);
+// Filter all paginated exercises by lesson ID, level ID and disabled state
+router.get(
+  "/filterByLevelAndIsDisabled/:lessonId/:levelId",
+  lessonMiddleware.checkLessonExistById("lessonId"),
+  levelMiddleware.checkLevelExistById("levelId"),
+  exerciseController.filterByLevelAndIsDisabled
 );
 // Get enabled exercises by lessonId
 router.get(
