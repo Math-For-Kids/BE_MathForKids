@@ -220,7 +220,7 @@ class LessonDetailController {
   // Get all paginated lesson details by lesson ID
   getByLesson = async (req, res) => {
     try {
-      const pageSize = parseInt(req.query.pageSize) || 10; // số bài học mỗi trang
+      const pageSize = parseInt(req.query.pageSize); // số bài học mỗi trang
       const startAfterId = req.query.startAfterId || null; // ID của document bắt đầu sau đó
       const { lessonId } = req.params;
       let q;
