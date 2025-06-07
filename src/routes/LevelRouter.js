@@ -21,5 +21,7 @@ router.patch(
   levelMiddleware.checkLevelExistById(),
   levelController.update
 );
+// Filter paginated levels by disabled state
+router.post('/filter', levelController.filterAll);
 
 module.exports = router;

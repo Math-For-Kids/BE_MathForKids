@@ -12,6 +12,8 @@ const {
   query,
   where,
   orderBy,
+  limit,
+  startAfter,
 } = require("firebase/firestore");
 const db = getFirestore();
 
@@ -63,62 +65,37 @@ class TestController {
     res.status(200).send({ id: id, ...test });
   };
 
-  // Get tests by pupil ID
-  getTestByPupilId = async (req, res, next) => {
+
+  // Get tests pasge
+  getAllpasge = async (req, res) => {
     try {
-      const pupilId = req.params.id;
-      console.log("Querying for pupilId:", pupilId); // Debug log
-      const q = query(
-        collection(db, "tests"),
-        where("pupilId", "==", pupilId),
-        orderBy("createdAt", "desc")
-      );
-      const testSnapshot = await getDocs(q);
-      const testArray = testSnapshot.docs.map((doc) =>
-        Tests.fromFirestore(doc)
-      );
-      res.status(200).send(testArray);
-    } catch (error) {
-      res.status(500).send({
-        message: {
-          en: error.message,
-          vi: "Đã xảy ra lỗi nội bộ.",
-        },
-      });
-    }
-  };
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
 
-  // Get tests by lesson ID
-  getTestsByLesson = async (req, res, next) => {
-    try {
-      const lessonId = req.params.lessonId;
-      console.log("Querying for lessonId:", lessonId); // Debug log
-      const q = query(
-        collection(db, "tests"),
-        where("lessonId", "==", lessonId)
-      );
-      const testSnapshot = await getDocs(q);
-
-      const allTests = testSnapshot.docs.map((doc) => Tests.fromFirestore(doc));
-      // Lấy test mới nhất theo pupilId
-      const latestTestsByPupil = {};
-
-      for (const test of allTests) {
-        const pupilId = test.pupilId;
-        const current = latestTestsByPupil[pupilId];
-
-        // Nếu chưa có hoặc test mới hơn => cập nhật
-        if (
-          !current ||
-          new Date(test.createdAt) > new Date(current.createdAt)
-        ) {
-          latestTestsByPupil[pupilId] = test;
-        }
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "tests", startAfterId));
+        q = query(
+          collection(db, "tests"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "tests"),
+          limit(pageSize)
+        );
       }
 
-      // Trả về mảng kết quả
-      const result = Object.values(latestTestsByPupil);
-      res.status(200).send(result);
+      const snapshot = await getDocs(q);
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: tests,
+        nextPageToken: lastVisibleId,
+      });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -129,21 +106,39 @@ class TestController {
     }
   };
 
-  // Get test by pupil ID & lesson ID
-  getTestsByPupilIdAndLesson = async (req, res, next) => {
+  //Filter paginated tests by pupilID
+  filterByPupilID = async (req, res) => {
     try {
-      const { pupilId, lessonId } = req.params;
-      console.log("Querying for lessonId:", pupilId, "and lessonId", lessonId); // Debug log
-      const q = query(
-        collection(db, "tests"),
-        where("pupilId", "==", pupilId),
-        where("lessonId", "==", lessonId)
-      );
-      const testSnapshot = await getDocs(q);
-      const testArray = testSnapshot.docs.map((doc) =>
-        Tests.fromFirestore(doc)
-      );
-      res.status(200).send(testArray);
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { pupilID } = req.params;
+
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "tests", startAfterId));
+        q = query(
+          collection(db, "tests"),
+          where("pupilId", "==", pupilID),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "tests"),
+          where("pupilId", "==", pupilID),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: tests,
+        nextPageToken: lastVisibleId,
+      });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -153,6 +148,212 @@ class TestController {
       });
     }
   };
+
+  //Filter by lessonID
+  filterByLessonID = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { lessonID } = req.params;
+
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "tests", startAfterId));
+        q = query(
+          collection(db, "tests"),
+          where("lessonId", "==", lessonID),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "tests"),
+          where("lessonId", "==", lessonID),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: tests,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  //Filter by point
+  filterByPoint = async (req, res) => {
+  try {
+    const pageSize = parseInt(req.query.pageSize) || 10;
+    const startAfterId = req.query.startAfterId || null;
+    const point = parseFloat(req.params.point); // vì point là số
+
+    if (isNaN(point)) {
+      return res.status(400).send({
+        message: {
+          en: "Invalid point value.",
+          vi: "Giá trị điểm không hợp lệ.",
+        },
+      });
+    }
+
+    let q;
+    if (startAfterId) {
+      const startDoc = await getDoc(doc(db, "tests", startAfterId));
+      q = query(
+        collection(db, "tests"),
+        where("point", "==", point),
+        startAfter(startDoc),
+        limit(pageSize)
+      );
+    } else {
+      q = query(
+        collection(db, "tests"),
+        where("point", "==", point),
+        limit(pageSize)
+      );
+    }
+
+    const snapshot = await getDocs(q);
+    const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+    const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+    const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+    res.status(200).send({
+      data: tests,
+      nextPageToken: lastVisibleId,
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: {
+        en: error.message,
+        vi: "Đã xảy ra lỗi nội bộ.",
+      },
+    });
+  }
+};
+
+  // Filter by pupilID & lessonID
+  filterByPupilAndLesson = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { pupilID, lessonID } = req.params;
+
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "tests", startAfterId));
+        q = query(
+          collection(db, "tests"),
+          where("pupilId", "==", pupilID),
+          where("lessonId", "==", lessonID),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "tests"),
+          where("pupilId", "==", pupilID),
+          where("lessonId", "==", lessonID),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: tests,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  //Filter by lessonID & point
+  filterByLessonIDAndPoint = async (req, res) => {
+  try {
+    const pageSize = parseInt(req.query.pageSize) || 10;
+    const startAfterId = req.query.startAfterId || null;
+    const { lessonID, point } = req.params;
+
+    if (!lessonID) {
+      return res.status(400).send({
+        message: {
+          en: "Missing lessonID in URL parameters.",
+          vi: "Thiếu lessonID trong đường dẫn.",
+        },
+      });
+    }
+
+    const pointNumber = parseFloat(point);
+    if (isNaN(pointNumber)) {
+      return res.status(400).send({
+        message: {
+          en: "Invalid point value.",
+          vi: "Giá trị điểm không hợp lệ.",
+        },
+      });
+    }
+
+    let q;
+    if (startAfterId) {
+      const startDoc = await getDoc(doc(db, "tests", startAfterId));
+      q = query(
+        collection(db, "tests"),
+        where("lessonId", "==", lessonID),
+        where("point", "==", pointNumber),
+        startAfter(startDoc),
+        limit(pageSize)
+      );
+    } else {
+      q = query(
+        collection(db, "tests"),
+        where("lessonId", "==", lessonID),
+        where("point", "==", pointNumber),
+        limit(pageSize)
+      );
+    }
+
+    const snapshot = await getDocs(q);
+    const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+    const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+    const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+    res.status(200).send({
+      data: tests,
+      nextPageToken: lastVisibleId,
+    });
+  } catch (error) {
+    res.status(500).send({
+      message: {
+        en: error.message,
+        vi: "Đã xảy ra lỗi nội bộ.",
+      },
+    });
+  }
+};
+
+
 }
 
 module.exports = new TestController();
