@@ -12,6 +12,11 @@ router.get(
   pupilMiddleware.checkPupilExistById("pupilId"),
   notificationController.getWithin30DaysByPupilId
 );
+router.get(
+  "/getWithin30Days/:pupilId",
+  pupilMiddleware.checkPupilExistById("pupilId"),
+  notificationController.getWithin30DaysByPupilId
+);
 // Get pupil notification by ID
 router.get(
   "/:id",

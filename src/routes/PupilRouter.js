@@ -8,6 +8,12 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // Create pupil
 router.post("/", pupilController.create);
+// Get count by isDisabled status
+router.get("/countByDisabledStatus", pupilController.countByDisabledStatus);
+// Filter by isDisabled with pagination
+router.get("/filterByDisabledStatus", pupilController.filterByDisabledStatus);
+// Get total count of all pupils
+router.get("/countAll", pupilController.countAll);
 // Get all pupils
 router.get("/", pupilController.getAll);
 // Get enabled pupils by user ID

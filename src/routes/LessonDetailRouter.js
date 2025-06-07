@@ -46,7 +46,6 @@ router.get(
   lessonMiddleware.checkLessonExistById("lessonId"),
   controller.countByLessonAndDisabledState
 );
-
 // Get enabled lesson details by lesson ID
 router.get(
   "/getEnabledByLesson/:lessonId",

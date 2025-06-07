@@ -11,6 +11,10 @@ const {
   serverTimestamp,
   query,
   where,
+  orderBy,
+  limit,
+  getCountFromServer,
+  startAfter,
   Timestamp,
   writeBatch,
   deleteField,
@@ -21,15 +25,16 @@ const { s3 } = require("../services/AwsService");
 const { v4: uuidv4 } = require("uuid");
 
 class UserController {
-  // Get all users
-  getAll = async (req, res, next) => {
+
+  countByDisabledStatus = async (req, res, next) => {
     try {
-      const usersSnapshot = await getDocs(collection(db, "users"));
-      const users = usersSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      res.status(200).send(users);
+      const data = req.body;
+      const q = query(
+        collection(db, "users"),
+        where("isDisabled", "==", data.isDisabled)
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send(snapshot.data().count);
     } catch (error) {
       res.status(500).send({
         message: {
@@ -39,6 +44,115 @@ class UserController {
       });
     }
   };
+
+  filterByDisabledStatus = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const data = req.body;
+
+      let q;
+
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "users", startAfterId));
+        q = query(
+          collection(db, "users"),
+          where("isDisabled", "==", data.isDisabled),
+          orderBy("createdAt", "desc"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "users"),
+          where("isDisabled", "==", data.isDisabled),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const users = snapshot.docs.map((doc) => User.fromFirestore(doc));
+
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: users,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  countAll = async (req, res, next) => {
+    try {
+      const q = query(
+        collection(db, "users"),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send(snapshot.data().count);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Get all users
+  getAll = async (req, res, next) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+
+      let q;
+
+      if (startAfterId) {
+        const startDocRef = doc(db, "users", startAfterId);
+        const startDocSnap = await getDoc(startDocRef);
+
+        if (!startDocSnap.exists()) {
+          return res.status(400).send({ message: "Invalid startAfterId" });
+        }
+
+        q = query(
+          collection(db, "users"),
+          orderBy("createdAt", "desc"),
+          startAfter(startDocSnap),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "users"),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const users = snapshot.docs.map((doc) => User.fromFirestore(doc));
+
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: users,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({ message: error.message });
+    }
+  };
+
 
   // Get an user by ID
   getById = async (req, res, next) => {
@@ -233,12 +347,13 @@ class UserController {
       const dateOfBirthTimestamp = Timestamp.fromDate(date);
       const userData = {
         ...data,
-        email: data.email.toLowerCase(),
+        email: data.email ? data.email.toLowerCase() : "",
         dateOfBirth: dateOfBirthTimestamp,
         role: data.role ? data.role : "user",
         isVerify: false,
         otpCode: null,
         otpExpiration: null,
+        pin: data.pin,
         volume: 100,
         language: "en",
         mode: "light",
@@ -273,19 +388,23 @@ class UserController {
     try {
       const id = req.params.id;
       const data = req.body;
-
-      // Nếu có trường dateOfBirth thì chuyển thành Timestamp
+      console.log("email", data.email);
       if (data.dateOfBirth) {
         const date = new Date(data.dateOfBirth);
         data.dateOfBirth = Timestamp.fromDate(date);
+      }
+      if (data.email) {
+        data.email = data.email.toLowerCase();
+      } else {
+        data.email = "";
       }
 
       const userRef = doc(db, "users", id);
       await updateDoc(userRef, {
         ...data,
-        email: data.email.toLowerCase(),
         updatedAt: serverTimestamp(),
       });
+
       res.status(200).send({
         message: {
           en: "User information updated successfully!",
@@ -293,6 +412,7 @@ class UserController {
         },
       });
     } catch (error) {
+      console.error("Update user error:", error);
       res.status(500).send({
         message: {
           en: error.message,

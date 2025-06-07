@@ -5,6 +5,12 @@ const router = express.Router();
 
 // Create daily task
 router.post("/", dailyTaskController.create);
+// Get count by isDisabled status
+router.get("/countByDisabledStatus", dailyTaskController.countByDisabledStatus);
+// Filter by isDisabled with pagination
+router.get("/filterByDisabledStatus", dailyTaskController.filterByDisabledStatus);
+// Get total count of all daily tasks
+router.get("/countAll", dailyTaskController.countAll);
 // Get all daily tasks
 router.get("/", dailyTaskController.getAll);
 // Get enabled daily tasks

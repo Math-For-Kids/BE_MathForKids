@@ -144,31 +144,35 @@ class AuthController {
         message: error.statusCode
           ? error.message
           : {
-            en: error.message,
-            vi: "Đã xảy ra lỗi nội bộ.",
-          },
+              en: error.message,
+              vi: "Đã xảy ra lỗi nội bộ.",
+            },
       });
     }
   };
 
-  // Verify and Authentication
   verifyOtpAndAuthenticate = async (req, res, next) => {
     try {
       const { id } = req.params;
       const user = req.user;
       const { otpCode } = req.body;
+
       // Verify OTP
-      verify(user, otpCode);
+      await verify(user, otpCode);
+
       // Update OTP code
       await updateOTP(id, null, null);
+
       // Gửi token về client
       const token = jwt.sign({ id: id }, process.env.JWT_SECRET, {
         expiresIn: process.env.JWT_EXPIRE,
       });
+
       const options = {
         expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
         httpOnly: true,
       };
+
       res
         .status(200)
         .cookie("token", token, options)
@@ -188,9 +192,9 @@ class AuthController {
         message: error.statusCode
           ? error.message
           : {
-            en: error.message,
-            vi: "Đã xảy ra lỗi nội bộ.",
-          },
+              en: error.message,
+              vi: "Đã xảy ra lỗi nội bộ.",
+            },
       });
     }
   };

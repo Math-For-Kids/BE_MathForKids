@@ -12,6 +12,12 @@ router.post(
   userMiddleware.checkEmailExistForCreate,
   userController.create
 );
+// Get count by isDisabled status
+router.get("/countByDisabledStatus", userController.countByDisabledStatus);
+// Filter by isDisabled with pagination
+router.get("/filterByDisabledStatus", userController.filterByDisabledStatus);
+// Get total count of all users
+router.get("/countAll", userController.countAll);
 // Get all users
 router.get("/", userController.getAll);
 // Get an user by ID

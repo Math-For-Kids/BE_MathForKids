@@ -185,15 +185,39 @@ class LessonController {
   };
 
   // Get enable lesson by grade & type
+  // getByGradeAndType = async (req, res, next) => {
+  //   try {
+  //     const data = req.body;
+  //     const q = query(
+  //       collection(db, "lessons"),
+  //       where("grade", "==", data.grade),
+  //       where("type", "==", data.type),
+  //       where("isDisabled", "==", false)
+  //     );
+  //     const lessons = await getDocs(q);
+  //     const lessonArray = lessons.docs.map((doc) => Lesson.fromFirestore(doc));
+  //     res.status(200).send(lessonArray);
+  //   } catch (error) {
+  //     res.status(500).send({
+  //       message: {
+  //         en: error.message,
+  //         vi: "Đã xảy ra lỗi nội bộ.",
+  //       },
+  //     });
+  //   }
+  // };
+  // Get enable lessons by grade & type (via query params)
   getByGradeAndType = async (req, res, next) => {
     try {
-      const data = req.body;
+      const { grade, type } = req.query;
+
       const q = query(
         collection(db, "lessons"),
-        where("grade", "==", data.grade),
-        where("type", "==", data.type),
+        where("grade", "==", Number(grade)), // ép kiểu vì query param là string
+        where("type", "==", type),
         where("isDisabled", "==", false)
       );
+
       const lessons = await getDocs(q);
       const lessonArray = lessons.docs.map((doc) => Lesson.fromFirestore(doc));
       res.status(200).send(lessonArray);
@@ -218,7 +242,7 @@ class LessonController {
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const data = req.body;
+      const { createdAt, ...data } = req.body;
       const lesson = doc(db, "lessons", id);
       await updateDoc(lesson, { ...data, updatedAt: serverTimestamp() });
       res.status(200).send({ message: "Lesson updated successfully!" });

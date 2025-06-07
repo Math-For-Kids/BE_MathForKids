@@ -267,6 +267,33 @@ class ExerciseController {
       });
     }
   };
+  // Get an exercise by type and grade
+  getByGradeAndType = async (req, res, next) => {
+    try {
+      const { grade, type } = req.query;
+
+      const q = query(
+        collection(db, "exercises"),
+        where("grade", "==", Number(grade)),
+        where("type", "==", type),
+        where("isDisabled", "==", false)
+      );
+
+      const snapshot = await getDocs(q);
+      const exerciseArray = snapshot.docs.map((doc) =>
+        Exercise.fromFirestore(doc)
+      );
+
+      res.status(200).send(exerciseArray);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
 
   // Get an exercise by ID
   getById = async (req, res, next) => {
@@ -346,15 +373,15 @@ class ExerciseController {
           parsedOption && parsedOption.length > 0
             ? parsedOption // Prioritize text option if provided
             : uploadedOption && uploadedOption.length > 0
-              ? uploadedOption
-              : oldData.option;
+            ? uploadedOption
+            : oldData.option;
 
         const finalAnswer =
           parsedAnswer !== null
             ? parsedAnswer // Prioritize text answer if provided
             : uploadedAnswer !== null
-              ? uploadedAnswer
-              : oldData.answer;
+            ? uploadedAnswer
+            : oldData.answer;
 
         const finalImage = image !== null ? image : oldData.image;
 

@@ -7,7 +7,11 @@ const {
   getDoc,
   getDocs,
   updateDoc,
+  orderBy,
+  limit,
+  startAfter,
   serverTimestamp,
+  getCountFromServer,
   query,
   where,
   Timestamp,
@@ -18,6 +22,72 @@ const { s3 } = require("../services/AwsService");
 const { v4: uuidv4 } = require("uuid");
 
 class PupilController {
+  
+  countByDisabledStatus = async (req, res, next) => {
+    try {
+      const data = req.body;
+      const q = query(
+        collection(db, "pupils"),
+        where("isDisabled", "==", data.isDisabled)
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send(snapshot.data().count);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  filterByDisabledStatus = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const data = req.body;
+
+      let q;
+
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "pupils", startAfterId));
+        q = query(
+          collection(db, "pupils"),
+          where("isDisabled", "==", data.isDisabled),
+          orderBy("createdAt", "desc"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "pupils"),
+          where("isDisabled", "==", data.isDisabled),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const pupils = snapshot.docs.map((doc) => Pupil.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: pupils,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+
   // Create pupil
   create = async (req, res, next) => {
     try {
@@ -47,12 +117,13 @@ class PupilController {
     }
   };
 
-  // Get all pupils
-  getAll = async (req, res, next) => {
+  countAll = async (req, res, next) => {
     try {
-      const pupils = await getDocs(collection(db, "pupils"));
-      const pupilArray = pupils.docs.map((doc) => Pupil.fromFirestore(doc));
-      res.status(200).send(pupilArray);
+      const q = query(
+        collection(db, "pupils"),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send(snapshot.data().count);
     } catch (error) {
       res.status(500).send({
         message: {
@@ -62,6 +133,62 @@ class PupilController {
       });
     }
   };
+
+  // Get all pupils
+  getAll = async (req, res, next) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+
+      let q;
+
+      if (startAfterId) {
+        const startDocRef = doc(db, "pupils", startAfterId);
+        const startDocSnap = await getDoc(startDocRef);
+
+        if (!startDocSnap.exists()) {
+          return res.status(400).send({
+            message: {
+              en: "Invalid startAfterId",
+              vi: "startAfterId không hợp lệ",
+            },
+          });
+        }
+
+        q = query(
+          collection(db, "pupils"),
+          orderBy("createdAt", "desc"),
+          startAfter(startDocSnap),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "pupils"),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const pupilArray = snapshot.docs.map((doc) => Pupil.fromFirestore(doc));
+
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: pupilArray,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
 
   // Get a pupil by ID
   getById = async (req, res, next) => {

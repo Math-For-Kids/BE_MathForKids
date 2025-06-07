@@ -14,7 +14,8 @@ const db = getFirestore();
 class AuthMiddleware {
   // Check if user role matches the required role
   checkRole = async (req, res, next) => {
-    const { userRole } = req.params.userRole;
+    // const { userRole } = req.params.userRole;
+    const { userRole } = req.params;
     const user = req.user;
     if (!userRole || user.role === userRole) return next();
     return res.status(403).json({

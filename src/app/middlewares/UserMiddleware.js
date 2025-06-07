@@ -12,21 +12,22 @@ const {
 const db = getFirestore();
 
 const queryPhoneNumber = async (phoneNumber) => {
+  if (!phoneNumber || typeof phoneNumber !== "string")
+    return { empty: true, docs: [] };
   const q = query(
     collection(db, "users"),
     where("phoneNumber", "==", phoneNumber.trim())
   );
-  const querySnapshot = await getDocs(q);
-  return querySnapshot;
+  return await getDocs(q);
 };
 
 const queryEmail = async (email) => {
+  if (!email || typeof email !== "string") return { empty: true, docs: [] };
   const q = query(
     collection(db, "users"),
     where("email", "==", email.trim().toLowerCase())
   );
-  const querySnapshot = await getDocs(q);
-  return querySnapshot;
+  return await getDocs(q);
 };
 
 class UserMiddleware {
