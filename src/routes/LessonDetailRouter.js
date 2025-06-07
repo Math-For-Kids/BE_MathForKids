@@ -42,7 +42,7 @@ router.get(
 );
 // Filter all paginated lesson details by lesson ID & disabled state
 router.get(
-  "/getByLesson/:lessonId",
+  "/filtergetByLesson/:lessonId",
   lessonMiddleware.checkLessonExistById("lessonId"),
   controller.filterByLessonAndDisabledState
 );

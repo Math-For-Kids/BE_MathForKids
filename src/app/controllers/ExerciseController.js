@@ -106,7 +106,7 @@ class ExerciseController {
         q = query(
           collection(db, "exercises"),
           where("lessonId", "==", lessonId),
-          orderBy("createdAt","desc"),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       }
@@ -154,8 +154,8 @@ class ExerciseController {
   // Filter all paginated exercises by lesson ID & level ID
   filterByLessonAndLevel = async (req, res, next) => {
     try {
-      const pageSize = parseInt(req.query.pageSize) || 10; // số bài học mỗi trang
-      const startAfterId = req.query.startAfterId || null; // ID của document bắt đầu sau đó
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
       const { lessonId, levelID } = req.params;
       let q;
       if (startAfterId) {
@@ -164,7 +164,8 @@ class ExerciseController {
           collection(db, "exercises"),
           where("lessonId", "==", lessonId),
           where("levelID", "==", levelID),
-          orderBy("createdAt","desc"),
+          where("isDisabled", "==", false),
+          orderBy("createdAt", "desc"),
           startAfter(startDoc),
           limit(pageSize)
         );
@@ -173,19 +174,19 @@ class ExerciseController {
           collection(db, "exercises"),
           where("lessonId", "==", lessonId),
           where("levelID", "==", levelID),
-          orderBy("createdAt","desc"),
+          where("isDisabled", "==", false),
+          orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       }
       const snapshot = await getDocs(q);
       const exercises = snapshot.docs.map((doc) => Exercise.fromFirestore(doc));
-
       const lastVisible = snapshot.docs[snapshot.docs.length - 1];
       const lastVisibleId = lastVisible ? lastVisible.id : null;
 
       res.status(200).send({
         data: exercises,
-        nextPageToken: lastVisibleId, // Dùng làm startAfterId cho trang kế
+        nextPageToken: lastVisibleId,
       });
     } catch (error) {
       res.status(500).send({

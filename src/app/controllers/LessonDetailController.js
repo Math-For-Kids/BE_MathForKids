@@ -291,14 +291,14 @@ class LessonDetailController {
       const pageSize = parseInt(req.query.pageSize) || 10; // số bài học mỗi trang
       const startAfterId = req.query.startAfterId || null; // ID của document bắt đầu sau đó
       const { lessonId } = req.params;
-      const data = req.body;
+      const isDisabled = req.query.isDisabled === 'true' ? true : req.query.isDisabled === 'false' ? false : undefined;
       let q;
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "lesson_details", startAfterId));
         q = query(
           collection(db, "lesson_details"),
           where("lessonId", "==", lessonId),
-          where("isDisabled", "==", data.isDisabled),
+          where("isDisabled", "==", isDisabled),
           orderBy("order"),
           startAfter(startDoc),
           limit(pageSize)
@@ -307,7 +307,7 @@ class LessonDetailController {
         q = query(
           collection(db, "lesson_details"),
           where("lessonId", "==", lessonId),
-          where("isDisabled", "==", data.isDisabled),
+          where("isDisabled", "==", isDisabled),
           orderBy("order"),
           limit(pageSize)
         );
