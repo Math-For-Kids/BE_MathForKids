@@ -48,14 +48,14 @@ class LessonController {
   // Count all lessons by grade & type
   countAll = async (req, res, next) => {
     try {
-      const data = req.body;
+      const { grade, type } = req.query;
       const q = query(
         collection(db, "lessons"),
-        where("grade", "==", data.grade),
-        where("type", "==", data.type)
+        where("grade", "==", parseInt(grade)),
+        where("type", "==", type)
       );
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -71,15 +71,15 @@ class LessonController {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10; // số bài học mỗi trang
       const startAfterId = req.query.startAfterId || null; // ID của document bắt đầu sau đó
-      const data = req.body;
+      const { grade, type } = req.query;
       let q;
 
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "lessons", startAfterId));
         q = query(
           collection(db, "lessons"),
-          where("grade", "==", data.grade),
-          where("type", "==", data.type),
+          where("grade", "==", parseInt(grade)),
+          where("type", "==", type),
           orderBy("order"),
           startAfter(startDoc),
           limit(pageSize)
@@ -87,8 +87,8 @@ class LessonController {
       } else {
         q = query(
           collection(db, "lessons"),
-          where("grade", "==", data.grade),
-          where("type", "==", data.type),
+          where("grade", "==", parseInt(grade)),
+          where("type", "==", type),
           orderBy("order"),
           limit(pageSize)
         );
@@ -116,15 +116,15 @@ class LessonController {
   // Count lessons by grade, type & disabled state
   countByDisabledStatus = async (req, res, next) => {
     try {
-      const data = req.body;
+      const { grade, type, isDisabled } = req.query;
       const q = query(
         collection(db, "lessons"),
-        where("grade", "==", data.grade),
-        where("type", "==", data.type),
-        where("isDisabled", "==", data.isDisabled)
+        where("grade", "==", parseInt(grade)),
+        where("type", "==", type),
+        where("isDisabled", "==", isDisabled === "true")
       );
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -140,16 +140,16 @@ class LessonController {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10; // số bài học mỗi trang
       const startAfterId = req.query.startAfterId || null; // ID của document bắt đầu sau đó
-      const data = req.body;
+      const { grade, type, isDisabled } = req.query;
       let q;
 
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "lessons", startAfterId));
         q = query(
           collection(db, "lessons"),
-          where("grade", "==", data.grade),
-          where("type", "==", data.type),
-          where("isDisabled", "==", data.isDisabled),
+          where("grade", "==", parseInt(grade)),
+          where("type", "==", type),
+          where("isDisabled", "==", isDisabled === "true"),
           orderBy("order"),
           startAfter(startDoc),
           limit(pageSize)
@@ -157,9 +157,9 @@ class LessonController {
       } else {
         q = query(
           collection(db, "lessons"),
-          where("grade", "==", data.grade),
-          where("type", "==", data.type),
-          where("isDisabled", "==", data.isDisabled),
+          where("grade", "==", parseInt(grade)),
+          where("type", "==", type),
+          where("isDisabled", "==", isDisabled === "true"),
           orderBy("order"),
           limit(pageSize)
         );

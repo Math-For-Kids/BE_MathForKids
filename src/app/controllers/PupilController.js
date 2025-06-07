@@ -22,16 +22,15 @@ const { s3 } = require("../services/AwsService");
 const { v4: uuidv4 } = require("uuid");
 
 class PupilController {
-  
   countByDisabledStatus = async (req, res, next) => {
     try {
-      const data = req.body;
+      const { isDisabled } = req.query;
       const q = query(
         collection(db, "pupils"),
-        where("isDisabled", "==", data.isDisabled)
+        where("isDisabled", "==", isDisabled === "true")
       );
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -46,7 +45,7 @@ class PupilController {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
-      const data = req.body;
+      const { isDisabled } = req.query;
 
       let q;
 
@@ -54,7 +53,7 @@ class PupilController {
         const startDoc = await getDoc(doc(db, "pupils", startAfterId));
         q = query(
           collection(db, "pupils"),
-          where("isDisabled", "==", data.isDisabled),
+          where("isDisabled", "==", isDisabled === "true"),
           orderBy("createdAt", "desc"),
           startAfter(startDoc),
           limit(pageSize)
@@ -62,7 +61,7 @@ class PupilController {
       } else {
         q = query(
           collection(db, "pupils"),
-          where("isDisabled", "==", data.isDisabled),
+          where("isDisabled", "==", isDisabled === "true"),
           orderBy("createdAt", "desc"),
           limit(pageSize)
         );
@@ -86,7 +85,6 @@ class PupilController {
       });
     }
   };
-
 
   // Create pupil
   create = async (req, res, next) => {
@@ -119,11 +117,9 @@ class PupilController {
 
   countAll = async (req, res, next) => {
     try {
-      const q = query(
-        collection(db, "pupils"),
-      );
+      const q = query(collection(db, "pupils"));
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -188,7 +184,6 @@ class PupilController {
       });
     }
   };
-
 
   // Get a pupil by ID
   getById = async (req, res, next) => {

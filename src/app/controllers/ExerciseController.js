@@ -75,7 +75,7 @@ class ExerciseController {
         where("lessonId", "==", lessonId)
       );
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -140,7 +140,7 @@ class ExerciseController {
         where("levelID", "==", levelID)
       );
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -220,6 +220,7 @@ class ExerciseController {
       });
     }
   };
+  
   // Get an exercise by type and grade
   getByGradeAndType = async (req, res, next) => {
     try {

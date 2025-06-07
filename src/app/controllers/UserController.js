@@ -25,7 +25,6 @@ const { s3 } = require("../services/AwsService");
 const { v4: uuidv4 } = require("uuid");
 
 class UserController {
-
   countByDisabledStatus = async (req, res, next) => {
     try {
       const data = req.body;
@@ -34,7 +33,7 @@ class UserController {
         where("isDisabled", "==", data.isDisabled)
       );
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -49,15 +48,13 @@ class UserController {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
-      const data = req.body;
-
+      const { isDisabled } = req.query;
       let q;
-
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "users", startAfterId));
         q = query(
           collection(db, "users"),
-          where("isDisabled", "==", data.isDisabled),
+          where("isDisabled", "==", isDisabled === "true"),
           orderBy("createdAt", "desc"),
           startAfter(startDoc),
           limit(pageSize)
@@ -65,7 +62,7 @@ class UserController {
       } else {
         q = query(
           collection(db, "users"),
-          where("isDisabled", "==", data.isDisabled),
+          where("isDisabled", "==", isDisabled === "true"),
           orderBy("createdAt", "desc"),
           limit(pageSize)
         );
@@ -93,11 +90,9 @@ class UserController {
 
   countAll = async (req, res, next) => {
     try {
-      const q = query(
-        collection(db, "users"),
-      );
+      const q = query(collection(db, "users"));
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -113,9 +108,7 @@ class UserController {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
-
       let q;
-
       if (startAfterId) {
         const startDocRef = doc(db, "users", startAfterId);
         const startDocSnap = await getDoc(startDocRef);
@@ -152,7 +145,6 @@ class UserController {
       res.status(500).send({ message: error.message });
     }
   };
-
 
   // Get an user by ID
   getById = async (req, res, next) => {

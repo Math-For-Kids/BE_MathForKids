@@ -7,24 +7,40 @@ const router = express.Router();
 
 // Create test
 router.post("/", testController.create);
-// Get all tests
-router.get("/", testController.getAll);
-//get all test pasge
-router.get("/getall", testController.getAllpasge);
-
+// Get all paginated tests
+router.get("/getAll", testController.getAll);
 // Filter paginated tests by pupilID
-router.get("/pupil/:pupilID", testController.filterByPupilID);
-
+router.get(
+  "/filterByPupilID/:pupilID",
+  pupilMiddleware.checkPupilExistById("pupilID"),
+  testController.filterByPupilID
+);
 // Filter paginated tests by lessonID
-router.get("/lesson/:lessonID", testController.filterByLessonID);
-
+router.get(
+  "/filterByLessonID/:lessonID",
+  lessonMiddleware.checkLessonExistById("lessonID"),
+  testController.filterByLessonID
+);
 // Filter paginated tests by point
-router.get("/point/:point", testController.filterByPoint);
-
+router.get("/filterByPoint/", testController.filterByPoint);
 // Filter by pupilID & lessonID
-router.get("/pupil/:pupilID/lesson/:lessonID", testController.filterByPupilAndLesson);
-
+router.get(
+  "/filterByPupilAndLesson/:pupilID/:lessonID",
+  pupilMiddleware.checkPupilExistById("pupilID"),
+  lessonMiddleware.checkLessonExistById("lessonID"),
+  testController.filterByPupilAndLesson
+);
 // Filter by lessonID & point
-router.get("/lesson/:lessonID/point/:point", testController.filterByLessonIDAndPoint);
+router.get(
+  "/filterByLessonIDAndPoint/:lessonID",
+  lessonMiddleware.checkLessonExistById("lessonID"),
+  testController.filterByLessonIDAndPoint
+);
+// Get test by ID
+router.get(
+  "/:id",
+  testMiddleware.checkTestExistById(),
+  testController.getById
+);
 
 module.exports = router;
