@@ -13,12 +13,16 @@ router.get(
   ceMiddleware.checkCompletedExerciseExistById(),
   ceController.getById
 );
-// Count all completed exercise 
+// Count all completed exercise
 router.get("/countAll", ceController.countAll);
 // Get all paginated completed exercises
 router.get("/getAll", ceController.getAll);
 // Count all completed exercise by pupil ID
-router.get("/countByPupilId/:pupilId", ceController.countTestsByPupilID);
+router.get(
+  "/countByPupilId/:pupilId",
+  pupilMiddleware.checkPupilExistById("pupilID"),
+  ceController.countTestsByPupilID
+);
 // Filter paginated completed exercise by pupilID
 router.get(
   "/filterByPupilID/:pupilID",
@@ -26,7 +30,11 @@ router.get(
   ceController.filterByPupilID
 );
 // Count completed exercise by lesson ID
-router.get("/countByLessonId/:lessonId", ceController.countCompletedExerciseByLessonID);
+router.get(
+  "/countByLessonId/:lessonId",
+  lessonMiddleware.checkLessonExistById("lessonID"),
+  ceController.countCompletedExerciseByLessonID
+);
 // Filter paginated completed exercise by lessonID
 router.get(
   "/filterByLessonID/:lessonID",
@@ -38,7 +46,12 @@ router.get("/countByPoint", ceController.countCompletedExerciseByPoint);
 // Filter paginated completed exercise by point
 router.get("/filterByPoint", ceController.filterByPoint);
 // Count completed exercise by pupilID & lessonID
-router.get("/countByPupilIDAndLessonID/:pupilID/:lessonID", ceController.countCompletedExerciseByPupilIdAndLessonId);
+router.get(
+  "/countByPupilIDAndLessonID/:pupilID/:lessonID",
+  pupilMiddleware.checkPupilExistById("pupilID"),
+  lessonMiddleware.checkLessonExistById("lessonID"),
+  ceController.countCompletedExerciseByPupilIdAndLessonId
+);
 // Filter by pupilID & lessonID
 router.get(
   "/filterByPupilAndLesson/:pupilID/:lessonID",
@@ -47,7 +60,11 @@ router.get(
   ceController.filterByPupilAndLesson
 );
 // Count completed exercise by lessonID & point
-router.get("/countByLessonIDAndPoint/:lessonID", ceController.countCompletedExerciseByLessonIdAndPoint);
+router.get(
+  "/countByLessonIDAndPoint/:lessonID",
+  lessonMiddleware.checkLessonExistById("lessonID"),
+  ceController.countCompletedExerciseByLessonIdAndPoint
+);
 // Filter by lessonID & point
 router.get(
   "/filterByLessonIDAndPoint/:lessonID",
