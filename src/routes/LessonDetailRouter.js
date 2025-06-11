@@ -28,6 +28,12 @@ router.get(
   lessonMiddleware.checkLessonExistById("lessonId"),
   controller.countByLesson
 );
+// Filter all paginated lesson details by lesson ID & disabled state
+router.get(
+  "/filtergetByLesson/:lessonId",
+  lessonMiddleware.checkLessonExistById("lessonId"),
+  controller.filterByLessonAndDisabledState
+);
 // Get all paginated lesson details by lesson ID
 router.get(
   "/getByLesson/:lessonId",
@@ -39,12 +45,6 @@ router.get(
   "/countByLesson/:lessonId",
   lessonMiddleware.checkLessonExistById("lessonId"),
   controller.countByLessonAndDisabledState
-);
-// Filter all paginated lesson details by lesson ID & disabled state
-router.get(
-  "/getByLesson/:lessonId",
-  lessonMiddleware.checkLessonExistById("lessonId"),
-  controller.filterByLessonAndDisabledState
 );
 // Get enabled lesson details by lesson ID
 router.get(

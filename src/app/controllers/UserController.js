@@ -11,6 +11,10 @@ const {
   serverTimestamp,
   query,
   where,
+  orderBy,
+  limit,
+  getCountFromServer,
+  startAfter,
   Timestamp,
   writeBatch,
   deleteField,
@@ -21,15 +25,15 @@ const { s3 } = require("../services/AwsService");
 const { v4: uuidv4 } = require("uuid");
 
 class UserController {
-  // Get all users
-  getAll = async (req, res, next) => {
+  countByDisabledStatus = async (req, res, next) => {
     try {
-      const usersSnapshot = await getDocs(collection(db, "users"));
-      const users = usersSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      res.status(200).send(users);
+      const data = req.body;
+      const q = query(
+        collection(db, "users"),
+        where("isDisabled", "==", data.isDisabled)
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -37,6 +41,108 @@ class UserController {
           vi: "Đã xảy ra lỗi nội bộ.",
         },
       });
+    }
+  };
+
+  filterByDisabledStatus = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { isDisabled } = req.query;
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "users", startAfterId));
+        q = query(
+          collection(db, "users"),
+          where("isDisabled", "==", isDisabled === "true"),
+          orderBy("createdAt", "desc"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "users"),
+          where("isDisabled", "==", isDisabled === "true"),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const users = snapshot.docs.map((doc) => User.fromFirestore(doc));
+
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: users,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  countAll = async (req, res, next) => {
+    try {
+      const q = query(collection(db, "users"));
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Get all users
+  getAll = async (req, res, next) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      let q;
+      if (startAfterId) {
+        const startDocRef = doc(db, "users", startAfterId);
+        const startDocSnap = await getDoc(startDocRef);
+
+        if (!startDocSnap.exists()) {
+          return res.status(400).send({ message: "Invalid startAfterId" });
+        }
+
+        q = query(
+          collection(db, "users"),
+          orderBy("createdAt", "desc"),
+          startAfter(startDocSnap),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "users"),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const users = snapshot.docs.map((doc) => User.fromFirestore(doc));
+
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: users,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({ message: error.message });
     }
   };
 
@@ -239,7 +345,6 @@ class UserController {
         isVerify: false,
         otpCode: null,
         otpExpiration: null,
-        // pin: data.pin,
         volume: 100,
         language: "en",
         mode: "light",

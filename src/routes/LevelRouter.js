@@ -5,6 +5,12 @@ const router = express.Router();
 
 // Create level
 router.post("/", levelController.create);
+// Count by disabled state
+router.get("/countByDisabledStatus", levelController.countByDisabledStatus);
+// Filter paginated levels by disabled state
+router.post("/filterByDisabledStatus", levelController.filterByDisabledState);
+// Count all levels
+router.get("/countAll", levelController.countAll);
 // Get all levels
 router.get("/", levelController.getAll);
 // Get enabled levels
@@ -21,5 +27,6 @@ router.patch(
   levelMiddleware.checkLevelExistById(),
   levelController.update
 );
+
 
 module.exports = router;

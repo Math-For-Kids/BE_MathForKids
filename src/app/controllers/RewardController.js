@@ -8,6 +8,10 @@ const {
   getDocs,
   updateDoc,
   deleteDoc,
+  getCountFromServer,
+  orderBy,
+  limit,
+  startAfter,
   serverTimestamp,
   query,
   where,
@@ -16,6 +20,71 @@ const { uploadMultipleFiles } = require("./fileController");
 const db = getFirestore();
 
 class RewardController {
+  countByDisabledStatus = async (req, res, next) => {
+    try {
+      const { isDisabled } = req.query;
+      const q = query(
+        collection(db, "reward"),
+        where("isDisabled", "==", isDisabled === "true")
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  filterByDisabledStatus = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { isDisabled } = req.query;
+
+      let q;
+
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "reward", startAfterId));
+        q = query(
+          collection(db, "reward"),
+          where("isDisabled", "==", isDisabled === "true"),
+          orderBy("createdAt", "desc"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "reward"),
+          where("isDisabled", "==", isDisabled === "true"),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const rewards = snapshot.docs.map((doc) => Reward.fromFirestore(doc));
+
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: rewards,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
   // Create reward
   create = async (req, res, next) => {
     try {
@@ -54,14 +123,67 @@ class RewardController {
     }
   };
 
+  countAll = async (req, res, next) => {
+    console.log("countAll called");
+    try {
+      const q = query(collection(db, "reward"));
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
   // Get all rewards
   getAll = async (req, res, next) => {
     try {
-      const rewardSnapshot = await getDocs(collection(db, "reward"));
-      const rewards = rewardSnapshot.docs.map((doc) =>
-        Reward.fromFirestore(doc)
-      );
-      res.status(200).send(rewards);
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+
+      let q;
+
+      if (startAfterId) {
+        const startDocRef = doc(db, "reward", startAfterId);
+        const startDocSnap = await getDoc(startDocRef);
+
+        if (!startDocSnap.exists()) {
+          return res.status(400).send({
+            message: {
+              en: "Invalid startAfterId",
+              vi: "startAfterId không hợp lệ",
+            },
+          });
+        }
+
+        q = query(
+          collection(db, "reward"),
+          orderBy("createdAt", "desc"),
+          startAfter(startDocSnap),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "reward"),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+
+      const snapshot = await getDocs(q);
+      const rewards = snapshot.docs.map((doc) => Reward.fromFirestore(doc));
+
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: rewards,
+        nextPageToken: lastVisibleId,
+      });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -101,6 +223,8 @@ class RewardController {
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
+      const ref = doc(db, "reward", id);
+
       const { isDisabled, name, description } = req.body;
       console.log("req.files:", req.files);
       const updateData = {

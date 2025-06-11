@@ -75,7 +75,7 @@ class ExerciseController {
         where("lessonId", "==", lessonId)
       );
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -89,7 +89,7 @@ class ExerciseController {
   // Get all paginated exercises by lesson ID
   getByLesson = async (req, res, next) => {
     try {
-      const pageSize = parseInt(req.query.pageSize) || 10; // số bài học mỗi trang
+      const pageSize = parseInt(req.params.pageSize); // số bài học mỗi trang
       const startAfterId = req.query.startAfterId || null; // ID của document bắt đầu sau đó
       const { lessonId } = req.params;
       let q;
@@ -130,6 +130,104 @@ class ExerciseController {
     }
   };
 
+  // Filter exercises by isDisabled
+  filterByIsDisabled = async (req, res, next) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { lessonId } = req.params;
+      const { isDisabled } = req.query;
+
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "exercises", startAfterId));
+        q = query(
+          collection(db, "exercises"),
+          where("lessonId", "==", lessonId),
+          where("isDisabled", "==", isDisabled === "true"),
+          orderBy("createdAt", "desc"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "exercises"),
+          where("lessonId", "==", lessonId),
+          where("isDisabled", "==", isDisabled === "true"),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+      const snapshot = await getDocs(q);
+      const exercises = snapshot.docs.map((doc) => Exercise.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: exercises,
+        nextPageToken: lastVisibleId, // Dùng làm startAfterId cho trang kế
+      });
+    } catch (error) {
+      console.error("Error in filterByIsDisabled:", error.message);
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Filter exercises by isDisabled and level
+  filterByLevelAndIsDisabled = async (req, res, next) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { lessonId, levelId } = req.params;
+      const { isDisabled } = req.query;
+
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "exercises", startAfterId));
+        q = query(
+          collection(db, "exercises"),
+          where("lessonId", "==", lessonId),
+          where("levelId", "==", levelId),
+          where("isDisabled", "==", isDisabled === "true"),
+          orderBy("createdAt", "desc"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "exercises"),
+          where("lessonId", "==", lessonId),
+          where("levelId", "==", levelId),
+          where("isDisabled", "==", isDisabled === "true"),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
+      const snapshot = await getDocs(q);
+      const exercises = snapshot.docs.map((doc) => Exercise.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: exercises,
+        nextPageToken: lastVisibleId, // Dùng làm startAfterId cho trang kế
+      });
+    } catch (error) {
+      console.error("Error in filterByIsDisabled:", error.message);
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
   // Count all exercises by lesson ID & level ID
   countByLessonAndLevel = async (req, res, next) => {
     try {
@@ -140,7 +238,7 @@ class ExerciseController {
         where("levelID", "==", levelID)
       );
       const snapshot = await getCountFromServer(q);
-      res.status(200).send(snapshot.data().count);
+      res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -154,16 +252,16 @@ class ExerciseController {
   // Filter all paginated exercises by lesson ID & level ID
   filterByLessonAndLevel = async (req, res, next) => {
     try {
-      const pageSize = parseInt(req.query.pageSize) || 10; // số bài học mỗi trang
-      const startAfterId = req.query.startAfterId || null; // ID của document bắt đầu sau đó
-      const { lessonId, levelID } = req.params;
+      const pageSize = parseInt(req.params.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { lessonId, levelId } = req.params;
       let q;
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "exercises", startAfterId));
         q = query(
           collection(db, "exercises"),
           where("lessonId", "==", lessonId),
-          where("levelID", "==", levelID),
+          where("levelId", "==", levelId),
           orderBy("createdAt", "desc"),
           startAfter(startDoc),
           limit(pageSize)
@@ -172,20 +270,19 @@ class ExerciseController {
         q = query(
           collection(db, "exercises"),
           where("lessonId", "==", lessonId),
-          where("levelID", "==", levelID),
+          where("levelId", "==", levelId),
           orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       }
       const snapshot = await getDocs(q);
       const exercises = snapshot.docs.map((doc) => Exercise.fromFirestore(doc));
-
       const lastVisible = snapshot.docs[snapshot.docs.length - 1];
       const lastVisibleId = lastVisible ? lastVisible.id : null;
 
       res.status(200).send({
         data: exercises,
-        nextPageToken: lastVisibleId, // Dùng làm startAfterId cho trang kế
+        nextPageToken: lastVisibleId,
       });
     } catch (error) {
       res.status(500).send({
@@ -220,6 +317,7 @@ class ExerciseController {
       });
     }
   };
+  
   // Get an exercise by type and grade
   getByGradeAndType = async (req, res, next) => {
     try {
@@ -326,15 +424,15 @@ class ExerciseController {
           parsedOption && parsedOption.length > 0
             ? parsedOption // Prioritize text option if provided
             : uploadedOption && uploadedOption.length > 0
-            ? uploadedOption
-            : oldData.option;
+              ? uploadedOption
+              : oldData.option;
 
         const finalAnswer =
           parsedAnswer !== null
             ? parsedAnswer // Prioritize text answer if provided
             : uploadedAnswer !== null
-            ? uploadedAnswer
-            : oldData.answer;
+              ? uploadedAnswer
+              : oldData.answer;
 
         const finalImage = image !== null ? image : oldData.image;
 
@@ -366,6 +464,15 @@ class ExerciseController {
           vi: "Đã xảy ra lỗi nội bộ.",
         },
       });
+    }
+  };
+  getAll = async (req, res, next) => {
+    try {
+      const exercises = await getDocs(collection(db, "exercises"));
+      const exerciseArray = exercises.docs.map((doc) => Exercise.fromFirestore(doc));
+      res.status(200).send(exerciseArray);
+    } catch (error) {
+      res.status(500).send({ message: error.message });
     }
   };
 }

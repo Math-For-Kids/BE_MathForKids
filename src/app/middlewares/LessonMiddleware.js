@@ -10,6 +10,9 @@ const {
   serverTimestamp,
   query,
   where,
+   limit,
+  startAfter,
+
 } = require("firebase/firestore");
 
 const db = getFirestore();
@@ -28,6 +31,7 @@ const queryLessonName = async (lessonName) => {
 };
 
 class LessonMiddleware {
+  
   // Check lesson is already exist or not
   checkLessonExistById = (paramName = "id") => {
     return async (req, res, next) => {

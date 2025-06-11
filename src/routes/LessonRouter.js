@@ -12,7 +12,7 @@ router.post(
 // Count all lessons by grade & type
 router.get("/countAll", lessonController.countAll);
 // Get all paginated lessons by grade & type
-router.get("/", lessonController.getAll);
+router.post("/getAll", lessonController.getAll);
 // Get enabled lessons by grade & type
 router.get("/getByGradeAndType", lessonController.getByGradeAndType);
 // Get a lesson by ID

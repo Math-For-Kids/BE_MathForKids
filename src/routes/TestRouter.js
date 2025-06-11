@@ -7,26 +7,63 @@ const router = express.Router();
 
 // Create test
 router.post("/", testController.create);
-// Get all tests
-router.get("/", testController.getAll);
-// Get tests by pupil ID
+// Count all paginated tests
+router.get("/countAll", testController.countAll);
+// Get all paginated tests
+router.get("/getAll", testController.getAll);
+// Count tests by pupil ID
 router.get(
-  "/getByPupil/:pupilId",
-  pupilMiddleware.checkPupilExistById("pupilId"),
-  testController.getTestByPupilId
+  "/countByPupilId/:pupilId",
+  pupilMiddleware.checkPupilExistById("pupilID"),
+  testController.countTestsByPupilID
 );
-// Get tests by lesson ID
+// Filter paginated tests by pupilID
 router.get(
-  "/getByLesson/:lessonId",
-  lessonMiddleware.checkLessonExistById("lessonId"),
-  testController.getTestsByLesson
+  "/filterByPupilID/:pupilID",
+  pupilMiddleware.checkPupilExistById("pupilID"),
+  testController.filterByPupilID
 );
-// Get test by pupil ID & lesson ID
+// Count tests by lesson ID
 router.get(
-  "/getByPupilAndLesson/:pupilId/lesson/:lessonId",
-  pupilMiddleware.checkPupilExistById("pupilId"),
-  lessonMiddleware.checkLessonExistById("lessonId"),
-  testController.getTestsByPupilIdAndLesson
+  "/countByLessonId/:lessonId",
+  lessonMiddleware.checkLessonExistById("lessonID"),
+  testController.countTestsByLessonID
+);
+// Filter paginated tests by lessonID
+router.get(
+  "/filterByLessonID/:lessonID",
+  lessonMiddleware.checkLessonExistById("lessonID"),
+  testController.filterByLessonID
+);
+// Count tests by point
+router.get("/countByPoint", testController.countTestsByPoint);
+// Filter paginated tests by point
+router.get("/filterByPoint/", testController.filterByPoint);
+// Count tests by lesson ID and pupil ID
+router.get(
+  "/countByPupilIDAndLessonID/:pupilID/:lessonID",
+  pupilMiddleware.checkPupilExistById("pupilID"),
+  lessonMiddleware.checkLessonExistById("lessonID"),
+  testController.countTestsByPupilIdAndLessonId
+);
+// Filter by pupilID & lessonID
+router.get(
+  "/filterByPupilAndLesson/:pupilID/:lessonID",
+  pupilMiddleware.checkPupilExistById("pupilID"),
+  lessonMiddleware.checkLessonExistById("lessonID"),
+  testController.filterByPupilAndLesson
+);
+// Count tests by lessonID & point
+router.get(
+  "/countByLessonIDAndPoint/:lessonID",
+  lessonMiddleware.checkLessonExistById("lessonID"),
+  testController.countTestsByLessonIdAndPoint
+);
+// Filter by lessonID & point
+router.get(
+  "/filterByLessonIDAndPoint/:lessonID",
+  lessonMiddleware.checkLessonExistById("lessonID"),
+  testController.filterByLessonIDAndPoint
 );
 // Get test by ID
 router.get("/:id", testMiddleware.checkTestExistById(), testController.getById);

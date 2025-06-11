@@ -15,6 +15,7 @@ const uploadFields = upload.fields([
 router.post("/", uploadFields, assessmentController.create);
 // Get all assessments
 router.get("/", assessmentController.getAll);
+
 // Get enabled assessments
 router.get(
   "/getEnabledAssessments",
