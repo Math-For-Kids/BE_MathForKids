@@ -5,14 +5,14 @@ const router = express.Router();
 
 // Send OTP by phone number
 router.post(
-  "/sendOtpByPhone/:phoneNumber/:userRole",
+  "/sendOtpByPhone/:phoneNumber",
   userMiddleware.checkUserExistByPhone,
   userMiddleware.checkIsDisabled,
   authController.sendOTPByPhoneNumber
 );
 // Send OTP by email
 router.post(
-  "/sendOtpByEmail/:email/:userRole",
+  "/sendOtpByEmail/:email",
   userMiddleware.checkUserExistByEmail,
   userMiddleware.checkIsDisabled,
   authController.sendOTPByEmail
