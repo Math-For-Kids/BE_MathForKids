@@ -85,12 +85,90 @@ class ExerciseController {
       });
     }
   };
-
+  countByLessonAndDisabledStatus = async (req, res, next) => {
+    try {
+      const { lessonId } = req.params;
+      const { isDisabled } = req.query;
+      const q = query(
+        collection(db, "exercises"),
+        where("lessonId", "==", lessonId),
+        where("isDisabled", "==", isDisabled === "true")
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  }; countByLessonAndDisabledStatus = async (req, res, next) => {
+    try {
+      const { lessonId } = req.params;
+      const { isDisabled } = req.query;
+      const q = query(
+        collection(db, "exercises"),
+        where("lessonId", "==", lessonId),
+        where("isDisabled", "==", isDisabled === "true")
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+  countByLessonAndLevelAndDisabledStatus = async (req, res, next) => {
+    try {
+      const { lessonId, levelId } = req.params;
+      const { isDisabled } = req.query;
+      const q = query(
+        collection(db, "exercises"),
+        where("lessonId", "==", lessonId),
+        where("levelId", "==", levelId),
+        where("isDisabled", "==", isDisabled === "true")
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+  countByLessonAndLevel = async (req, res, next) => {
+    try {
+      const { lessonId, levelId } = req.params;
+      const q = query(
+        collection(db, "exercises"),
+        where("lessonId", "==", lessonId),
+        where("levelId", "==", levelId),
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
   // Get all paginated exercises by lesson ID
   getByLesson = async (req, res, next) => {
     try {
-      const pageSize = parseInt(req.params.pageSize); // số bài học mỗi trang
-      const startAfterId = req.query.startAfterId || null; // ID của document bắt đầu sau đó
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
       const { lessonId } = req.params;
       let q;
       if (startAfterId) {
@@ -317,7 +395,7 @@ class ExerciseController {
       });
     }
   };
-  
+
   // Get an exercise by type and grade
   getByGradeAndType = async (req, res, next) => {
     try {
