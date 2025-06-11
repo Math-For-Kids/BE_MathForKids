@@ -239,7 +239,7 @@ class UserController {
         isVerify: false,
         otpCode: null,
         otpExpiration: null,
-        pin: data.pin,
+        // pin: data.pin,
         volume: 100,
         language: "en",
         mode: "light",
@@ -274,17 +274,13 @@ class UserController {
     try {
       const id = req.params.id;
       const data = req.body;
-      console.log("email", data.email);
       if (data.dateOfBirth) {
         const date = new Date(data.dateOfBirth);
         data.dateOfBirth = Timestamp.fromDate(date);
       }
       if (data.email) {
         data.email = data.email.toLowerCase();
-      } else {
-        data.email = "";
       }
-
       const userRef = doc(db, "users", id);
       await updateDoc(userRef, {
         ...data,
@@ -307,7 +303,7 @@ class UserController {
       });
     }
   };
-
+  
   // Update image profile
   uploadImageProfileToS3 = async (req, res, next) => {
     try {
