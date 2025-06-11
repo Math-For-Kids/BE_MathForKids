@@ -69,7 +69,7 @@ class LessonController {
   // Get all paginated lessons by grade & type
   getAll = async (req, res, next) => {
     try {
-      const pageSize = parseInt(req.query.pageSize) || 10; // số bài học mỗi trang
+      const pageSize = parseInt(req.query.pageSize); // số bài học mỗi trang
       const startAfterId = req.query.startAfterId || null; // ID của document bắt đầu sau đó
       const { grade, type } = req.query;
       let q;
@@ -138,7 +138,7 @@ class LessonController {
   // Filter paginated lessons by grade, type & disabled state
   filterByDisabledStatus = async (req, res, next) => {
     try {
-      const pageSize = parseInt(req.query.pageSize) || 10; // số bài học mỗi trang
+      const pageSize = parseInt(req.query.pageSize); // số bài học mỗi trang
       const startAfterId = req.query.startAfterId || null; // ID của document bắt đầu sau đó
       const { grade, type, isDisabled } = req.query;
       let q;
