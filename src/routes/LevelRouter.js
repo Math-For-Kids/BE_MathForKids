@@ -8,7 +8,7 @@ router.post("/", levelController.create);
 // Count by disabled state
 router.get("/countByDisabledStatus", levelController.countByDisabledStatus);
 // Filter paginated levels by disabled state
-router.post("/filterByDisabledStatus", levelController.filterByDisabledState);
+router.get("/filterByDisabledStatus", levelController.filterByDisabledState);
 // Count all levels
 router.get("/countAll", levelController.countAll);
 // Get all levels

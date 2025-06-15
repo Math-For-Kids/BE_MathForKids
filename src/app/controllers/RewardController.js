@@ -46,12 +46,11 @@ class RewardController {
       const { isDisabled } = req.query;
 
       let q;
-
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "reward", startAfterId));
         q = query(
           collection(db, "reward"),
-          where("isDisabled", "==", isDisabled === "true"),
+          where("isDisabled", "==", isDisabled === 'true'),
           orderBy("createdAt", "desc"),
           startAfter(startDoc),
           limit(pageSize)
@@ -59,23 +58,22 @@ class RewardController {
       } else {
         q = query(
           collection(db, "reward"),
-          where("isDisabled", "==", isDisabled === "true"),
+          where("isDisabled", "==", isDisabled === 'true'),
           orderBy("createdAt", "desc"),
           limit(pageSize)
         );
       }
-
       const snapshot = await getDocs(q);
-      const rewards = snapshot.docs.map((doc) => Reward.fromFirestore(doc));
-
+      const reward = snapshot.docs.map((doc) => Reward.fromFirestore(doc));
       const lastVisible = snapshot.docs[snapshot.docs.length - 1];
       const lastVisibleId = lastVisible ? lastVisible.id : null;
 
       res.status(200).send({
-        data: rewards,
-        nextPageToken: lastVisibleId,
+        data: reward,
+        nextPageToken: lastVisibleId, // Dùng làm startAfterId cho trang kế
       });
     } catch (error) {
+      console.error("Error in filterByIsDisabled:", error.message);
       res.status(500).send({
         message: {
           en: error.message,

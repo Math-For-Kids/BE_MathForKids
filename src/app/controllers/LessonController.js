@@ -52,7 +52,7 @@ class LessonController {
       const q = query(
         collection(db, "lessons"),
         where("grade", "==", parseInt(grade)),
-        where("type", "==", type)
+        where("type", "==", type),
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
@@ -65,7 +65,20 @@ class LessonController {
       });
     }
   };
-
+  countAllLesson = async (req, res, next) => {
+    try {
+      const q = query(collection(db, "lessons"));
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
   // Get all paginated lessons by grade & type
   getAll = async (req, res, next) => {
     try {
@@ -121,7 +134,7 @@ class LessonController {
         collection(db, "lessons"),
         where("grade", "==", parseInt(grade)),
         where("type", "==", type),
-        where("isDisabled", "==", isDisabled === "true")
+        where("isDisabled", "==", isDisabled == "true")
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });

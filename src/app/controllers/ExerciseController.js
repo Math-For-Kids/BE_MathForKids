@@ -104,25 +104,6 @@ class ExerciseController {
         },
       });
     }
-  }; countByLessonAndDisabledStatus = async (req, res, next) => {
-    try {
-      const { lessonId } = req.params;
-      const { isDisabled } = req.query;
-      const q = query(
-        collection(db, "exercises"),
-        where("lessonId", "==", lessonId),
-        where("isDisabled", "==", isDisabled === "true")
-      );
-      const snapshot = await getCountFromServer(q);
-      res.status(200).send({ count: snapshot.data().count });
-    } catch (error) {
-      res.status(500).send({
-        message: {
-          en: error.message,
-          vi: "Đã xảy ra lỗi nội bộ.",
-        },
-      });
-    }
   };
   countByLessonAndLevelAndDisabledStatus = async (req, res, next) => {
     try {
@@ -133,25 +114,6 @@ class ExerciseController {
         where("lessonId", "==", lessonId),
         where("levelId", "==", levelId),
         where("isDisabled", "==", isDisabled === "true")
-      );
-      const snapshot = await getCountFromServer(q);
-      res.status(200).send({ count: snapshot.data().count });
-    } catch (error) {
-      res.status(500).send({
-        message: {
-          en: error.message,
-          vi: "Đã xảy ra lỗi nội bộ.",
-        },
-      });
-    }
-  };
-  countByLessonAndLevel = async (req, res, next) => {
-    try {
-      const { lessonId, levelId } = req.params;
-      const q = query(
-        collection(db, "exercises"),
-        where("lessonId", "==", lessonId),
-        where("levelId", "==", levelId),
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
@@ -309,11 +271,11 @@ class ExerciseController {
   // Count all exercises by lesson ID & level ID
   countByLessonAndLevel = async (req, res, next) => {
     try {
-      const { lessonId, levelID } = req.params;
+      const { lessonId, levelId } = req.params;
       const q = query(
         collection(db, "exercises"),
         where("lessonId", "==", lessonId),
-        where("levelID", "==", levelID)
+        where("levelId", "==", levelId)
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
