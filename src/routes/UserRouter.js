@@ -31,11 +31,16 @@ router.get("/countusersbyweek", userController.countUsersByWeek);
 // Count new users by year
 router.get("/countusersbyyear", userController.countUsersByYear);
 // Update user information
-router.patch("/updateProfile/:id", userMiddleware.checkUserExistById(), userController.update);
+router.patch(
+  "/updateProfile/:id",
+  userMiddleware.checkUserExistById(),
+  userController.update
+);
 // Update image profile
 router.patch(
   "/updateImageProfile/:id",
   upload.single("image"),
+  userMiddleware.checkUserExistById(),
   userController.uploadImageProfileToS3
 );
 // Update phone number
