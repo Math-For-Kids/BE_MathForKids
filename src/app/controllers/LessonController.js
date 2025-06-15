@@ -184,18 +184,23 @@ class LessonController {
     }
   };
 
-  // Get enable lesson by grade & type
   getByGradeAndType = async (req, res, next) => {
     try {
-      const data = req.body;
+      const { grade, type } = req.query;
+      const gradeNumber = Number(grade);
       const q = query(
         collection(db, "lessons"),
-        where("grade", "==", data.grade),
-        where("type", "==", data.type),
+        where("grade", "==", gradeNumber),
+        where("type", "==", type),
         where("isDisabled", "==", false)
       );
+
       const lessons = await getDocs(q);
+      lessons.docs.forEach((doc) => {
+        console.log("Found lesson:", doc.data());
+      });
       const lessonArray = lessons.docs.map((doc) => Lesson.fromFirestore(doc));
+      res.set("Cache-Control", "no-store");
       res.status(200).send(lessonArray);
     } catch (error) {
       res.status(500).send({
