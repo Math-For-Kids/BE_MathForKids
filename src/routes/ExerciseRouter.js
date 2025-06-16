@@ -32,12 +32,6 @@ router.get(
   levelMiddleware.checkLevelExistById("levelId"),
   exerciseController.countByLessonAndLevelAndDisabledStatus
 );
-router.get(
-  "/countByLessonAndLevel/:lessonId/:levelId",
-  lessonMiddleware.checkLessonExistById("lessonId"),
-  levelMiddleware.checkLevelExistById("levelId"),
-  exerciseController.countByLessonAndLevel
-);
 // Get all paginated exercises by lesson ID
 router.get(
   "/getByLesson/:lessonId",

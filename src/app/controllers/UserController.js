@@ -23,6 +23,7 @@ const db = getFirestore();
 const { PutObjectCommand } = require("@aws-sdk/client-s3");
 const { s3 } = require("../services/AwsService");
 const { v4: uuidv4 } = require("uuid");
+const FileController = require("./fileController"); // Đảm bảo path đúng
 
 class UserController {
   countByDisabledStatus = async (req, res, next) => {
@@ -490,49 +491,87 @@ class UserController {
   };
 
   // Update image profile
-  uploadImageProfileToS3 = async (req, res, next) => {
+  // uploadImageProfileToS3 = async (req, res, next) => {
+  //   try {
+  //     const id = req.params.id;
+  //     const file = req.file;
+
+  //     if (!file || !file.buffer) {
+  //       return res.status(400).json({ message: "No file uploaded" });
+  //     }
+
+  //     const fileExt = file.originalname.split(".").pop();
+  //     const key = `image_profile/${id}_${uuidv4()}.${fileExt}`;
+
+  //     const command = new PutObjectCommand({
+  //       Bucket: process.env.S3_BUCKET_NAME,
+  //       Key: key,
+  //       Body: file.buffer,
+  //       ContentType: file.mimetype,
+  //       ACL: "public-read",
+  //     });
+
+  //     await s3.send(command);
+
+  //     const publicUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+
+  //     const userRef = doc(db, "users", id);
+  //     await updateDoc(userRef, {
+  //       image: publicUrl,
+  //       updatedAt: serverTimestamp(),
+  //     });
+
+  //     res.status(200).json({
+  //       message: {
+  //         en: "Image profile uploaded successfully!",
+  //         vi: "Cập nhật ảnh hồ sơ thành công!",
+  //       },
+  //       image: publicUrl,
+  //     });
+  //   } catch (error) {
+  //     console.error("S3 upload error:", error);
+  //     res.status(500).json({
+  //       message: {
+  //         en: "Upload failed: " + error.message,
+  //         vi: "Đẩy ảnh lên S3 không thành công!",
+  //       },
+  //     });
+  //   }
+  // };
+  uploadImageProfileToS3 = async (req, res) => {
     try {
-      const id = req.params.id;
+      const { id } = req.params;
       const file = req.file;
 
-      if (!file || !file.buffer) {
-        return res.status(400).json({ message: "No file uploaded" });
+      if (!id) {
+        return res.status(400).send({ message: "Missing user ID." });
       }
 
+      if (!file || !file.buffer) {
+        return res.status(400).send({ message: "No file uploaded." });
+      }
       const fileExt = file.originalname.split(".").pop();
-      const key = `image_profile/${id}_${uuidv4()}.${fileExt}`;
-
-      const command = new PutObjectCommand({
-        Bucket: process.env.S3_BUCKET_NAME,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-        ACL: "public-read",
-      });
-
-      await s3.send(command);
-
-      const publicUrl = `https://${process.env.S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
-
+      const fileKey = `image_profile/${id}_${uuidv4()}.${fileExt}`;
+      await FileController.uploadFile(file, fileKey);
+      const imageUrl = `${process.env.CLOUD_FRONT}${fileKey}`;
       const userRef = doc(db, "users", id);
       await updateDoc(userRef, {
-        image: publicUrl,
+        image: imageUrl,
         updatedAt: serverTimestamp(),
       });
-
-      res.status(200).json({
+      return res.status(200).send({
         message: {
-          en: "Image profile uploaded successfully!",
+          en: "Profile image uploaded successfully!",
           vi: "Cập nhật ảnh hồ sơ thành công!",
         },
-        image: publicUrl,
+        image: imageUrl,
       });
     } catch (error) {
-      console.error("S3 upload error:", error);
-      res.status(500).json({
+      console.error("Upload image profile error:", error);
+      return res.status(500).send({
         message: {
-          en: "Upload failed: " + error.message,
-          vi: "Đẩy ảnh lên S3 không thành công!",
+          en: error.message || "Upload failed.",
+          vi: "Đã xảy ra lỗi khi cập nhật ảnh hồ sơ.",
         },
       });
     }

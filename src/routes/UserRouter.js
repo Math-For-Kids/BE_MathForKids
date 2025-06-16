@@ -40,6 +40,7 @@ router.get("/:id", userMiddleware.checkUserExistById(), userController.getById);
 router.patch(
   "/updateImageProfile/:id",
   upload.single("image"),
+  userMiddleware.checkUserExistById(),
   userController.uploadImageProfileToS3
 );
 // Update phone number
