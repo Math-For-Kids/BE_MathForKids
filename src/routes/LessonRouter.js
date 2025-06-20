@@ -6,7 +6,7 @@ const router = express.Router();
 // Create lesson
 router.post(
   "/",
-  lessonMiddleware.checkLessonNameExistForCreate,
+  lessonMiddleware.checkNameExistForCreate,
   lessonController.create
 );
 // Filter paginated lessons by grade, type & disabled state
@@ -33,7 +33,7 @@ router.get("/countlesson", lessonController.countLessons);
 router.patch(
   "/:id",
   lessonMiddleware.checkLessonExistById(),
-  lessonMiddleware.checkLessonNameExistForUpdate,
+  lessonMiddleware.checkNameExistForUpdate,
   lessonController.update
 );
 router.patch(
