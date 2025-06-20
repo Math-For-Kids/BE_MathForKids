@@ -65,6 +65,25 @@ router.get(
   lessonMiddleware.checkLessonExistById("lessonID"),
   testController.filterByLessonIDAndPoint
 );
+// // Get tests by pupil IDAdd commentMore actions
+// router.get(
+//   "/getByPupil/:pupilId",
+//   pupilMiddleware.checkPupilExistById("pupilId"),
+//   testController.getTestByPupilId
+// );
+// // Get tests by lesson ID
+// router.get(
+//   "/getByLesson/:lessonId",
+//   lessonMiddleware.checkLessonExistById("lessonId"),
+//   testController.getTestsByLesson
+// );
+// // Get test by pupil ID & lesson ID
+// router.get(
+//   "/getByPupilAndLesson/:pupilId/lesson/:lessonId",
+//   pupilMiddleware.checkPupilExistById("pupilId"),
+//   lessonMiddleware.checkLessonExistById("lessonId"),
+//   testController.getTestsByPupilIdAndLesson
+// );
 // Get test by ID
 router.get("/:id", testMiddleware.checkTestExistById(), testController.getById);
 
