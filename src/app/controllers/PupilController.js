@@ -27,7 +27,7 @@ class PupilController {
       const { grade } = req.query;
       const q = query(
         collection(db, "pupils"),
-        where("grade", "==", parseInt(grade))
+        where("grade", "==", grade),
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
@@ -40,7 +40,6 @@ class PupilController {
       });
     }
   };
-
   filterByGrade = async (req, res) => {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;

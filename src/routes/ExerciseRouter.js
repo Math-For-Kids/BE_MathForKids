@@ -38,13 +38,6 @@ router.get(
   lessonMiddleware.checkLessonExistById("lessonId"),
   exerciseController.getByLesson
 );
-// Count all exercises by lesson ID & level ID
-router.get(
-  "/countByLessonAndLevel/:lessonId/:levelId",
-  lessonMiddleware.checkLessonExistById("lessonId"),
-  levelMiddleware.checkLevelExistById("levelId"),
-  exerciseController.countByLessonAndLevel
-);
 // Filter paginated exercises by lesson ID & level ID
 router.get(
   "/filterByLevel/:lessonId/:levelId",

@@ -17,7 +17,7 @@ router.get(
 router.get(
   "/getByPupilAndLesson/:pupilId/lesson/:lessonId",
   pupilMiddleware.checkPupilExistById("pupilId"),
-  lessonMiddleware.checkLessonExistById("lessonId"),
+  lessonMiddleware.checkLessonExistById("lessonId"),  
   completedLessonController.getByPupilLesson
 );
 // Update completed lesson status

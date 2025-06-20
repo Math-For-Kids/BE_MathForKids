@@ -22,6 +22,17 @@ router.get("/countByGradeAndDisabledStatus", pupilController.countByGradeAndDisa
 router.get("/filterByGradeAndDisabledStatus", pupilController.filterByGradeAndDisabledStatus);
 // Get total count of all pupils
 router.get("/countAll", pupilController.countAll);
+
+// Count all pupils
+router.get("/countpupil", pupilController.countPupils);
+// Count new pupils by month
+router.get("/countpupilsbymonth", pupilController.countPupilsByMonth);
+// Count new pupils by week
+router.get("/countpupilsbyweek", pupilController.countPupilsByWeek);
+// Count new pupils by year
+router.get("/countpupilsbyyear", pupilController.countPupilsByYear);
+// Count pupils by grade
+router.get("/countbygrade", pupilController.countPupilsByGrade);
 // Get all pupils
 router.get("/", pupilController.getAll);
 // Get enabled pupils by user ID
@@ -36,16 +47,6 @@ router.get(
   pupilMiddleware.checkPupilExistById(),
   pupilController.getById
 );
-// Count all pupils
-router.get("/countpupil", pupilController.countPupils);
-// Count new pupils by month
-router.get("/countpupilsbymonth", pupilController.countPupilsByMonth);
-// Count new pupils by week
-router.get("/countpupilsbyweek", pupilController.countPupilsByWeek);
-// Count new pupils by year
-router.get("/countpupilsbyyear", pupilController.countPupilsByYear);
-// Count pupils by grade
-router.get("/countbygrade", pupilController.countPupilsByGrade);
 // Update pupil information
 router.patch(
   "/updateProfile/:id",

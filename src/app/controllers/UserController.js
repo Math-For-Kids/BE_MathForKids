@@ -28,10 +28,47 @@ const FileController = require("./fileController"); // Đảm bảo path đúng
 class UserController {
   countByDisabledStatus = async (req, res, next) => {
     try {
-      const data = req.body;
+      const { isDisabled } = req.query;
       const q = query(
         collection(db, "users"),
-        where("isDisabled", "==", data.isDisabled)
+        where("isDisabled", "==", isDisabled === "true")
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  countByRole = async (req, res, next) => {
+    try {
+      const { role } = req.query;
+      const q = query(
+        collection(db, "users"),
+        where("role", "==", role)
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+  countByGender = async (req, res, next) => {
+    try {
+      const { gender } = req.query;
+      const q = query(
+        collection(db, "users"),
+        where("gender", "==", gender)
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
@@ -88,7 +125,50 @@ class UserController {
       });
     }
   };
+  filterByRole = async (req, res) => {
+    try {
+      const pageSize = parseInt(req.query.pageSize) || 10;
+      const startAfterId = req.query.startAfterId || null;
+      const { role } = req.query;
+      let q;
+      if (startAfterId) {
+        const startDoc = await getDoc(doc(db, "users", startAfterId));
+        q = query(
+          collection(db, "users"),
+          where("role", "==", role),
+          orderBy("createdAt", "desc"),
+          startAfter(startDoc),
+          limit(pageSize)
+        );
+      } else {
+        q = query(
+          collection(db, "users"),
+          where("role", "==", role),
+          orderBy("createdAt", "desc"),
+          limit(pageSize)
+        );
+      }
 
+      const snapshot = await getDocs(q);
+      const users = snapshot.docs.map((doc) => User.fromFirestore(doc));
+
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: users,
+        nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+  
   countAll = async (req, res, next) => {
     try {
       const q = query(collection(db, "users"));

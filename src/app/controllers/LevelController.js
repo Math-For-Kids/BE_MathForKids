@@ -155,19 +155,17 @@ class LevelController {
   // Filter all paginated levels by disabled state
   filterByDisabledState = async (req, res) => {
     try {
-      const pageSize = parseInt(req.query.pageSize) || 10;
+      const pageSize = parseInt(req.query.pageSize) || 10; // số bài học mỗi trang
       const startAfterId = req.query.startAfterId || null;
       const { isDisabled } = req.query;
-
       let q;
-
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "levels", startAfterId));
         q = query(
           collection(db, "levels"),
           where("isDisabled", "==", isDisabled === "true"),
-          startAfter(startDoc),
           orderBy("createdAt", "desc"),
+          startAfter(startDoc),
           limit(pageSize)
         );
       } else {
@@ -178,16 +176,15 @@ class LevelController {
           limit(pageSize)
         );
       }
-
       const snapshot = await getDocs(q);
-      const levels = snapshot.docs.map((doc) => Level.fromFirestore(doc));
-
+      const level = snapshot.docs.map((doc) =>
+        Level.fromFirestore(doc)
+      );
       const lastVisible = snapshot.docs[snapshot.docs.length - 1];
       const lastVisibleId = lastVisible ? lastVisible.id : null;
-
       res.status(200).send({
-        data: levels,
-        nextPageToken: lastVisibleId,
+        data: level,
+        nextPageToken: lastVisibleId, // Dùng làm startAfterId cho trang kế
       });
     } catch (error) {
       res.status(500).send({

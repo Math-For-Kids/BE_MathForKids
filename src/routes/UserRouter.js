@@ -16,12 +16,14 @@ router.post(
 router.get("/countByDisabledStatus", userController.countByDisabledStatus);
 // Filter by isDisabled with pagination
 router.get("/filterByDisabledStatus", userController.filterByDisabledStatus);
+
+router.get("/filterByRole", userController.filterByRole);
+
+router.get("/countByGender", userController.countByGender);
 // Get total count of all users
 router.get("/countAll", userController.countAll);
 // Get all users
 router.get("/", userController.getAll);
-// Get an user by ID
-router.get("/:id", userMiddleware.checkUserExistById(), userController.getById);
 // Count all exist user
 router.get("/countuser", userController.countUsers);
 // Count new users by month
@@ -31,11 +33,9 @@ router.get("/countusersbyweek", userController.countUsersByWeek);
 // Count new users by year
 router.get("/countusersbyyear", userController.countUsersByYear);
 // Update user information
-router.patch(
-  "/updateProfile/:id",
-  userMiddleware.checkUserExistById(),
-  userController.update
-);
+router.patch("/updateProfile/:id", userMiddleware.checkUserExistById(), userController.update);
+// Get an user by ID
+router.get("/:id", userMiddleware.checkUserExistById(), userController.getById);
 // Update image profile
 router.patch(
   "/updateImageProfile/:id",

@@ -104,25 +104,6 @@ class ExerciseController {
         },
       });
     }
-  }; countByLessonAndDisabledStatus = async (req, res, next) => {
-    try {
-      const { lessonId } = req.params;
-      const { isDisabled } = req.query;
-      const q = query(
-        collection(db, "exercises"),
-        where("lessonId", "==", lessonId),
-        where("isDisabled", "==", isDisabled === "true")
-      );
-      const snapshot = await getCountFromServer(q);
-      res.status(200).send({ count: snapshot.data().count });
-    } catch (error) {
-      res.status(500).send({
-        message: {
-          en: error.message,
-          vi: "Đã xảy ra lỗi nội bộ.",
-        },
-      });
-    }
   };
   countByLessonAndLevelAndDisabledStatus = async (req, res, next) => {
     try {
@@ -133,25 +114,6 @@ class ExerciseController {
         where("lessonId", "==", lessonId),
         where("levelId", "==", levelId),
         where("isDisabled", "==", isDisabled === "true")
-      );
-      const snapshot = await getCountFromServer(q);
-      res.status(200).send({ count: snapshot.data().count });
-    } catch (error) {
-      res.status(500).send({
-        message: {
-          en: error.message,
-          vi: "Đã xảy ra lỗi nội bộ.",
-        },
-      });
-    }
-  };
-  countByLessonAndLevel = async (req, res, next) => {
-    try {
-      const { lessonId, levelId } = req.params;
-      const q = query(
-        collection(db, "exercises"),
-        where("lessonId", "==", lessonId),
-        where("levelId", "==", levelId),
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
@@ -309,11 +271,11 @@ class ExerciseController {
   // Count all exercises by lesson ID & level ID
   countByLessonAndLevel = async (req, res, next) => {
     try {
-      const { lessonId, levelID } = req.params;
+      const { lessonId, levelId } = req.params;
       const q = query(
         collection(db, "exercises"),
         where("lessonId", "==", lessonId),
-        where("levelID", "==", levelID)
+        where("levelId", "==", levelId)
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
@@ -430,8 +392,6 @@ class ExerciseController {
     const exercise = req.exercise;
     res.status(200).send({ id: id, ...exercise });
   };
-
-  // Update exercise
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
@@ -477,7 +437,9 @@ class ExerciseController {
           parsedOption = textOption
             ? typeof textOption === "string" && textOption.startsWith("[")
               ? JSON.parse(textOption)
-              : [textOption] // Treat as single-item array if plain text
+              : Array.isArray(textOption)
+                ? textOption
+                : [textOption]
             : null;
           parsedAnswer = textAnswer || null;
         } catch (error) {
@@ -486,7 +448,7 @@ class ExerciseController {
             .send({ message: "Invalid format for option or answer!" });
         }
 
-        // Process file uploads and text inputs
+        // Process file uploads
         const {
           image,
           option: uploadedOption,
@@ -497,21 +459,46 @@ class ExerciseController {
           parsedAnswer
         );
 
-        // Determine final values for option and answer
-        const finalOption =
-          parsedOption && parsedOption.length > 0
-            ? parsedOption // Prioritize text option if provided
-            : uploadedOption && uploadedOption.length > 0
-              ? uploadedOption
-              : oldData.option;
+        // Determine if dealing with image or text options
+        const isImageOption =
+          (req.files && (req.files.option || req.files.answer)) ||
+          (parsedOption &&
+            Array.isArray(parsedOption) &&
+            parsedOption.some(opt => typeof opt === "string" && opt.startsWith("http")));
 
-        const finalAnswer =
-          parsedAnswer !== null
-            ? parsedAnswer // Prioritize text answer if provided
-            : uploadedAnswer !== null
-              ? uploadedAnswer
-              : oldData.answer;
+        // Handle options
+        let finalOption;
+        if (isImageOption) {
+          if (uploadedOption && uploadedOption.length > 0) {
+            finalOption = uploadedOption.filter(opt => opt !== null && opt !== "");
+          } else if (
+            parsedOption &&
+            Array.isArray(parsedOption) &&
+            parsedOption.some(opt => typeof opt === "string" && opt.startsWith("http"))
+          ) {
+            finalOption = parsedOption.filter(opt => typeof opt === "string" && opt !== "");
+          } else {
+            finalOption = oldData.option || [];
+          }
+        } else {
+          finalOption =
+            parsedOption && Array.isArray(parsedOption) && parsedOption.length > 0
+              ? parsedOption.filter(opt => typeof opt === "string" && opt !== "")
+              : oldData.option || [];
+        }
 
+        // Handle answer
+        const finalAnswer = isImageOption
+          ? uploadedAnswer !== null
+            ? uploadedAnswer
+            : parsedAnswer && typeof parsedAnswer === "string" && parsedAnswer.startsWith("http")
+              ? parsedAnswer
+              : oldData.answer
+          : parsedAnswer !== null
+            ? parsedAnswer
+            : oldData.answer;
+
+        // Handle image
         const finalImage = image !== null ? image : oldData.image;
 
         // Build update data
@@ -544,6 +531,7 @@ class ExerciseController {
       });
     }
   };
+
   getAll = async (req, res, next) => {
     try {
       const exercises = await getDocs(collection(db, "exercises"));

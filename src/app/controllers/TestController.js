@@ -69,18 +69,26 @@ class TestController {
   };
 
   // Get all paginated tests
-  getAll = async (req, res) => {
+  getAll = async (req, res, next) => {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
-
       let q;
       if (startAfterId) {
-        const startDoc = await getDoc(doc(db, "tests", startAfterId));
+        const startDocRef = doc(db, "tests", startAfterId);
+        const startDocSnap = await getDoc(startDocRef);
+        if (!startDocSnap.exists()) {
+          return res.status(400).send({
+            message: {
+              en: "Invalid startAfterId",
+              vi: "startAfterId không hợp lệ",
+            },
+          });
+        }
         q = query(
           collection(db, "tests"),
-          startAfter(startDoc),
           orderBy("createdAt", "desc"),
+          startAfter(startDocSnap),
           limit(pageSize)
         );
       } else {
@@ -92,12 +100,12 @@ class TestController {
       }
 
       const snapshot = await getDocs(q);
-      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+      const pupilArray = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
       const lastVisible = snapshot.docs[snapshot.docs.length - 1];
       const lastVisibleId = lastVisible ? lastVisible.id : null;
 
       res.status(200).send({
-        data: tests,
+        data: pupilArray,
         nextPageToken: lastVisibleId,
       });
     } catch (error) {
@@ -244,7 +252,7 @@ class TestController {
   // Count tests by point
   countTestsByPoint = async (req, res, next) => {
     try {
-      const {condition, point } = req.query;
+      const { condition, point } = req.query;
       const q = query(
         collection(db, "tests"),
         where("point", condition, parseInt(point)),
