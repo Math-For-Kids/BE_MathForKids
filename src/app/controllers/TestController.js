@@ -25,7 +25,7 @@ class TestController {
       const data = req.body;
       await addDoc(collection(db, "tests"), {
         ...data,
-        createAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
       });
       res.status(201).send({
         message: {
@@ -444,6 +444,102 @@ class TestController {
       res.status(200).send({
         data: tests,
         nextPageToken: lastVisibleId,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+  // Thống kê top 10 học sinh có điểm trung bình cao nhất
+  top10PupilsByAveragePoint = async (req, res) => {
+    try {
+      // Lấy tất cả bài kiểm tra
+      const snapshot = await getDocs(collection(db, "tests"));
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+
+      // Tạo object để lưu tổng điểm và số bài kiểm tra của từng học sinh
+      const pupilStats = {};
+
+      // Duyệt qua các bài kiểm tra để tính tổng điểm và số bài kiểm tra
+      tests.forEach((test) => {
+        const { pupilId, point } = test;
+        if (!pupilStats[pupilId]) {
+          pupilStats[pupilId] = { totalPoints: 0, testCount: 0 };
+        }
+        pupilStats[pupilId].totalPoints += point;
+        pupilStats[pupilId].testCount += 1;
+      });
+
+      // Tính điểm trung bình và chuyển thành mảng
+      const pupilAverages = Object.keys(pupilStats).map((pupilId) => ({
+        pupilId,
+        averagePoint: pupilStats[pupilId].totalPoints / pupilStats[pupilId].testCount,
+        testCount: pupilStats[pupilId].testCount,
+      }));
+
+      // Sắp xếp theo điểm trung bình giảm dần và lấy top 10
+      const top10Pupils = pupilAverages
+        .sort((a, b) => b.averagePoint - a.averagePoint)
+        .slice(0, 10);
+
+      res.status(200).send({
+        data: top10Pupils,
+        message: {
+          en: "Top 10 pupils by average point retrieved successfully",
+          vi: "Lấy top 10 học sinh có điểm trung bình cao nhất thành công",
+        },
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+  // Thống kê top 10 bài tập có điểm trung bình cao nhất
+  top10TestsByAveragePoint = async (req, res) => {
+    try {
+      // Lấy tất cả bài kiểm tra
+      const snapshot = await getDocs(collection(db, "tests"));
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+
+      // Tạo object để lưu tổng điểm và số học sinh làm bài cho từng bài kiểm tra
+      const testStats = {};
+
+      // Duyệt qua các bài kiểm tra để tính tổng điểm và số học sinh
+      tests.forEach((test) => {
+        const { lessonId, point } = test;
+        if (!testStats[lessonId]) {
+          testStats[lessonId] = { totalPoints: 0, pupilCount: 0 };
+        }
+        testStats[lessonId].totalPoints += point;
+        testStats[lessonId].pupilCount += 1;
+      });
+
+      // Tính điểm trung bình và chuyển thành mảng
+      const testAverages = Object.keys(testStats).map((lessonId) => ({
+        lessonId,
+        averagePoint: testStats[lessonId].totalPoints / testStats[lessonId].pupilCount,
+        pupilCount: testStats[lessonId].pupilCount,
+      }));
+
+      // Sắp xếp theo điểm trung bình giảm dần và lấy top 10
+      const top10Tests = testAverages
+        .sort((a, b) => b.averagePoint - a.averagePoint)
+        .slice(0, 10);
+
+      res.status(200).send({
+        data: top10Tests,
+        message: {
+          en: "Top 10 tests by average point retrieved successfully",
+          vi: "Lấy top 10 bài tập có điểm trung bình cao nhất thành công",
+        },
       });
     } catch (error) {
       res.status(500).send({

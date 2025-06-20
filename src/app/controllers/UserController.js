@@ -456,7 +456,7 @@ class UserController {
   };
 
   // Update user
-  update = async (req, res, next) => {
+    update = async (req, res, next) => {
     try {
       const id = req.params.id;
       const data = req.body;

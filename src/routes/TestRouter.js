@@ -65,6 +65,10 @@ router.get(
   lessonMiddleware.checkLessonExistById("lessonID"),
   testController.filterByLessonIDAndPoint
 );
+// Thống kê top 10 học sinh có điểm trung bình cao nhất
+router.get("/top10PupilsByAveragePoint", testController.top10PupilsByAveragePoint);
+// Thống kê top 10 bài tập có điểm trung bình cao nhất
+router.get("/top10TestsByAveragePoint", testController.top10TestsByAveragePoint);
 // Get test by ID
 router.get("/:id", testMiddleware.checkTestExistById(), testController.getById);
 

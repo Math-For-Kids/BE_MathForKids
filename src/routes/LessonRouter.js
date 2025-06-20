@@ -36,5 +36,9 @@ router.patch(
   lessonMiddleware.checkLessonNameExistForUpdate,
   lessonController.update
 );
-
+router.patch(
+  "/order/:id",
+  lessonMiddleware.checkLessonExistById(),
+  lessonController.update
+);
 module.exports = router;
