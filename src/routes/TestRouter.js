@@ -64,7 +64,11 @@ router.get(
   "/filterByLessonIDAndPoint/:lessonID",
   lessonMiddleware.checkLessonExistById("lessonID"),
   testController.filterByLessonIDAndPoint
-);
+)
+// Thống kê top 10 học sinh có điểm trung bình cao nhất
+router.get("/top10PupilsByAveragePoint", testController.top10PupilsByAveragePoint);
+// Thống kê top 10 bài tập có điểm trung bình cao nhất
+router.get("/top10TestsByAveragePoint", testController.top10TestsByAveragePoint);
 // // Get tests by pupil IDAdd commentMore actions
 // router.get(
 //   "/getByPupil/:pupilId",

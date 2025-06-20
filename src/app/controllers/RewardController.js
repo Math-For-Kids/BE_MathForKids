@@ -86,7 +86,7 @@ class RewardController {
   // Create reward
   create = async (req, res, next) => {
     try {
-      const { name, description } = req.body;
+      const { name, description, exchangePoint } = req.body;
       if (!req.files || req.files.length === 0) {
         return res.status(400).send({ message: "Image file is required." });
       }
@@ -95,11 +95,12 @@ class RewardController {
       const image = uploadedFiles["image"];
       const parsedName = JSON.parse(name);
       const parsedDescription = JSON.parse(description);
-
+      const exchangePoints = Number(exchangePoint);
       const rewardRef = await addDoc(collection(db, "reward"), {
         name: parsedName,
         description: parsedDescription,
         image,
+        exchangePoint: exchangePoints,
         isDisabled: false,
         createdAt: serverTimestamp(),
       });
@@ -223,27 +224,32 @@ class RewardController {
       const id = req.params.id;
       const ref = doc(db, "reward", id);
 
-      const { isDisabled, name, description } = req.body;
+      const { isDisabled, name, description, exchangePoint } = req.body;
       console.log("req.files:", req.files);
       const updateData = {
         updatedAt: serverTimestamp(),
       };
-      const currentReward = req.reward;
+      const currentRewardDoc = await getDoc(ref);
+      if (!currentRewardDoc.exists()) {
+        throw new Error("Reward not found");
+      }
+      const currentReward = currentRewardDoc.data();
       const parsedName = typeof name === "string" ? JSON.parse(name) : name;
       const parsedDescription =
         typeof description === "string" ? JSON.parse(description) : description;
-
+      const parsedExchangePoints = typeof exchangePoint === "string" ? parseInt(exchangePoint) : exchangePoint;
       if (isDisabled !== undefined && !name && !description && !req.files) {
         updateData.isDisabled = isDisabled;
       } else {
         updateData.name = parsedName;
         updateData.description = parsedDescription;
+        updateData.exchangxePoint = parsedExchangePoints;
         // Nếu có files thì xử lý upload ảnh
         if (req.files && Object.keys(req.files).length > 0) {
           const uploadedFiles = await uploadMultipleFiles(req.files);
           updateData.image = uploadedFiles.image;
         } else {
-          updateData.image = currentReward.data().image;
+          updateData.image = currentReward.image;
         }
       }
       await updateDoc(ref, updateData);
