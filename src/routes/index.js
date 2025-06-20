@@ -19,6 +19,7 @@ const completedTaskRouter = require("../routes/CompletedTaskRouter");
 const userNotificationRouter = require("../routes/UserNotificationRouter");
 const completedExerciseRouter = require("../routes/CompletedExerciseRouter");
 const completedQuestionRouter = require("../routes/CompletedQuestionRouter");
+const exchangeRewardRouter = require("../routes/exchangeRewardRouter");
 
 function route(app) {
   app.use("/lesson", lessonRouter);
@@ -42,6 +43,8 @@ function route(app) {
   app.use("/completedtask", completedTaskRouter);
   app.use("/completedexercise", completedExerciseRouter);
   app.use("/completedquestion", completedQuestionRouter);
+  app.use("/exchangereward", exchangeRewardRouter);
+
 }
 
 module.exports = route;
