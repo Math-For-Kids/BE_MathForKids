@@ -10,9 +10,8 @@ const {
   serverTimestamp,
   query,
   where,
-   limit,
+  limit,
   startAfter,
-
 } = require("firebase/firestore");
 
 const db = getFirestore();
@@ -31,7 +30,6 @@ const queryLessonName = async (lessonName) => {
 };
 
 class LessonMiddleware {
-  
   // Check lesson is already exist or not
   checkLessonExistById = (paramName = "id") => {
     return async (req, res, next) => {
@@ -67,20 +65,19 @@ class LessonMiddleware {
   };
 
   // Check if the lesson name already exists FOR CREATE
-  checkLessonNameExistForCreate = async (req, res, next) => {
+  checkNameExistForCreate = async (req, res, next) => {
     try {
       const { name } = req.body;
       const [snapEn, snapVi] = await queryLessonName(name);
       if (!snapEn.empty) {
-        return res.status(400).json({
+        return res.status(409).json({
           message: {
             en: "The English lesson name already exists.",
             vi: "Tên bài học tiếng Anh đã tồn tại.",
           },
         });
-      }
-      if (!snapVi.empty) {
-        return res.status(400).json({
+      } else if (!snapVi.empty) {
+        return res.status(409).json({
           message: {
             en: "The Vietnamese lesson name already exists.",
             vi: "Tên bài học tiếng Việt đã tồn tại.",
@@ -99,7 +96,7 @@ class LessonMiddleware {
   };
 
   // Check if the lesson name already exists FOR UPDATE
-  checkLessonNameExistForUpdate = async (req, res, next) => {
+  checkNameExistForUpdate = async (req, res, next) => {
     try {
       const id = req.params.id;
       const { name } = req.body;
@@ -107,15 +104,14 @@ class LessonMiddleware {
       const isEnDuplicate = snapEn.docs.some((doc) => doc.id !== id);
       const isViDuplicate = snapVi.docs.some((doc) => doc.id !== id);
       if (isEnDuplicate) {
-        return res.status(400).json({
+        return res.status(409).json({
           message: {
             en: "The English lesson name already exists.",
             vi: "Tên bài học tiếng Anh đã tồn tại.",
           },
         });
-      }
-      if (isViDuplicate) {
-        return res.status(400).json({
+      } else if (isViDuplicate) {
+        return res.status(409).json({
           message: {
             en: "The Vietnamese lesson name already exists.",
             vi: "Tên bài học tiếng Việt đã tồn tại.",

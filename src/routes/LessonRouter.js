@@ -6,13 +6,13 @@ const router = express.Router();
 // Create lesson
 router.post(
   "/",
-  lessonMiddleware.checkLessonNameExistForCreate,
+  lessonMiddleware.checkNameExistForCreate,
   lessonController.create
 );
 // Count all lessons by grade & type
 router.get("/countAll", lessonController.countAll);
 // Get all paginated lessons by grade & type
-router.post("/getAll", lessonController.getAll);
+router.get("/getAll", lessonController.getAll);
 // Get enabled lessons by grade & type
 router.get("/getByGradeAndType", lessonController.getByGradeAndType);
 // Get a lesson by ID
@@ -31,7 +31,7 @@ router.get("/countlesson", lessonController.countLessons);
 router.patch(
   "/:id",
   lessonMiddleware.checkLessonExistById(),
-  lessonMiddleware.checkLessonNameExistForUpdate,
+  lessonMiddleware.checkNameExistForUpdate,
   lessonController.update
 );
 

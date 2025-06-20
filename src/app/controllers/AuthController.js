@@ -34,6 +34,7 @@ const convertToTimeStamp = (timePlus) => {
 // Verify if OTP matches and if the OTP has expired
 const verify = (user, otpCode) => {
   const error = new Error();
+  const now = convertToTimeStamp(0);
   // Kiểm tra OTP có khớp không
   if (user.otpCode !== otpCode) {
     error.statusCode = 400;
@@ -42,10 +43,8 @@ const verify = (user, otpCode) => {
       vi: "Mã OTP không chính xác. Vui lòng thử lại.",
     };
     throw error;
-  }
-  // Kiểm tra thời gian hết hạn
-  const now = convertToTimeStamp(0);
-  if (now.toMillis() > user.otpExpiration.toMillis()) {
+  } else if (now.toMillis() > user.otpExpiration.toMillis()) {
+    // Kiểm tra thời gian hết hạn
     error.statusCode = 400;
     error.message = {
       en: "The OTP has expired. Please resend a new one.",
@@ -169,7 +168,7 @@ class AuthController {
       });
 
       const options = {
-        expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         httpOnly: true,
       };
 
