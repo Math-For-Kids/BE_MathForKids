@@ -68,7 +68,7 @@ class AuthController {
   sendOTPByPhoneNumber = async (req, res, next) => {
     try {
       const { phoneNumber } = req.params;
-      const { id } = req.user;
+      const id = req.user.id || req.params.id;
       const otpCode = generateOTPCode();
       const otpExpiration = convertToTimeStamp(5 * 60 * 1000);
       await smsService(
@@ -99,7 +99,7 @@ class AuthController {
   sendOTPByEmail = async (req, res, next) => {
     try {
       const { email } = req.params;
-      const { id } = req.user;
+      const id = req.user.id || req.params.id;
       const otpCode = generateOTPCode();
       const otpExpiration = convertToTimeStamp(5 * 60 * 1000);
       await mailService(email, otpCode);
