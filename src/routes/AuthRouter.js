@@ -17,6 +17,20 @@ router.post(
   userMiddleware.checkIsDisabled,
   authController.sendOTPByEmail
 );
+// Send OTP to update new phone number
+router.post(
+  "/sendOtpToUpdatePhone/:id",
+  userMiddleware.checkUserExistById(),
+  userMiddleware.checkPhoneExistForUpdate,
+  authController.sendOTPByPhoneNumber
+);
+// Send OTP to update new email
+router.post(
+  "/sendOtpToUpdateEmail/:id",
+  userMiddleware.checkUserExistById(),
+  userMiddleware.checkEmailExistForUpdate,
+  authController.sendOTPByEmail
+);
 // Verify only OTP
 router.post(
   "/verifyOTP/:id",

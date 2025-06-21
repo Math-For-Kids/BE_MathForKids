@@ -470,7 +470,8 @@ class TestController {
       // Tính điểm trung bình và chuyển thành mảng
       const pupilAverages = Object.keys(pupilStats).map((pupilId) => ({
         pupilId,
-        averagePoint: pupilStats[pupilId].totalPoints / pupilStats[pupilId].testCount,
+        averagePoint:
+          pupilStats[pupilId].totalPoints / pupilStats[pupilId].testCount,
         testCount: pupilStats[pupilId].testCount,
       }));
 
@@ -486,6 +487,15 @@ class TestController {
           vi: "Lấy top 10 học sinh có điểm trung bình cao nhất thành công",
         },
       });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
 
   // Get tests by pupil ID
   getTestByPupilId = async (req, res, next) => {
@@ -534,7 +544,8 @@ class TestController {
       // Tính điểm trung bình và chuyển thành mảng
       const testAverages = Object.keys(testStats).map((lessonId) => ({
         lessonId,
-        averagePoint: testStats[lessonId].totalPoints / testStats[lessonId].pupilCount,
+        averagePoint:
+          testStats[lessonId].totalPoints / testStats[lessonId].pupilCount,
         pupilCount: testStats[lessonId].pupilCount,
       }));
 
@@ -550,66 +561,82 @@ class TestController {
           vi: "Lấy top 10 bài tập có điểm trung bình cao nhất thành công",
         },
       });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
 
-  // Get tests by lesson ID
-  getTestsByLesson = async (req, res, next) => {
-    try {
-      const lessonId = req.params.lessonId;
-      const q = query(
-        collection(db, "tests"),
-        where("lessonId", "==", lessonId)
-      );
-      const testSnapshot = await getDocs(q);
-      const allTests = testSnapshot.docs.map((doc) => Tests.fromFirestore(doc));
-      // Lấy test mới nhất theo pupilId
-      const latestTestsByPupil = {};
-      for (const test of allTests) {
-        const pupilId = test.pupilId;
-        const current = latestTestsByPupil[pupilId];
-        // Nếu chưa có hoặc test mới hơn => cập nhật
-        if (
-          !current ||
-          new Date(test.createdAt) > new Date(current.createdAt)
-        ) {
-          latestTestsByPupil[pupilId] = test;
+    // Get tests by lesson ID
+    getTestsByLesson = async (req, res, next) => {
+      try {
+        const lessonId = req.params.lessonId;
+        const q = query(
+          collection(db, "tests"),
+          where("lessonId", "==", lessonId)
+        );
+        const testSnapshot = await getDocs(q);
+        const allTests = testSnapshot.docs.map((doc) =>
+          Tests.fromFirestore(doc)
+        );
+        // Lấy test mới nhất theo pupilId
+        const latestTestsByPupil = {};
+        for (const test of allTests) {
+          const pupilId = test.pupilId;
+          const current = latestTestsByPupil[pupilId];
+          // Nếu chưa có hoặc test mới hơn => cập nhật
+          if (
+            !current ||
+            new Date(test.createdAt) > new Date(current.createdAt)
+          ) {
+            latestTestsByPupil[pupilId] = test;
+          }
         }
+        // Trả về mảng kết quả
+        const result = Object.values(latestTestsByPupil);
+        res.status(200).send(result);
+      } catch (error) {
+        res.status(500).send({
+          message: {
+            en: error.message,
+            vi: "Đã xảy ra lỗi nội bộ.",
+          },
+        });
       }
-      // Trả về mảng kết quả
-      const result = Object.values(latestTestsByPupil);
-      res.status(200).send(result);
-    } catch (error) {
-      res.status(500).send({
-        message: {
-          en: error.message,
-          vi: "Đã xảy ra lỗi nội bộ.",
-        },
-      });
-    }
-  };
+    };
 
-  // Get test by pupil ID & lesson ID
-  getTestsByPupilIdAndLesson = async (req, res, next) => {
-    try {
-      const { pupilId, lessonId } = req.params;
-      console.log("Querying for lessonId:", pupilId, "and lessonId", lessonId); // Debug log
-      const q = query(
-        collection(db, "tests"),
-        where("pupilId", "==", pupilId),
-        where("lessonId", "==", lessonId)
-      );
-      const testSnapshot = await getDocs(q);
-      const testArray = testSnapshot.docs.map((doc) =>
-        Tests.fromFirestore(doc)
-      );
-      res.status(200).send(testArray);
-    } catch (error) {
-      res.status(500).send({
-        message: {
-          en: error.message,
-          vi: "Đã xảy ra lỗi nội bộ.",
-        },
-      });
-    }
+    // Get test by pupil ID & lesson ID
+    getTestsByPupilIdAndLesson = async (req, res, next) => {
+      try {
+        const { pupilId, lessonId } = req.params;
+        console.log(
+          "Querying for lessonId:",
+          pupilId,
+          "and lessonId",
+          lessonId
+        ); // Debug log
+        const q = query(
+          collection(db, "tests"),
+          where("pupilId", "==", pupilId),
+          where("lessonId", "==", lessonId)
+        );
+        const testSnapshot = await getDocs(q);
+        const testArray = testSnapshot.docs.map((doc) =>
+          Tests.fromFirestore(doc)
+        );
+        res.status(200).send(testArray);
+      } catch (error) {
+        res.status(500).send({
+          message: {
+            en: error.message,
+            vi: "Đã xảy ra lỗi nội bộ.",
+          },
+        });
+      }
+    };
   };
 }
 

@@ -43,20 +43,6 @@ router.patch(
   userMiddleware.checkUserExistById(),
   userController.uploadImageProfileToS3
 );
-// Update phone number
-router.patch(
-  "/updatePhone/:id",
-  userMiddleware.checkUserExistById(),
-  userMiddleware.checkPhoneExistForUpdate,
-  userController.update
-);
-// Update email
-router.patch(
-  "/updateEmail/:id",
-  userMiddleware.checkUserExistById(),
-  userMiddleware.checkEmailExistForUpdate,
-  userController.update
-);
 // Update pin
 router.patch(
   "/updatePin/:id",
