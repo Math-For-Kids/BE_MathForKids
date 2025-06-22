@@ -80,5 +80,22 @@ router.put(
   uploadFields,
   exerciseController.update
 );
+// Random exercises
+router.get(
+  "/randomExercises/:lessonId",
+  lessonMiddleware.checkLessonExistById("lessonId"),
+  exerciseController.randomExercises
+);
+// Random tests
+router.get(
+  "/randomTests/:lessonId",
+  lessonMiddleware.checkLessonExistById("lessonId"),
+  exerciseController.randomTests
+);
+// Random assessments
+router.get(
+  "/randomAssessments/:grade",
+  exerciseController.randomAssessments
+);
 
 module.exports = router;
