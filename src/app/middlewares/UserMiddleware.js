@@ -197,6 +197,7 @@ class UserMiddleware {
     try {
       const id = req.params.id;
       const { newEmail } = req.body;
+      console.log("newEmail", newEmail);
       const querySnapshot = await queryEmail(newEmail);
       const conflict = querySnapshot.docs.find((doc) => doc.id !== id);
       if (conflict)
