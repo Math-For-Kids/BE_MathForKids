@@ -24,11 +24,29 @@ class LessonController {
   create = async (req, res, next) => {
     try {
       const data = req.body;
-      await addDoc(collection(db, "lessons"), {
+      const lessonRef = await addDoc(collection(db, "lessons"), {
         ...data,
         isDisabled: false,
         createdAt: serverTimestamp(),
       });
+      // Fetch all pupil IDs from the pupils collection
+      const pupilsSnapshot = await getDocs(collection(db, "pupils"));
+      const pupilIds = pupilsSnapshot.docs.map((doc) => doc.id);
+
+      // Create completed lesson records for each pupil
+      const completedLessonsPromises = pupilIds.map((pupilId) =>
+        addDoc(collection(db, "completed_lesson"), {
+          pupilId,
+          lessonId: lessonRef.id,
+          isCompleted: false,
+          isBlock: true,
+          isDisabled: false,
+          createdAt: serverTimestamp(),
+        })
+      );
+      // Execute all completed lesson creations
+      await Promise.all(completedLessonsPromises);
+
       res.status(201).send({
         message: {
           en: "Lesson created successfully!",
@@ -237,9 +255,30 @@ class LessonController {
     try {
       const id = req.params.id;
       const { createdAt, ...data } = req.body;
-      const lesson = doc(db, "lessons", id);
-      await updateDoc(lesson, { ...data, updatedAt: serverTimestamp() });
-      res.status(200).send({ message: "Lesson updated successfully!" });
+      const lessonRef = doc(db, "lessons", id);
+
+      await updateDoc(lessonRef, { ...data, updatedAt: serverTimestamp() });
+
+      if (data.hasOwnProperty("isDisabled")) {
+        const completedLessonQuery = query(
+          collection(db, "completed_lesson"),
+          where("lessonId", "==", id)
+        );
+        const completedlessonSnapshot = await getDocs(completedLessonQuery);
+        const updatePromises = completedlessonSnapshot.docs.map((doc) =>
+          updateDoc(doc.ref, {
+            isDisabled: data.isDisabled,
+            updatedAt: serverTimestamp(),
+          }));
+        await Promise.all(updatePromises);
+      }
+
+      res.status(200).send({
+        message: {
+          en: "Lesson and related completed lessons updated successfully!",
+          vi: "Cập nhật bài học và bản ghi hoàn thành bài học thành công!",
+        },
+      });
     } catch (error) {
       res.status(500).send({
         message: {

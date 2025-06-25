@@ -17,11 +17,15 @@ router.get(
 router.get(
   "/getByPupilAndLesson/:pupilId/lesson/:lessonId",
   pupilMiddleware.checkPupilExistById("pupilId"),
-  lessonMiddleware.checkLessonExistById("lessonId"),  
+  lessonMiddleware.checkLessonExistById("lessonId"),
   completedLessonController.getByPupilLesson
 );
+router.get(
+  "/getAll",
+  completedLessonController.getAll
+);
 // Update completed lesson status
-router.patch("/:id", 
+router.patch("/:id",
   completedLessonMiddleware.checkCompletedLessonExistById,
   completedLessonController.updateStatus
 )
