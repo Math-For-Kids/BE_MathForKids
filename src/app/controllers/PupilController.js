@@ -220,7 +220,7 @@ class PupilController {
       const data = req.body;
       const date = new Date(data.dateOfBirth);
       const dateOfBirthTimestamp = Timestamp.fromDate(date);
-      await addDoc(collection(db, "pupils"), {
+      const pupilRef = await addDoc(collection(db, "pupils"), {
         ...data,
         dateOfBirth: dateOfBirthTimestamp,
         isDisabled: false,
@@ -232,6 +232,26 @@ class PupilController {
         theme: "theme1",
         createdAt: serverTimestamp(),
       });
+
+      // Fetch all lesson IDs from the lessons collection
+      const lessonsSnapshot = await getDocs(collection(db, "lessons"));
+      const lessonIds = lessonsSnapshot.docs.map((doc) => doc.id);
+
+      // Create completed lesson records for the pupil
+      const completedLessonsPromises = lessonIds.map((lessonId) =>
+        addDoc(collection(db, "completed_lesson"), {
+          pupilId: pupilRef.id,
+          lessonId,
+          isCompleted: false,
+          isBlock: true,
+          isDisabled: false,
+          createdAt: serverTimestamp(),
+        })
+      );
+
+      // Execute all completed lesson creations
+      await Promise.all(completedLessonsPromises);
+
       res.status(201).send({
         message: {
           en: "Pupil created successfully!",

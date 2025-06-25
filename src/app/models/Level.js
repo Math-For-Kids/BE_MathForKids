@@ -1,12 +1,14 @@
 class Level {
   constructor(
-    id, 
-    name, 
-    isDisabled, 
-    createdAt, 
+    id,
+    level,
+    name,
+    isDisabled,
+    createdAt,
     updatedAt
   ) {
     this.id = id;
+    this.level = level;
     this.name = name;
     this.isDisabled = isDisabled;
     this.createdAt = createdAt;
@@ -17,6 +19,7 @@ class Level {
     const data = doc.data();
     return new Level(
       doc.id,
+      data.level,
       data.name ?? {},
       data.isDisabled ?? false,
       data.createdAt?.toDate().toLocaleString("vi-VN") ?? '',
