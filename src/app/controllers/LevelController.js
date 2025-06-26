@@ -76,13 +76,13 @@ class LevelController {
         q = query(
           collection(db, "levels"),
           startAfter(startDoc),
-          orderBy("createdAt", "desc"),
+          orderBy("level"),
           limit(pageSize)
         );
       } else {
         q = query(
           collection(db, "levels"),
-          orderBy("createdAt", "desc"),
+          orderBy("level"),
           limit(pageSize)
         );
       }
@@ -164,7 +164,7 @@ class LevelController {
         q = query(
           collection(db, "levels"),
           where("isDisabled", "==", isDisabled === "true"),
-          orderBy("createdAt", "desc"),
+          orderBy("level"),
           startAfter(startDoc),
           limit(pageSize)
         );
@@ -172,7 +172,7 @@ class LevelController {
         q = query(
           collection(db, "levels"),
           where("isDisabled", "==", isDisabled === "true"),
-          orderBy("createdAt", "desc"),
+          orderBy("level"),
           limit(pageSize)
         );
       }
