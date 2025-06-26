@@ -42,7 +42,7 @@ router.get(
 );
 // Count all lesson details by lesson ID & disabled state
 router.get(
-  "/countByLesson/:lessonId",
+  "/countByLessonAndDisabledState/:lessonId",
   lessonMiddleware.checkLessonExistById("lessonId"),
   controller.countByLessonAndDisabledState
 );

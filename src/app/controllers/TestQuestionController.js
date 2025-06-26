@@ -20,7 +20,21 @@ class TestQuestionController {
   // Create multiple test questions
   createMultiple = async (req, res) => {
     try {
-      const data = req.body;
+      let data = req.body;
+      // Nếu data không phải mảng, bọc nó thành mảng
+      if (!Array.isArray(data)) {
+        if (data && typeof data === "object") {
+          data = [data];
+        } else {
+          throw new Error("Dữ liệu gửi lên phải là mảng hoặc một đối tượng câu hỏi");
+        }
+      }
+      // Kiểm tra dữ liệu (tùy chọn, nhưng nên làm)
+      for (const item of data) {
+        if (!item.testId || !item.exerciseId || !item.question) {
+          throw new Error("Mỗi câu hỏi phải có testId, exerciseId và question");
+        }
+      }
       // Dùng Promise.all để tạo song song
       await Promise.all(
         data.map((item) =>
@@ -63,11 +77,15 @@ class TestQuestionController {
         where("testId", "==", testId),
         orderBy("createdAt", "desc")
       );
-      const testQuestionSnapshot = await getDocs(q);
-      const testQuestionArray = testQuestionSnapshot.docs.map((doc) =>
-        TestQuestion.fromFirestore(doc)
-      );
-      res.status(200).send(testQuestionArray);
+      const snapshot = await getDocs(q);
+      const testquestions = snapshot.docs.map((doc) => TestQuestion.fromFirestore(doc));
+      const lastVisible = snapshot.docs[snapshot.docs.length - 1];
+      const lastVisibleId = lastVisible ? lastVisible.id : null;
+
+      res.status(200).send({
+        data: testquestions,
+        nextPageToken: lastVisibleId,
+      });
     } catch (error) {
       res.status(500).send({
         message: {

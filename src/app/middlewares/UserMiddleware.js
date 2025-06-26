@@ -12,22 +12,21 @@ const {
 const db = getFirestore();
 
 const queryPhoneNumber = async (phoneNumber) => {
-  if (!phoneNumber || typeof phoneNumber !== "string")
-    return { empty: true, docs: [] };
   const q = query(
     collection(db, "users"),
     where("phoneNumber", "==", phoneNumber.trim())
   );
-  return await getDocs(q);
+  const querySnapshot = await getDocs(q);
+  return querySnapshot;
 };
 
 const queryEmail = async (email) => {
-  if (!email || typeof email !== "string") return { empty: true, docs: [] };
   const q = query(
     collection(db, "users"),
     where("email", "==", email.trim().toLowerCase())
   );
-  return await getDocs(q);
+  const querySnapshot = await getDocs(q);
+  return querySnapshot;
 };
 
 class UserMiddleware {
@@ -222,7 +221,7 @@ class UserMiddleware {
   };
 
   // When update pin, check if oldPin field is similar to the PIN of the user
-  checkPin = async (req, res, next) => {
+checkPin = async (req, res, next) => {
     try {
       const user = req.user;
       const { oldPin, newPin } = req.body;

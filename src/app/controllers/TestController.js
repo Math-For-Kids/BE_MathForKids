@@ -25,7 +25,7 @@ class TestController {
       const data = req.body;
       await addDoc(collection(db, "tests"), {
         ...data,
-        createAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
       });
       res.status(201).send({
         message: {
@@ -53,9 +53,7 @@ class TestController {
   // Count all test
   countAll = async (req, res, next) => {
     try {
-      const q = query(
-        collection(db, "tests"),
-      );
+      const q = query(collection(db, "tests"));
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
@@ -69,18 +67,26 @@ class TestController {
   };
 
   // Get all paginated tests
-  getAll = async (req, res) => {
+  getAll = async (req, res, next) => {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
-
       let q;
       if (startAfterId) {
-        const startDoc = await getDoc(doc(db, "tests", startAfterId));
+        const startDocRef = doc(db, "tests", startAfterId);
+        const startDocSnap = await getDoc(startDocRef);
+        if (!startDocSnap.exists()) {
+          return res.status(400).send({
+            message: {
+              en: "Invalid startAfterId",
+              vi: "startAfterId không hợp lệ",
+            },
+          });
+        }
         q = query(
           collection(db, "tests"),
-          startAfter(startDoc),
           orderBy("createdAt", "desc"),
+          startAfter(startDocSnap),
           limit(pageSize)
         );
       } else {
@@ -92,12 +98,12 @@ class TestController {
       }
 
       const snapshot = await getDocs(q);
-      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+      const pupilArray = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
       const lastVisible = snapshot.docs[snapshot.docs.length - 1];
       const lastVisibleId = lastVisible ? lastVisible.id : null;
 
       res.status(200).send({
-        data: tests,
+        data: pupilArray,
         nextPageToken: lastVisibleId,
       });
     } catch (error) {
@@ -114,10 +120,7 @@ class TestController {
   countTestsByPupilID = async (req, res, next) => {
     try {
       const { pupilId } = req.params;
-      const q = query(
-        collection(db, "tests"),
-        where("pupilId", "==", pupilId),
-      );
+      const q = query(collection(db, "tests"), where("pupilId", "==", pupilId));
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
@@ -181,7 +184,7 @@ class TestController {
       const { lessonId } = req.params;
       const q = query(
         collection(db, "tests"),
-        where("lessonId", "==", lessonId),
+        where("lessonId", "==", lessonId)
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
@@ -240,14 +243,13 @@ class TestController {
     }
   };
 
-
   // Count tests by point
   countTestsByPoint = async (req, res, next) => {
     try {
-      const {condition, point } = req.query;
+      const { condition, point } = req.query;
       const q = query(
         collection(db, "tests"),
-        where("point", condition, parseInt(point)),
+        where("point", condition, parseInt(point))
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
@@ -313,7 +315,7 @@ class TestController {
       const q = query(
         collection(db, "tests"),
         where("lessonID", "==", lessonID),
-        where("pupilID", "==", pupilID),
+        where("pupilID", "==", pupilID)
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
@@ -384,7 +386,7 @@ class TestController {
       const q = query(
         collection(db, "tests"),
         where("lessonID", "==", lessonID),
-        where("point", condition, parsedPoint),
+        where("point", condition, parsedPoint)
       );
 
       const snapshot = await getCountFromServer(q);
@@ -398,7 +400,6 @@ class TestController {
       });
     }
   };
-
 
   //Filter by lessonID & point
   filterByLessonIDAndPoint = async (req, res) => {
@@ -445,6 +446,197 @@ class TestController {
         },
       });
     }
+  };
+  // Thống kê top 10 học sinh có điểm trung bình cao nhất
+  top10PupilsByAveragePoint = async (req, res) => {
+    try {
+      // Lấy tất cả bài kiểm tra
+      const snapshot = await getDocs(collection(db, "tests"));
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+
+      // Tạo object để lưu tổng điểm và số bài kiểm tra của từng học sinh
+      const pupilStats = {};
+
+      // Duyệt qua các bài kiểm tra để tính tổng điểm và số bài kiểm tra
+      tests.forEach((test) => {
+        const { pupilId, point } = test;
+        if (!pupilStats[pupilId]) {
+          pupilStats[pupilId] = { totalPoints: 0, testCount: 0 };
+        }
+        pupilStats[pupilId].totalPoints += point;
+        pupilStats[pupilId].testCount += 1;
+      });
+
+      // Tính điểm trung bình và chuyển thành mảng
+      const pupilAverages = Object.keys(pupilStats).map((pupilId) => ({
+        pupilId,
+        averagePoint:
+          pupilStats[pupilId].totalPoints / pupilStats[pupilId].testCount,
+        testCount: pupilStats[pupilId].testCount,
+      }));
+
+      // Sắp xếp theo điểm trung bình giảm dần và lấy top 10
+      const top10Pupils = pupilAverages
+        .sort((a, b) => b.averagePoint - a.averagePoint)
+        .slice(0, 10);
+
+      res.status(200).send({
+        data: top10Pupils,
+        message: {
+          en: "Top 10 pupils by average point retrieved successfully",
+          vi: "Lấy top 10 học sinh có điểm trung bình cao nhất thành công",
+        },
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Get tests by pupil ID
+  getTestByPupilId = async (req, res, next) => {
+    try {
+      const pupilId = req.params.id;
+      console.log("Querying for pupilId:", pupilId); // Debug log
+      const q = query(
+        collection(db, "tests"),
+        where("pupilId", "==", pupilId),
+        orderBy("createdAt", "desc")
+      );
+      const testSnapshot = await getDocs(q);
+      const testArray = testSnapshot.docs.map((doc) =>
+        Tests.fromFirestore(doc)
+      );
+      res.status(200).send(testArray);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+  // Thống kê top 10 bài tập có điểm trung bình cao nhất
+  top10TestsByAveragePoint = async (req, res) => {
+    try {
+      // Lấy tất cả bài kiểm tra
+      const snapshot = await getDocs(collection(db, "tests"));
+      const tests = snapshot.docs.map((doc) => Tests.fromFirestore(doc));
+
+      // Tạo object để lưu tổng điểm và số học sinh làm bài cho từng bài kiểm tra
+      const testStats = {};
+
+      // Duyệt qua các bài kiểm tra để tính tổng điểm và số học sinh
+      tests.forEach((test) => {
+        const { lessonId, point } = test;
+        if (!testStats[lessonId]) {
+          testStats[lessonId] = { totalPoints: 0, pupilCount: 0 };
+        }
+        testStats[lessonId].totalPoints += point;
+        testStats[lessonId].pupilCount += 1;
+      });
+
+      // Tính điểm trung bình và chuyển thành mảng
+      const testAverages = Object.keys(testStats).map((lessonId) => ({
+        lessonId,
+        averagePoint:
+          testStats[lessonId].totalPoints / testStats[lessonId].pupilCount,
+        pupilCount: testStats[lessonId].pupilCount,
+      }));
+
+      // Sắp xếp theo điểm trung bình giảm dần và lấy top 10
+      const top10Tests = testAverages
+        .sort((a, b) => b.averagePoint - a.averagePoint)
+        .slice(0, 10);
+
+      res.status(200).send({
+        data: top10Tests,
+        message: {
+          en: "Top 10 tests by average point retrieved successfully",
+          vi: "Lấy top 10 bài tập có điểm trung bình cao nhất thành công",
+        },
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+
+    // Get tests by lesson ID
+    getTestsByLesson = async (req, res, next) => {
+      try {
+        const lessonId = req.params.lessonId;
+        const q = query(
+          collection(db, "tests"),
+          where("lessonId", "==", lessonId)
+        );
+        const testSnapshot = await getDocs(q);
+        const allTests = testSnapshot.docs.map((doc) =>
+          Tests.fromFirestore(doc)
+        );
+        // Lấy test mới nhất theo pupilId
+        const latestTestsByPupil = {};
+        for (const test of allTests) {
+          const pupilId = test.pupilId;
+          const current = latestTestsByPupil[pupilId];
+          // Nếu chưa có hoặc test mới hơn => cập nhật
+          if (
+            !current ||
+            new Date(test.createdAt) > new Date(current.createdAt)
+          ) {
+            latestTestsByPupil[pupilId] = test;
+          }
+        }
+        // Trả về mảng kết quả
+        const result = Object.values(latestTestsByPupil);
+        res.status(200).send(result);
+      } catch (error) {
+        res.status(500).send({
+          message: {
+            en: error.message,
+            vi: "Đã xảy ra lỗi nội bộ.",
+          },
+        });
+      }
+    };
+
+    // Get test by pupil ID & lesson ID
+    getTestsByPupilIdAndLesson = async (req, res, next) => {
+      try {
+        const { pupilId, lessonId } = req.params;
+        console.log(
+          "Querying for lessonId:",
+          pupilId,
+          "and lessonId",
+          lessonId
+        ); // Debug log
+        const q = query(
+          collection(db, "tests"),
+          where("pupilId", "==", pupilId),
+          where("lessonId", "==", lessonId)
+        );
+        const testSnapshot = await getDocs(q);
+        const testArray = testSnapshot.docs.map((doc) =>
+          Tests.fromFirestore(doc)
+        );
+        res.status(200).send(testArray);
+      } catch (error) {
+        res.status(500).send({
+          message: {
+            en: error.message,
+            vi: "Đã xảy ra lỗi nội bộ.",
+          },
+        });
+      }
+    };
   };
 }
 

@@ -38,13 +38,6 @@ router.get(
   lessonMiddleware.checkLessonExistById("lessonId"),
   exerciseController.getByLesson
 );
-// Count all exercises by lesson ID & level ID
-router.get(
-  "/countByLessonAndLevel/:lessonId/:levelId",
-  lessonMiddleware.checkLessonExistById("lessonId"),
-  levelMiddleware.checkLevelExistById("levelId"),
-  exerciseController.countByLessonAndLevel
-);
 // Filter paginated exercises by lesson ID & level ID
 router.get(
   "/filterByLevel/:lessonId/:levelId",
@@ -86,6 +79,23 @@ router.put(
   exerciseMiddleware.checkExerciseExistById,
   uploadFields,
   exerciseController.update
+);
+// Random exercises
+router.get(
+  "/randomExercises/:lessonId",
+  lessonMiddleware.checkLessonExistById("lessonId"),
+  exerciseController.randomExercises
+);
+// Random tests
+router.get(
+  "/randomTests/:lessonId",
+  lessonMiddleware.checkLessonExistById("lessonId"),
+  exerciseController.randomTests
+);
+// Random assessments
+router.get(
+  "/randomAssessments/:grade",
+  exerciseController.randomAssessments
 );
 
 module.exports = router;
