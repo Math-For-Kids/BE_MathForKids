@@ -63,7 +63,7 @@ class CompletedLessonController {
 
       // Step 1: Get all completed lessons by pupilId
       const completedQuery = query(
-        collection(db, "completed_lesson"),
+        collection(db, "completed_lessons"),
         where("pupilId", "==", pupilId)
       );
       const completedSnapshot = await getDocs(completedQuery);
@@ -184,7 +184,7 @@ class CompletedLessonController {
       console.log("Querying for pupilId:", pupilId); // Debug log
       const q = query(
         collection(db, "completed_lessons"),
-        where("PupilId", "==", pupilId)
+        where("pupilId", "==", pupilId)
       );
       const completedlessonSnapshot = await getDocs(q);
       const completedlessonArray = completedlessonSnapshot.docs.map((doc) =>

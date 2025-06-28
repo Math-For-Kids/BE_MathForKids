@@ -35,7 +35,7 @@ class LessonController {
 
       // Create completed lesson records for each pupil
       const completedLessonsPromises = pupilIds.map((pupilId) =>
-        addDoc(collection(db, "completed_lesson"), {
+        addDoc(collection(db, "completed_lessons"), {
           pupilId,
           lessonId: lessonRef.id,
           isCompleted: false,
@@ -261,7 +261,7 @@ class LessonController {
 
       if (data.hasOwnProperty("isDisabled")) {
         const completedLessonQuery = query(
-          collection(db, "completed_lesson"),
+          collection(db, "completed_lessons"),
           where("lessonId", "==", id)
         );
         const completedlessonSnapshot = await getDocs(completedLessonQuery);
