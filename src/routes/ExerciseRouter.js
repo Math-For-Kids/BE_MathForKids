@@ -22,6 +22,13 @@ router.get(
   exerciseController.countByLesson
 );
 router.get(
+  "/countByLessonAndLevel/:lessonId/:levelId",
+  lessonMiddleware.checkLessonExistById("lessonId"),
+  levelMiddleware.checkLevelExistById("levelId"),
+  exerciseController.countByLessonAndLevel
+);
+
+router.get(
   "/countByLessonAndDisabledStatus/:lessonId",
   lessonMiddleware.checkLessonExistById("lessonId"),
   exerciseController.countByLessonAndDisabledStatus
@@ -81,7 +88,7 @@ router.put(
   exerciseController.update
 );
 // Random exercises
-router.get(
+router.post(
   "/randomExercises/:lessonId",
   lessonMiddleware.checkLessonExistById("lessonId"),
   exerciseController.randomExercises

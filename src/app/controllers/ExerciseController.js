@@ -438,8 +438,8 @@ class ExerciseController {
             ? typeof textOption === "string" && textOption.startsWith("[")
               ? JSON.parse(textOption)
               : Array.isArray(textOption)
-              ? textOption
-              : [textOption]
+                ? textOption
+                : [textOption]
             : null;
           parsedAnswer = textAnswer || null;
         } catch (error) {
@@ -491,11 +491,11 @@ class ExerciseController {
         } else {
           finalOption =
             parsedOption &&
-            Array.isArray(parsedOption) &&
-            parsedOption.length > 0
+              Array.isArray(parsedOption) &&
+              parsedOption.length > 0
               ? parsedOption.filter(
-                  (opt) => typeof opt === "string" && opt !== ""
-                )
+                (opt) => typeof opt === "string" && opt !== ""
+              )
               : oldData.option || [];
         }
 
@@ -506,11 +506,11 @@ class ExerciseController {
             : parsedAnswer &&
               typeof parsedAnswer === "string" &&
               parsedAnswer.startsWith("http")
-            ? parsedAnswer
-            : oldData.answer
+              ? parsedAnswer
+              : oldData.answer
           : parsedAnswer !== null
-          ? parsedAnswer
-          : oldData.answer;
+            ? parsedAnswer
+            : oldData.answer;
 
         // Handle image
         const finalImage = image !== null ? image : oldData.image;
@@ -563,7 +563,8 @@ class ExerciseController {
     try {
       const lessonId = req.params.lessonId;
       const levelIds = req.body.levelIds;
-
+      console.log("lessonId:", lessonId);
+      console.log("levelIds:", levelIds);
       // Lấy tất cả bài tập theo lessonId
       const q = query(
         collection(db, "exercises"),
@@ -589,8 +590,8 @@ class ExerciseController {
           levelIds.length === 1
             ? 10
             : levelIds.length === 2
-            ? (levelIds.length - i) * 4
-            : (levelIds.length - i) * 2
+              ? (levelIds.length - i) * 4
+              : (levelIds.length - i) * 2
         );
         randomResults.push(...selected);
       }
@@ -635,12 +636,13 @@ class ExerciseController {
       // 3. Random 6 bài từ mỗi level
       const randomResults = [];
 
-      for (const levelId of levelIds) {
+      for (let i = 0; i < levelIds.length; i++) {
+        const levelId = levelIds[i];
         const exercisesByLevel = allExercises.filter(
           (e) => e.levelId === levelId
         );
         const shuffled = exercisesByLevel.sort(() => 0.5 - Math.random());
-        const selected = shuffled.slice(0, 5);
+        const selected = shuffled.slice(0, (levelIds.length - i) * 2);
         randomResults.push(...selected);
       }
 

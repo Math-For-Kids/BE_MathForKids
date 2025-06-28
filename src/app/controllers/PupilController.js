@@ -239,7 +239,7 @@ class PupilController {
 
       // Create completed lesson records for the pupil
       const completedLessonsPromises = lessonIds.map((lessonId) =>
-        addDoc(collection(db, "completed_lesson"), {
+        addDoc(collection(db, "completed_lessons"), {
           pupilId: pupilRef.id,
           lessonId,
           isCompleted: false,
