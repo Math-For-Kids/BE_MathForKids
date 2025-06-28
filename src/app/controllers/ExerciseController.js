@@ -576,14 +576,22 @@ class ExerciseController {
       );
       // Random exercise for each level
       const randomResults = [];
-      for (const levelId of levelIds) {
+      for (let i = 0; i < levelIds.length; i++) {
+        const levelId = levelIds[i];
         const exercisesByLevel = allExercises.filter(
           (e) => e.levelId === levelId
         );
         // Xáo trộn và chọn 10 bài nếu cấp độ được chọn có 1,
         // 5 bài nếu cấp độ được chọn gồm 2 cái trở lên
         const shuffled = exercisesByLevel.sort(() => 0.5 - Math.random());
-        const selected = shuffled.slice(0, levelIds.length === 1 ? 10 : 5);
+        const selected = shuffled.slice(
+          0,
+          levelIds.length === 1
+            ? 10
+            : levelIds.length === 2
+            ? (levelIds.length - i) * 4
+            : (levelIds.length - i) * 2
+        );
         randomResults.push(...selected);
       }
       res.status(200).send(randomResults);
@@ -604,7 +612,11 @@ class ExerciseController {
 
       // 1. Lấy tất cả levelId
       const levelSnapshot = await getDocs(
-        query(collection(db, "levels"), where("isDisabled", "==", false))
+        query(
+          collection(db, "levels"),
+          where("isDisabled", "==", false),
+          orderBy("level")
+        )
       );
       const levelIds = levelSnapshot.docs.map((doc) => doc.id);
 
@@ -627,10 +639,8 @@ class ExerciseController {
         const exercisesByLevel = allExercises.filter(
           (e) => e.levelId === levelId
         );
-        // Xáo trộn và chọn 6 bài
         const shuffled = exercisesByLevel.sort(() => 0.5 - Math.random());
-        const selected = shuffled.slice(0, 6);
-
+        const selected = shuffled.slice(0, 5);
         randomResults.push(...selected);
       }
 
@@ -653,19 +663,35 @@ class ExerciseController {
     try {
       const grade = req.params.grade;
 
-      // 1. Lấy tất cả lesson theo grade và isDisabled = false
-      const lessonSnapshot = await getDocs(
-        query(
-          collection(db, "lessons"),
-          where("grade", "==", parseInt(grade)),
-          where("isDisabled", "==", false)
-        )
-      );
-      const lessonIds = lessonSnapshot.docs.map((doc) => doc.id);
+      // 1. Lặp 4 loại type, mỗi loại lấy tối đa 2 lesson theo thứ tự
+      const lessonTypes = [
+        "addition",
+        "subtraction",
+        "multiplication",
+        "division",
+      ];
+      const lessonIds = [];
+      for (const type of lessonTypes) {
+        const snapshot = await getDocs(
+          query(
+            collection(db, "lessons"),
+            where("grade", "==", grade),
+            where("type", "==", type),
+            where("isDisabled", "==", false),
+            orderBy("order"),
+            limit(2)
+          )
+        );
+        snapshot.docs.forEach((doc) => lessonIds.push(doc.id));
+      }
 
       // 2. Lấy tất cả level có isDisabled = false
       const levelSnapshot = await getDocs(
-        query(collection(db, "levels"), where("isDisabled", "==", false))
+        query(
+          collection(db, "levels"),
+          where("isDisabled", "==", false),
+          orderBy("level")
+        )
       );
       const levelIds = levelSnapshot.docs.map((doc) => doc.id);
 

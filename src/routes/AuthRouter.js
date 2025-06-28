@@ -1,12 +1,14 @@
 const express = require("express");
 const authController = require("../app/controllers/AuthController");
 const userMiddleware = require("../app/middlewares/UserMiddleware");
+const authMiddleware = require("../app/middlewares/AuthMiddleware");
 const router = express.Router();
 
 // Send OTP by phone number
 router.post(
   "/sendOtpByPhone/:phoneNumber",
   userMiddleware.checkUserExistByPhone,
+  authMiddleware.checkRole,
   userMiddleware.checkIsDisabled,
   authController.sendOTPByPhoneNumber
 );
@@ -14,6 +16,7 @@ router.post(
 router.post(
   "/sendOtpByEmail/:email",
   userMiddleware.checkUserExistByEmail,
+  authMiddleware.checkRole,
   userMiddleware.checkIsDisabled,
   authController.sendOTPByEmail
 );
