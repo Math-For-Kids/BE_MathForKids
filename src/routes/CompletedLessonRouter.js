@@ -20,15 +20,18 @@ router.get(
   lessonMiddleware.checkLessonExistById("lessonId"),
   completedLessonController.getByPupilLesson
 );
-router.get(
-  "/getAll",
-  completedLessonController.getAll
-);
+router.get("/getAll", completedLessonController.getAll);
 // Update completed lesson status
-router.patch("/:id",
+router.patch(
+  "/:id",
   completedLessonMiddleware.checkCompletedLessonExistById,
   completedLessonController.updateStatus
-)
+);
 
-
+router.patch(
+  "/completeAndUnlockNext/:pupilId/lesson/:lessonId",
+  pupilMiddleware.checkPupilExistById("pupilId"),
+  lessonMiddleware.checkLessonExistById("lessonId"),
+  completedLessonController.completeAndUnlockNext
+);
 module.exports = router;

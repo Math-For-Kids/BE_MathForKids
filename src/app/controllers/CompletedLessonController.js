@@ -28,14 +28,12 @@ class CompletedLessonController {
         isBlock: data.isBlock ?? false,
         createAt: serverTimestamp(),
       });
-      res
-        .status(201)
-        .send({
-          message: {
-            en: "Completed lesson created successfully!",
-            vi: "Tạo thông tin lưu trạng thái bài học thành công!",
-          }
-        });
+      res.status(201).send({
+        message: {
+          en: "Completed lesson created successfully!",
+          vi: "Tạo thông tin lưu trạng thái bài học thành công!",
+        },
+      });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -110,7 +108,10 @@ class CompletedLessonController {
       if (startAfterId) {
         const startIndex = lessons.findIndex((l) => l.id === startAfterId);
         if (startIndex >= 0) {
-          pagedLessons = lessons.slice(startIndex + 1, startIndex + 1 + pageSize);
+          pagedLessons = lessons.slice(
+            startIndex + 1,
+            startIndex + 1 + pageSize
+          );
         } else {
           pagedLessons = lessons.slice(0, pageSize);
         }
@@ -207,19 +208,108 @@ class CompletedLessonController {
       const id = req.params.id;
       const data = req.body;
       const completed_lessons = doc(db, "completed_lessons", id);
-      await updateDoc(completed_lessons, { ...data, updateAt: serverTimestamp() });
+      await updateDoc(completed_lessons, {
+        ...data,
+        updateAt: serverTimestamp(),
+      });
       res.status(200).send({
         message: {
           en: "Completed lesson updated successfully!",
           vi: "Cập nhật trạng thái bài học thành công!",
-        }
+        },
       });
     } catch (error) {
       res.status(500).send({
         message: {
           en: error.message,
           vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+  // Complete lesson and unlock next lesson
+  completeAndUnlockNext = async (req, res, next) => {
+    try {
+      const { pupilId, lessonId } = req.params;
+
+      // Step 1: Get the current lesson to retrieve its order, grade, and type
+      const currentLessonDoc = await getDoc(doc(db, "lessons", lessonId));
+      if (!currentLessonDoc.exists()) {
+        return res.status(404).send({
+          message: {
+            en: "Lesson not found!",
+            vi: "Không tìm thấy bài học!",
+          },
+        });
+      }
+      const currentLesson = currentLessonDoc.data();
+      const { grade, type, order } = currentLesson;
+
+      // Step 2: Update the current completed lesson to isCompleted: true, isBlock: false
+      const completedQuery = query(
+        collection(db, "completed_lessons"),
+        where("pupilId", "==", pupilId),
+        where("lessonId", "==", lessonId)
+      );
+      const completedSnapshot = await getDocs(completedQuery);
+      if (completedSnapshot.empty) {
+        return res.status(404).send({
+          message: {
+            en: "Completed lesson record not found!",
+            vi: "Không tìm thấy bản ghi hoàn thành bài học!",
+          },
+        });
+      }
+
+      const completedLessonDoc = completedSnapshot.docs[0];
+      await updateDoc(completedLessonDoc.ref, {
+        isCompleted: true,
+        isBlock: false,
+        updatedAt: serverTimestamp(),
+      });
+
+      // Step 3: Find the next lesson
+      const nextLessonQuery = query(
+        collection(db, "lessons"),
+        where("grade", "==", grade),
+        where("type", "==", type),
+        where("isDisabled", "==", false),
+        orderBy("order"),
+        startAfter(order),
+        limit(1)
+      );
+      const nextLessonSnapshot = await getDocs(nextLessonQuery);
+
+      // Step 4: Unlock if exists
+      if (!nextLessonSnapshot.empty) {
+        const nextLesson = nextLessonSnapshot.docs[0];
+        const nextCompletedQuery = query(
+          collection(db, "completed_lessons"),
+          where("pupilId", "==", pupilId),
+          where("lessonId", "==", nextLesson.id)
+        );
+        const nextCompletedSnapshot = await getDocs(nextCompletedQuery);
+        if (!nextCompletedSnapshot.empty) {
+          const nextCompletedDoc = nextCompletedSnapshot.docs[0];
+          await updateDoc(nextCompletedDoc.ref, {
+            isBlock: false,
+            updatedAt: serverTimestamp(),
+          });
         }
+      }
+
+      res.status(200).send({
+        message: {
+          en: "Lesson completed and next lesson unlocked successfully!",
+          vi: "Hoàn thành bài học và mở khóa bài học tiếp theo thành công!",
+        },
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
       });
     }
   };
