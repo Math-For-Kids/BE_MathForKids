@@ -23,12 +23,14 @@ class TestController {
   create = async (req, res, next) => {
     try {
       const data = req.body;
-      await addDoc(collection(db, "tests"), {
+      const docRef = await addDoc(collection(db, "tests"), {
         ...data,
         createdAt: serverTimestamp(),
       });
+
       res.status(201).send({
         message: {
+          id: docRef.id, // <-- đúng nè, ID thực tế của document mới tạo
           en: "Test created successfully",
           vi: "Tạo bài kiểm tra thành công!",
         },
