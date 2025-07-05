@@ -168,7 +168,7 @@ class UserController {
       });
     }
   };
-  
+
   countAll = async (req, res, next) => {
     try {
       const q = query(collection(db, "users"));
@@ -250,35 +250,60 @@ class UserController {
     }
   };
 
-  // Count new users by week
   countUsersByWeek = async (req, res, next) => {
     try {
-      const { week, year } = req.query; // ví dụ: week=45, year=2025
-      if (!week || !/^\d{1,2}$/.test(week) || !year || !/^\d{4}$/.test(year)) {
+      const { week, month, year } = req.query; // e.g., week=1, month=4, year=2025
+      if (
+        !week ||
+        !/^\d{1,2}$/.test(week) ||
+        !month ||
+        !/^\d{1,2}$/.test(month) ||
+        !year ||
+        !/^\d{4}$/.test(year)
+      ) {
         return res.status(400).send({
-          message: "Invalid week or year format. Use week=WW and year=YYYY",
+          message: "Invalid week, month, or year format. Use week=WW, month=MM, and year=YYYY",
         });
       }
 
       const weekNum = parseInt(week);
+      const monthNum = parseInt(month) - 1; // JavaScript months are 0-based
       const yearNum = parseInt(year);
 
-      // Tính ngày bắt đầu và kết thúc của tuần
-      const firstDayOfYear = new Date(yearNum, 0, 1);
-      const firstMonday = new Date(firstDayOfYear);
+      // Validate month and week
+      if (monthNum < 0 || monthNum > 11 || weekNum < 1 || weekNum > 5) {
+        return res.status(400).send({
+          message: "Invalid month (1-12) or week (1-5)",
+        });
+      }
+
+      // Calculate the start of the specified month
+      const monthStart = new Date(yearNum, monthNum, 1);
+
+      // Calculate the first Monday of the month
+      const firstMonday = new Date(monthStart);
+      const firstDayOfMonth = monthStart.getDay();
       firstMonday.setDate(
-        firstDayOfYear.getDate() + ((8 - firstDayOfYear.getDay()) % 7)
+        monthStart.getDate() + ((8 - firstDayOfMonth) % 7 || 7)
       );
 
+      // Calculate the start and end of the specified week
       const weekStart = new Date(firstMonday);
       weekStart.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(weekStart.getDate() + 7);
 
-      // Tính tuần trước
+      // Calculate previous week
       const prevWeekStart = new Date(weekStart);
       prevWeekStart.setDate(weekStart.getDate() - 7);
       const prevWeekEnd = new Date(weekStart);
+
+      // Ensure the week is within the specified month
+      if (weekStart.getMonth() !== monthNum || weekEnd.getMonth() !== monthNum) {
+        return res.status(400).send({
+          message: "Specified week is not within the given month",
+        });
+      }
 
       const usersSnapshot = await getDocs(collection(db, "users"));
       let currentWeekCount = 0;
@@ -298,6 +323,7 @@ class UserController {
 
       res.status(200).send({
         week: weekNum,
+        month: monthNum + 1, // Return 1-based month
         year: yearNum,
         currentWeekCount,
         previousWeekCount,
@@ -456,7 +482,7 @@ class UserController {
   };
 
   // Update user
-    update = async (req, res, next) => {
+  update = async (req, res, next) => {
     try {
       const id = req.params.id;
       const data = req.body;
