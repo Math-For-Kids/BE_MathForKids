@@ -14,6 +14,7 @@ const {
   orderBy,
   limit,
   startAfter,
+  documentId,
 } = require("firebase/firestore");
 const db = getFirestore();
 
@@ -207,7 +208,7 @@ class CompletedLessonController {
       const id = req.params.id;
       const data = req.body;
       const completed_lessons = doc(db, "completed_lessons", id);
-      await updateDoc(completed_lessons, { ...data, updateAt: serverTimestamp() });
+      await updateDoc(completed_lessons, { ...data, updatedAt: serverTimestamp() });
       res.status(200).send({
         message: {
           en: "Completed lesson updated successfully!",
@@ -220,6 +221,51 @@ class CompletedLessonController {
           en: error.message,
           vi: "Đã xảy ra lỗi nội bộ.",
         }
+      });
+    }
+  };
+  // Update completed lesson status
+  updateStatusIsBlock = async (req, res, next) => {
+    try {
+      const { pupilId, lessonId } = req.params;
+
+      // Step 1: Tìm bản ghi completed lesson dựa trên pupilId và lessonId
+      const completedQuery = query(
+        collection(db, "completed_lessons"),
+        where("pupilId", "==", pupilId),
+        where("lessonId", "==", lessonId)
+      );
+      const completedSnapshot = await getDocs(completedQuery);
+
+      if (completedSnapshot.empty) {
+        return res.status(404).send({
+          message: {
+            en: "Completed lesson record not found!",
+            vi: "Không tìm thấy bản ghi hoàn thành bài học!",
+          },
+        });
+      }
+
+      // Step 2: Cập nhật isCompleted và isBlock cho bản ghi
+      const completedLessonDoc = completedSnapshot.docs[0];
+      await updateDoc(completedLessonDoc.ref, {
+        isCompleted: true,
+        isBlock: false,
+        updatedAt: serverTimestamp(),
+      });
+
+      res.status(200).send({
+        message: {
+          en: "Completed lesson updated successfully!",
+          vi: "Cập nhật trạng thái bài học thành công!",
+        },
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
       });
     }
   };
@@ -275,10 +321,15 @@ class CompletedLessonController {
         limit(1)
       );
       const nextLessonSnapshot = await getDocs(nextLessonQuery);
-
+      let responseMessage = {
+        en: "Lesson completed successfully!",
+        vi: "Hoàn thành bài học thành công!",
+      };
+      let nextLessonName = null;
       // Step 4: If a next lesson exists, update its completed lesson record to isBlock: false
       if (!nextLessonSnapshot.empty) {
         const nextLesson = nextLessonSnapshot.docs[0];
+        nextLessonName = nextLesson.data().name;
         const nextCompletedQuery = query(
           collection(db, "completed_lessons"),
           where("pupilId", "==", pupilId),
@@ -292,12 +343,116 @@ class CompletedLessonController {
             updatedAt: serverTimestamp(),
           });
         }
+        responseMessage = {
+          en: `Lesson completed and next lesson "${nextLessonName}" unlocked successfully!`,
+          vi: `Hoàn thành bài học và mở khóa bài học tiếp theo "${nextLessonName}" thành công!`,
+        };
+      }
+      res.status(200).send({
+        message: responseMessage,
+        nextLessonName: nextLessonName, // Include next lesson name in response
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  unlockPreviousGradeLesson = async (req, res, next) => {
+    try {
+      const { pupilId } = req.params;
+
+      // Query the pupils collection to get the pupil's grade
+      const pupilQuery = query(
+        collection(db, "pupils"),
+        where(documentId(), "==", pupilId)
+      );
+      const pupilSnapshot = await getDocs(pupilQuery);
+
+      if (pupilSnapshot.empty) {
+        return res.status(404).send({
+          message: {
+            en: `Pupil with ID ${pupilId} not found!`,
+            vi: `Không tìm thấy học sinh với ID ${pupilId}!`,
+          },
+        });
       }
 
+      const pupilData = pupilSnapshot.docs[0].data();
+      const grade = pupilData.grade;
+
+      if (!grade || isNaN(parseInt(grade))) {
+        return res.status(400).send({
+          message: {
+            en: "Pupil's grade is invalid or not set!",
+            vi: "Lớp của học sinh không hợp lệ hoặc chưa được thiết lập!",
+          },
+        });
+      }
+
+      const currentGrade = parseInt(grade);
+
+      // Nếu grade là lớp 1, trả về phản hồi thành công mà không làm gì thêm
+      if (currentGrade === 1) {
+        return res.status(200).send({
+          message: {
+            en: `No previous grade exists for grade ${grade}, no lessons to unlock.`,
+            vi: `Không có lớp trước đó cho lớp ${grade}, không có bài học để mở khóa.`,
+          },
+        });
+      }
+      const gradesToUnLock = [];
+      for (let i = 1; i < currentGrade; i++) {
+        gradesToUnLock.push(i);
+      }
+      const updatePromises = [];
+      for (const targetGrade of gradesToUnLock) {
+        const lessonQuery = query(
+          collection(db, "lessons"),
+          where("grade", "==", targetGrade)
+        );
+        const lessonSnapshots = await getDocs(lessonQuery);
+        if (lessonSnapshots.empty) {
+          continue;
+        }
+        const lessonIds = lessonSnapshots.docs.map((doc) => doc.id);
+        lessonIds.forEach((lessonId) => {
+          const completedQuery = query(
+            collection(db, "completed_lessons"),
+            where("pupilId", "==", pupilId),
+            where("lessonId", "==", lessonId)
+          );
+          updatePromises.push(
+            getDocs(completedQuery).then((completedSnapshot) => {
+              if (!completedSnapshot.empty) {
+                const completedLessonDoc = completedSnapshot.docs[0];
+                return updateDoc(completedLessonDoc.ref, {
+                  isCompleted: true,
+                  isBlock: false,
+                  update: serverTimestamp(),
+                })
+              }
+            })
+          )
+        })
+      }
+      await Promise.all(updatePromises.filter(Boolean));
+      if (updatePromises.length === 0) {
+        return res.status(200).send({
+          message: {
+            en: `No lessons found or no completed lessons to unlock for grades 1 to ${currentGrade - 1}.`,
+            vi: `Không tìm thấy bài học hoặc không có bài học đã hoàn thành để mở khóa cho các lớp từ 1 đến ${currentGrade - 1}.`,
+          },
+        });
+      }
       res.status(200).send({
         message: {
-          en: "Lesson completed and next lesson unlocked successfully!",
-          vi: "Hoàn thành bài học và mở khóa bài học tiếp theo thành công!",
+          en: `Successfully unlocked all lessons for grades 1 to ${currentGrade - 1}!`,
+          vi: `Đã mở khóa thành công tất cả bài học của các lớp từ 1 đến ${currentGrade - 1}!`,
         },
       });
     } catch (error) {

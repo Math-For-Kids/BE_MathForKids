@@ -672,19 +672,20 @@ class ExerciseController {
         "multiplication",
         "division",
       ];
-      const lessonIds = [];
+      const lessonsByType = {};
+
       for (const type of lessonTypes) {
         const snapshot = await getDocs(
           query(
             collection(db, "lessons"),
-            where("grade", "==", grade),
+            where("grade", "==", parseInt(grade)),
             where("type", "==", type),
             where("isDisabled", "==", false),
             orderBy("order"),
             limit(2)
           )
         );
-        snapshot.docs.forEach((doc) => lessonIds.push(doc.id));
+        lessonsByType[type] = snapshot.docs.map((doc) => doc.id);
       }
 
       // 2. Lấy tất cả level có isDisabled = false
@@ -700,30 +701,38 @@ class ExerciseController {
       // 3. Tạo danh sách các bài tập random 1 bài cho mỗi cặp (lessonId, levelId)
       const randomExercises = [];
 
-      for (const lessonId of lessonIds) {
-        for (const levelId of levelIds) {
-          const exerciseSnapshot = await getDocs(
-            query(
-              collection(db, "exercises"),
-              where("lessonId", "==", lessonId),
-              where("levelId", "==", levelId),
-              where("isDisabled", "==", false)
-            )
-          );
-          const exercises = exerciseSnapshot.docs.map((doc) =>
-            Exercise.fromFirestore(doc)
-          );
-          if (exercises.length > 0) {
-            // Xáo trộn và chọn 1 bài
-            const shuffled = exercises.sort(() => 0.5 - Math.random());
-            randomExercises.push(shuffled[0]);
+      for (const type of lessonTypes) {
+        const lessonIds = lessonsByType[type];
+        for (const lessonId of lessonIds) {
+          for (const levelId of levelIds) {
+            const exerciseSnapshot = await getDocs(
+              query(
+                collection(db, "exercises"),
+                where("lessonId", "==", lessonId),
+                where("levelId", "==", levelId),
+                where("isDisabled", "==", false)
+              )
+            );
+            const exercises = exerciseSnapshot.docs.map((doc) =>
+              Exercise.fromFirestore(doc)
+            );
+            if (exercises.length > 0) {
+              // Xáo trộn và chọn 1 bài
+              const shuffled = exercises.sort(() => 0.5 - Math.random());
+              randomExercises.push(shuffled[0]);
+            }
           }
         }
       }
 
       // 4. Xáo trộn toàn bộ danh sách cuối
       const finalShuffled = randomExercises.sort(() => 0.5 - Math.random());
-      res.status(200).send(finalShuffled);
+
+      // 5. Trả về lessonsByType cùng với randomExercises
+      res.status(200).send({
+        lessonsByType, // Danh sách lessonId theo từng phép tính
+        exercises: finalShuffled,
+      });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -733,6 +742,43 @@ class ExerciseController {
       });
     }
   };
+  countLevelIdsInLesson = async (req, res, next) => {
+    try {
+      const lessonId = req.params.lessonId;
+      const { levelIds } = req.body;
+
+      //step 1
+      const countPromises = levelIds.map(async (levelId) => {
+        const q = query(
+          collection(db, "exercises"),
+          where("lessonId", "==", lessonId),
+          where("levelId", "==", levelId),
+          where("isDisabled", "==", false)
+        );
+        const snapshot = await getCountFromServer(q);
+        return { levelId, count: snapshot.data().count };
+      })
+      const results = await Promise.all(countPromises);
+      const levelIdCounts = results.reduce((acc, { levelId, count }) => {
+        acc[levelId] = count;
+        return acc;
+      }, {});
+      res.status(200).send({
+        data: {
+          lessonId,
+          levelIdCounts,
+        },
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  }
+
 }
 
 module.exports = new ExerciseController();
