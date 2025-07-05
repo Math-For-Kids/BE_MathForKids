@@ -104,5 +104,8 @@ router.get(
   "/randomAssessments/:grade",
   exerciseController.randomAssessments
 );
-
+router.post(
+  "/countLevelIdsInLesson/:lessonId",
+  exerciseController.countLevelIdsInLesson
+);
 module.exports = router;

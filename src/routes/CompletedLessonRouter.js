@@ -35,6 +35,14 @@ router.patch("/:id",
   completedLessonMiddleware.checkCompletedLessonExistById,
   completedLessonController.updateStatus
 )
-
-
+// Update completed lesson status
+router.patch("/updateIsblock/:pupilId/lesson/:lessonId",
+  pupilMiddleware.checkPupilExistById("pupilId"),
+  lessonMiddleware.checkLessonExistById("lessonId"),
+  completedLessonController.updateStatusIsBlock
+)
+router.patch("/unBlockByGrade/:pupilId",
+  pupilMiddleware.checkPupilExistById("pupilId"),
+  completedLessonController.unlockPreviousGradeLesson
+)
 module.exports = router;
