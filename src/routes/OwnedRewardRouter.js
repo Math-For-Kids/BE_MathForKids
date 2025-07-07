@@ -18,6 +18,11 @@ router.get(
   pupilMiddleware.checkPupilExistById("pupilId"),
   ownedRewardController.getByPupilId
 );
+router.get(
+  "/countByPupilId/:pupilId",
+  pupilMiddleware.checkPupilExistById("pupilId"),
+  ownedRewardController.countByPupilId
+);
 // Get an owned reward by ID
 router.get(
   "/:id",

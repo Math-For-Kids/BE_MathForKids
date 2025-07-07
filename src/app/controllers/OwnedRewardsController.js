@@ -11,6 +11,7 @@ const {
   serverTimestamp,
   query,
   where,
+  getCountFromServer,
 } = require("firebase/firestore");
 
 const db = getFirestore();
@@ -94,7 +95,24 @@ class OwnedRewardsController {
       });
     }
   };
-
+  countByPupilId = async (req, res, next) => {
+    try {
+      const pupilId = req.params.pupilId;
+      const q = query(
+        collection(db, "owned_rewards"),
+        where("pupilId", "==", pupilId)
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
   // Get an owned reward by ID
   getById = async (req, res, next) => {
     const id = req.params.id;
