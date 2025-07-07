@@ -26,21 +26,23 @@ router.patch(
   lessonMiddleware.checkLessonExistById("lessonId"),
   completedLessonController.completeAndUnlockNext
 );
-router.get(
-  "/getAll",
-  completedLessonController.getAll
-);
+router.get("/getAll", completedLessonController.getAll);
 // Update completed lesson status
 router.patch(
   "/:id",
   completedLessonMiddleware.checkCompletedLessonExistById,
   completedLessonController.updateStatus
 );
-
+// Update completed lesson status
 router.patch(
-  "/completeAndUnlockNext/:pupilId/lesson/:lessonId",
+  "/updateIsblock/:pupilId/lesson/:lessonId",
   pupilMiddleware.checkPupilExistById("pupilId"),
   lessonMiddleware.checkLessonExistById("lessonId"),
-  completedLessonController.completeAndUnlockNext
+  completedLessonController.updateStatusIsBlock
+);
+router.patch(
+  "/unBlockByGrade/:pupilId",
+  pupilMiddleware.checkPupilExistById("pupilId"),
+  completedLessonController.unlockPreviousGradeLesson
 );
 module.exports = router;
