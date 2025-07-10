@@ -28,21 +28,22 @@ class ExerciseController {
         levelId,
         lessonId,
         question,
-        option: textOption,
-        answer: textAnswer,
+        option,
+        answer,
       } = req.body;
       const parsedQuestion = JSON.parse(question);
-      const { image, option, answer } = await uploadMultipleFiles(
+      const parsedOption = JSON.parse(option);
+      const parsedAnswer = JSON.parse(answer);
+
+      const { image } = await uploadMultipleFiles(
         req.files,
-        textOption,
-        textAnswer
       );
       const exercisesRef = await addDoc(collection(db, "exercises"), {
         levelId,
         lessonId,
         question: parsedQuestion,
-        option, // Array of text or image URLs
-        answer,
+        option: parsedOption, // Array of text or image URLs
+        answer: parsedAnswer,
         image,
         isDisabled: false,
         createdAt: serverTimestamp(),
@@ -401,8 +402,8 @@ class ExerciseController {
         levelId,
         lessonId,
         question,
-        option: textOption,
-        answer: textAnswer,
+        option,
+        answer,
         isDisabled,
       } = req.body;
       const updateData = {
@@ -415,112 +416,25 @@ class ExerciseController {
         !levelId &&
         !lessonId &&
         !question &&
-        !textOption &&
-        !textAnswer &&
+        !option &&
+        !answer &&
         (!req.files || Object.keys(req.files).length === 0)
       ) {
         updateData.isDisabled = isDisabled === "true" || isDisabled === true;
       } else {
-        let parsedQuestion, parsedOption, parsedAnswer;
+        const parsedQuestion = question ? JSON.parse(question) : oldData.question;
+        const parsedOption = option ? JSON.parse(option) : oldData.option;
+        const parsedAnswer = answer ? JSON.parse(answer) : oldData.answer;
 
-        // Parse question
-        try {
-          parsedQuestion = question ? JSON.parse(question) : oldData.question;
-        } catch (error) {
-          return res
-            .status(400)
-            .send({ message: "Invalid JSON format for question!" });
-        }
-
-        // Parse textOption and textAnswer
-        try {
-          parsedOption = textOption
-            ? typeof textOption === "string" && textOption.startsWith("[")
-              ? JSON.parse(textOption)
-              : Array.isArray(textOption)
-                ? textOption
-                : [textOption]
-            : null;
-          parsedAnswer = textAnswer || null;
-        } catch (error) {
-          return res
-            .status(400)
-            .send({ message: "Invalid format for option or answer!" });
-        }
-
-        // Process file uploads
-        const {
-          image,
-          option: uploadedOption,
-          answer: uploadedAnswer,
-        } = await uploadMultipleFiles(
-          req.files || {},
-          parsedOption,
-          parsedAnswer
-        );
-
-        // Determine if dealing with image or text options
-        const isImageOption =
-          (req.files && (req.files.option || req.files.answer)) ||
-          (parsedOption &&
-            Array.isArray(parsedOption) &&
-            parsedOption.some(
-              (opt) => typeof opt === "string" && opt.startsWith("http")
-            ));
-
-        // Handle options
-        let finalOption;
-        if (isImageOption) {
-          if (uploadedOption && uploadedOption.length > 0) {
-            finalOption = uploadedOption.filter(
-              (opt) => opt !== null && opt !== ""
-            );
-          } else if (
-            parsedOption &&
-            Array.isArray(parsedOption) &&
-            parsedOption.some(
-              (opt) => typeof opt === "string" && opt.startsWith("http")
-            )
-          ) {
-            finalOption = parsedOption.filter(
-              (opt) => typeof opt === "string" && opt !== ""
-            );
-          } else {
-            finalOption = oldData.option || [];
-          }
-        } else {
-          finalOption =
-            parsedOption &&
-              Array.isArray(parsedOption) &&
-              parsedOption.length > 0
-              ? parsedOption.filter(
-                (opt) => typeof opt === "string" && opt !== ""
-              )
-              : oldData.option || [];
-        }
-
-        // Handle answer
-        const finalAnswer = isImageOption
-          ? uploadedAnswer !== null
-            ? uploadedAnswer
-            : parsedAnswer &&
-              typeof parsedAnswer === "string" &&
-              parsedAnswer.startsWith("http")
-              ? parsedAnswer
-              : oldData.answer
-          : parsedAnswer !== null
-            ? parsedAnswer
-            : oldData.answer;
-
-        // Handle image
-        const finalImage = image !== null ? image : oldData.image;
+        const { image } = await uploadMultipleFiles(req.files || {});
+        const finalImage = image != null ? image : oldData.image;
 
         // Build update data
         updateData.levelId = levelId || oldData.levelId;
         updateData.lessonId = lessonId || oldData.lessonId;
         updateData.question = parsedQuestion;
-        updateData.option = finalOption;
-        updateData.answer = finalAnswer;
+        updateData.option = parsedOption;
+        updateData.answer = parsedAnswer;
         updateData.image = finalImage;
 
         if (typeof isDisabled !== "undefined") {
