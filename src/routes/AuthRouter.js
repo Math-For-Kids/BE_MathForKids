@@ -22,14 +22,14 @@ router.post(
 );
 // Send OTP to update new phone number
 router.post(
-  "/sendOtpToUpdatePhone/:id",
+  "/sendOtpToUpdatePhone/:id/:phoneNumber",
   userMiddleware.checkUserExistById(),
   userMiddleware.checkPhoneExistForUpdate,
   authController.sendOTPByPhoneNumber
 );
 // Send OTP to update new email
 router.post(
-  "/sendOtpToUpdateEmail/:id",
+  "/sendOtpToUpdateEmail/:id/:email",
   userMiddleware.checkUserExistById(),
   userMiddleware.checkEmailExistForUpdate,
   authController.sendOTPByEmail
