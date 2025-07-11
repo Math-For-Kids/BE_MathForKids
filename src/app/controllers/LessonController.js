@@ -1,4 +1,5 @@
 const Lesson = require("../models/Lesson");
+const CompletedLesson = require("../models/CompletedLesson");
 const {
   getFirestore,
   collection,
@@ -70,7 +71,7 @@ class LessonController {
       const q = query(
         collection(db, "lessons"),
         where("grade", "==", parseInt(grade)),
-        where("type", "==", type),
+        where("type", "==", type)
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
@@ -242,6 +243,84 @@ class LessonController {
       });
     }
   };
+  getLessonsByGradeAndTypeFiltered = async (req, res, next) => {
+    try {
+      const { grade, type, pupilId } = req.query;
+
+      if (!grade || !type || !pupilId) {
+        return res.status(400).send({
+          message: {
+            en: "Missing grade, type or pupilId",
+            vi: "Thiếu thông tin grade, type hoặc pupilId",
+          },
+        });
+      }
+
+      const gradeNumber = Number(grade);
+
+      // 1. Lấy tất cả lessons theo grade, type, và isDisabled = false
+      const lessonQuery = query(
+        collection(db, "lessons"),
+        where("grade", "==", gradeNumber),
+        where("type", "==", type),
+        where("isDisabled", "==", false)
+      );
+      const lessonSnap = await getDocs(lessonQuery);
+
+      // 2. Tạo bản đồ lesson theo id
+      const lessonMap = new Map();
+      lessonSnap.docs.forEach((doc) => {
+        lessonMap.set(doc.id, { id: doc.id, ...doc.data() });
+      });
+
+      // 3. Lấy tất cả completedLessons của học sinh
+      const completedQuery = query(
+        collection(db, "completed_lessons"),
+        where("pupilId", "==", pupilId)
+      );
+      const completedSnap = await getDocs(completedQuery);
+
+      // 4. Gộp thông tin lesson + completedLesson (chỉ lấy các lesson còn tồn tại)
+      const mergedLessons = [];
+
+      completedSnap.docs.forEach((doc) => {
+        const completedData = doc.data();
+        const lessonId = completedData.lessonId;
+        const lesson = lessonMap.get(lessonId);
+
+        if (lesson) {
+          mergedLessons.push({
+            ...lesson,
+            isCompleted: completedData.isCompleted || false,
+            isBlock: completedData.isBlock || false,
+            isDisabled: completedData.isDisabled || false,
+            completedId: doc.id,
+            completedAt: completedData.createdAt
+              ? completedData.createdAt.toDate().toISOString()
+              : null,
+            updatedAt: completedData.updatedAt
+              ? completedData.updatedAt.toDate().toISOString()
+              : null,
+          });
+        }
+      });
+
+      // 5. Lọc ra những bài học chưa hoàn thành
+      const filteredLessons = mergedLessons.filter(
+        (item) => item.isCompleted === false
+      );
+
+      res.status(200).send(filteredLessons);
+    } catch (error) {
+      console.error("🔥 Error in getLessonsByGradeAndTypeFiltered:", error);
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Lỗi lọc bài học chưa hoàn thành",
+        },
+      });
+    }
+  };
 
   // Get a lesson by ID
   getById = async (req, res, next) => {
@@ -269,7 +348,8 @@ class LessonController {
           updateDoc(doc.ref, {
             isDisabled: data.isDisabled,
             updatedAt: serverTimestamp(),
-          }));
+          })
+        );
         await Promise.all(updatePromises);
       }
 
