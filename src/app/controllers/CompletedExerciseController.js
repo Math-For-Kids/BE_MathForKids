@@ -25,7 +25,7 @@ class CompletedExerciseController {
       const data = req.body;
       await addDoc(collection(db, "completed_exercises"), {
         ...data,
-        createAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
       });
       res.status(201).send({
         message: {
