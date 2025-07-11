@@ -9,6 +9,11 @@ const router = express.Router();
 router.post("/", testController.create);
 // Count all paginated tests
 router.get("/countAll", testController.countAll);
+router.get(
+  "/countCompletedTestPupil/:pupilId",
+  pupilMiddleware.checkPupilExistById("pupilId"),
+  testController.countCompletedTestPupil
+);
 // Get all paginated tests
 router.get("/getAll", testController.getAll);
 // Count tests by pupil ID
