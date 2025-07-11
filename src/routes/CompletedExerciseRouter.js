@@ -15,6 +15,11 @@ router.get(
 );
 // Count all completed exercise
 router.get("/countAll", ceController.countAll);
+router.get(
+  "/countCompletedExercisePupil/:pupilId",
+  pupilMiddleware.checkPupilExistById("pupilId"),
+  ceController.countCompletedExercisePupil
+);
 // Get all paginated completed exercises
 router.get("/getAll", ceController.getAll);
 // Count all completed exercise by pupil ID

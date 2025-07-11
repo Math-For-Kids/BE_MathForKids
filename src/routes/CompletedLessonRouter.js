@@ -13,6 +13,11 @@ router.get(
   pupilMiddleware.checkPupilExistById("pupilId"),
   completedLessonController.getByPupil
 );
+router.get(
+  "/countCompletedPupil/:pupilId",
+  pupilMiddleware.checkPupilExistById("pupilId"),
+  completedLessonController.countCompletedPupil
+);
 // Get completed lesson by pupil ID & lesson
 router.get(
   "/getByPupilAndLesson/:pupilId/lesson/:lessonId",

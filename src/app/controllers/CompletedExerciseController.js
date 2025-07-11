@@ -65,7 +65,73 @@ class CompletedExerciseController {
       });
     }
   };
+  countCompletedExercisePupil = async (req, res, next) => {
+    try {
+      const pupilId = req.params.pupilId;
+      const grade = req.query.grade;
+      console.log("Querying for pupilId:", pupilId); // Debug log
+      const lessonQuery = query(
+        collection(db, "lessons"),
+        where("grade", "==", parseInt(grade))
+      );
+      const lessonSnapshot = await getDocs(lessonQuery);
+      const lessonIds = lessonSnapshot.docs.map(doc => doc.id);
+      if (lessonIds.length === 0) {
+        return res.status(200).send({
+          totalLessons: 0,
+          completedLessons: 0,
+          completedExercises: 0
+        })
+      }
+      const chunkArray = (array, size) => {
+        const chunks = [];
+        for (let i = 0; i < array.length; i += size) {
+          chunks.push(array.slice(i, i + size));
+        }
+        return chunks;
+      }
+      const lessonIdChunks = chunkArray(lessonIds, 30);
+      let totalLessons = lessonIds.length;
+      let completedLessons = 0;
+      let uniqueExercises = new Set();
+      for (const chunk of lessonIdChunks) {
+        const lessonQuery = query(
+          collection(db, "completed_lessons"),
+          where("pupilId", "==", pupilId),
+          where("lessonId", "in", chunk),
+          where("isBlock", "==", false),
+          where("isCompleted", "==", true),
+        );
+        const LessonSnapshot = await getCountFromServer(lessonQuery);
+        completedLessons += LessonSnapshot.data().count;
 
+        const exerciseQuery = query(
+          collection(db, "completed_exercises"),
+          where("pupilId", "==", pupilId),
+          where("lessonId", "in", chunk)
+        )
+        const ExerciseSnapshot = await getDocs(exerciseQuery);
+        ExerciseSnapshot.docs.forEach(doc => {
+          const data = doc.data();
+          if (data.lessonId) {
+            uniqueExercises.add(data.lessonId);
+          }
+        })
+      }
+      res.status(200).send({
+        totalLessons,
+        completedLessons,
+        completedExercises: uniqueExercises.size
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
   // Get all paginated completed exercises
   getAll = async (req, res) => {
     try {

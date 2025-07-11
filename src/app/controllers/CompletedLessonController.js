@@ -15,6 +15,7 @@ const {
   limit,
   startAfter,
   documentId,
+  getCountFromServer,
 } = require("firebase/firestore");
 const db = getFirestore();
 
@@ -202,7 +203,64 @@ class CompletedLessonController {
       });
     }
   };
-
+  countCompletedPupil = async (req, res, next) => {
+    try {
+      const pupilId = req.params.pupilId;
+      const grade = req.query.grade;
+      console.log("Querying for pupilId:", pupilId); // Debug log
+      const lessonQuery = query(
+        collection(db, "lessons"),
+        where("grade", "==", parseInt(grade))
+      );
+      const lessonSnapshot = await getDocs(lessonQuery);
+      const lessonIds = lessonSnapshot.docs.map(doc => doc.id);
+      if (lessonIds.length === 0) {
+        return res.status(200).send({
+          totalCount: 0,
+          completedCount: 0
+        })
+      }
+      const chunkArray = (array, size) => {
+        const chunks = [];
+        for (let i = 0; i < array.length; i += size) {
+          chunks.push(array.slice(i, i + size));
+        }
+        return chunks;
+      }
+      const lessonIdChunks = chunkArray(lessonIds, 30);
+      let totalCount = 0;
+      let completedCount = 0;
+      for (const chunk of lessonIdChunks) {
+        const totalQuery = query(
+          collection(db, "completed_lessons"),
+          where("pupilId", "==", pupilId),
+          where("lessonId", "in", chunk)
+        );
+        const TotalSnapshot = await getCountFromServer(totalQuery);
+        totalCount += TotalSnapshot.data().count;
+        const completed = query(
+          collection(db, "completed_lessons"),
+          where("pupilId", "==", pupilId),
+          where("lessonId", "in", chunk),
+          where("isBlock", "==", false),
+          where("isCompleted", "==", true),
+        )
+        const CompletedSnapshot = await getCountFromServer(completed);
+        completedCount += CompletedSnapshot.data().count;
+      }
+      res.status(200).send({
+        totalCount,
+        completedCount,
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
   // Update completed lesson status
   updateStatus = async (req, res, next) => {
     try {
