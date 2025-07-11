@@ -14,7 +14,7 @@ const {
 } = require("firebase/firestore");
 
 const db = getFirestore();
-// ✅ Hàm chuẩn hóa: chỉ giữ lại phần ngày
+// Hàm chuẩn hóa: chỉ giữ lại phần ngày
 function toDateOnly(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
@@ -41,6 +41,7 @@ class GoalController {
           en: "Goal created successfully!",
           vi: "Tạo mục tiêu thành công!",
         },
+        id: newDocRef.id,
       });
     } catch (error) {
       res.status(500).send({
@@ -118,59 +119,39 @@ class GoalController {
   //cập nhật nhiệm vụ đã hoàn thành
   autoMarkCompletedGoals = async (req, res) => {
     try {
-      const { pupilId, goalId, lessonId } = req.params;
-      // console.log("Params:", { pupilId, goalId, lessonId });
-
-      if (!pupilId || !goalId || !lessonId) {
+      const { pupilId, lessonId } = req.params;
+      if (!pupilId || !lessonId) {
         return res.status(400).send({
           message: {
-            en: "Missing pupilId, goalId, or lessonId",
-            vi: "Thiếu pupilId, goalId hoặc lessonId",
+            en: "Missing pupilId or lessonId",
+            vi: "Thiếu pupilId hoặc lessonId",
           },
         });
       }
+      //Tìm tất cả goal chưa hoàn thành của học sinh và lesson này
+      const goalSnap = await getDocs(
+        query(
+          collection(db, "goal"),
+          where("pupilId", "==", pupilId),
+          where("lessonId", "==", lessonId),
+          where("isCompleted", "==", false)
+        )
+      );
 
-      // 1. Lấy goal tương ứng
-      const goalDoc = await getDoc(doc(db, "goal", goalId));
-      if (!goalDoc.exists()) {
+      const allGoals = goalSnap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      if (allGoals.length === 0) {
         return res.status(404).send({
           message: {
-            en: "Goal not found",
-            vi: "Không tìm thấy nhiệm vụ",
+            en: "No uncompleted goal found",
+            vi: "Không tìm thấy nhiệm vụ chưa hoàn thành",
           },
         });
       }
-
-      const goal = { id: goalDoc.id, ...goalDoc.data() };
-      // console.log("Goal:", goal);
-
-      const {
-        dateStart,
-        dateEnd,
-        isCompleted,
-        exercise,
-        rewardId,
-        rewardQuantity,
-      } = goal;
-
-      if (
-        goal.pupilId !== pupilId ||
-        goal.lessonId !== lessonId ||
-        isCompleted ||
-        !dateStart ||
-        !dateEnd
-      ) {
-        // console.log("Goal không hợp lệ hoặc đã hoàn thành");
-        return res.status(400).send({
-          message: {
-            en: "Invalid or already completed goal",
-            vi: "Nhiệm vụ không hợp lệ hoặc đã hoàn thành",
-          },
-        });
-      }
-
-      // 2. Lấy completed_lesson liên quan
-      // console.log("Đang truy vấn completed_lessons...");
+      //Lấy completed_lessons
       const completedLessonsSnap = await getDocs(
         query(
           collection(db, "completed_lessons"),
@@ -181,9 +162,7 @@ class GoalController {
       const completedLessons = completedLessonsSnap.docs.map((doc) =>
         doc.data()
       );
-      console.log("completed_lessons:", completedLessons);
-
-      // 3. Lấy completed_exercises
+      //Lấy completed_exercises
       const exerciseSnap = await getDocs(
         query(
           collection(db, "completed_exercises"),
@@ -196,10 +175,10 @@ class GoalController {
           const data = doc.data();
           let createdAt = null;
 
-          if (typeof data.createAt?.toDate === "function") {
-            createdAt = data.createAt.toDate();
-          } else if (data.createAt) {
-            const parsed = new Date(data.createAt);
+          if (typeof data.createdAt?.toDate === "function") {
+            createdAt = data.createdAt.toDate();
+          } else if (data.createdAt) {
+            const parsed = new Date(data.createdAt);
             if (!isNaN(parsed)) createdAt = parsed;
           }
 
@@ -212,61 +191,56 @@ class GoalController {
             : null;
         })
         .filter(Boolean);
-      // console.log("completed_exercises:", completedExercises);
+      // Tìm goal phù hợp
+      const matchingGoal = allGoals.find((goal) => {
+        const start = toDateOnly(goal.dateStart);
+        const end = toDateOnly(goal.dateEnd);
 
-      // 4. Kiểm tra lesson match
-      const matchingLesson = completedLessons.find((cl) => {
-        const updated = toDateOnly(
-          cl.updatedAt?.toDate?.() || new Date(cl.updatedAt)
-        );
-        const start = toDateOnly(dateStart);
-        const end = toDateOnly(dateEnd);
-        const match =
-          cl.lessonId === lessonId &&
-          cl.isCompleted &&
-          updated >= start &&
-          updated <= end;
-        // console.log("Check lesson:", {
-        //   lessonId: cl.lessonId,
-        //   updated,
-        //   match,
-        // });
-        return match;
-      });
-
-      // 5. Kiểm tra exercise match
-      const matchedExercise = completedExercises.find((ex) => {
-        const exLevelMatch = (exercise || []).every((level) =>
-          (ex.levelId || []).includes(level)
-        );
-        const updated = toDateOnly(ex.createdAt);
-        const start = toDateOnly(dateStart);
-        const end = toDateOnly(dateEnd);
-        const match =
-          ex.lessonId === lessonId &&
-          exLevelMatch &&
-          updated >= start &&
-          updated <= end;
-        // console.log("Check exercise:", {
-        //   lessonId: ex.lessonId,
-        //   exLevelMatch,
-        //   updated,
-        //   match,
-        // });
-        return match;
-      });
-
-      if (matchingLesson || matchedExercise) {
-        const matched = matchingLesson || matchedExercise;
-        // console.log("Goal hoàn thành, matched:", matched);
-
-        await updateDoc(doc(db, "goal", goal.id), {
-          isCompleted: true,
-          completedAt: matched.createdAt,
-          updatedAt: serverTimestamp(),
+        const hasMatchingLesson = completedLessons.some((cl) => {
+          const updated = toDateOnly(
+            cl.updatedAt?.toDate?.() || new Date(cl.updatedAt)
+          );
+          return (
+            cl.lessonId === lessonId &&
+            cl.isCompleted &&
+            updated >= start &&
+            updated <= end
+          );
         });
-
-        // Tăng phần thưởng nếu có
+        const hasMatchingExercise = completedExercises.some((ex) => {
+          const exLevelMatch = (goal.exercise || []).every((level) =>
+            (ex.levelId || []).includes(level)
+          );
+          const updated = toDateOnly(ex.createdAt);
+          return (
+            ex.lessonId === lessonId &&
+            exLevelMatch &&
+            updated >= start &&
+            updated <= end
+          );
+        });
+        return hasMatchingLesson || hasMatchingExercise;
+      });
+      if (!matchingGoal) {
+        return res.status(200).send({
+          message: {
+            en: "No matching completed lesson or exercise found.",
+            vi: "Không tìm thấy bài học hoặc bài tập phù hợp.",
+          },
+        });
+      }
+      // Đánh dấu hoàn thành
+      const matchedData = [...completedLessons, ...completedExercises].find(
+        (x) => x.lessonId === lessonId
+      );
+      await updateDoc(doc(db, "goal", matchingGoal.id), {
+        isCompleted: true,
+        completedAt: matchedData?.createdAt || new Date(),
+        updatedAt: serverTimestamp(),
+      });
+      //Tăng phần thưởng nếu có
+      const { rewardId, rewardQuantity } = matchingGoal;
+      if (rewardId && rewardQuantity) {
         const rewardRef = collection(db, "owned_rewards");
         const ownedRewardQuery = query(
           rewardRef,
@@ -274,21 +248,17 @@ class GoalController {
           where("rewardId", "==", rewardId)
         );
         const ownedRewardSnap = await getDocs(ownedRewardQuery);
-
         if (!ownedRewardSnap.empty) {
           const existingDoc = ownedRewardSnap.docs[0];
           const existingData = existingDoc.data();
           const newQuantity =
             (existingData.quantity || 0) + Number(rewardQuantity || 0);
 
-          // console.log("Tăng số lượng reward:", newQuantity);
-
           await updateDoc(doc(db, "owned_rewards", existingDoc.id), {
             quantity: newQuantity,
             updatedAt: serverTimestamp(),
           });
         } else {
-          // console.log("Thêm mới phần thưởng");
           await addDoc(rewardRef, {
             pupilId,
             rewardId,
@@ -297,27 +267,18 @@ class GoalController {
             updatedAt: serverTimestamp(),
           });
         }
-        const lessonDoc = await getDoc(doc(db, "lessons", goal.lessonId));
-        const lessonName =
-          lessonDoc.exists() && lessonDoc.data().name?.vi
-            ? lessonDoc.data().name.vi
-            : "nhiệm vụ";
-
-        return res.status(200).send({
-          message: {
-            en: `Goal "${lessonName}" marked as completed.`,
-            vi: `Chúc mừng bạn đã hoàn thành nhiệm vụ "${lessonName}".`,
-          },
-        });
-      } else {
-        // console.log("Không tìm thấy bài học hoặc bài tập phù hợp");
-        return res.status(200).send({
-          message: {
-            en: "No matching completed lesson or exercise found.",
-            vi: "Không tìm thấy bài học hoặc bài tập phù hợp.",
-          },
-        });
       }
+      const lessonDoc = await getDoc(doc(db, "lessons", lessonId));
+      const lessonName =
+        lessonDoc.exists() && lessonDoc.data().name?.vi
+          ? lessonDoc.data().name.vi
+          : "nhiệm vụ";
+      return res.status(200).send({
+        message: {
+          en: `Goal "${lessonName}" marked as completed.`,
+          vi: `Chúc mừng bạn đã hoàn thành nhiệm vụ "${lessonName}".`,
+        },
+      });
     } catch (error) {
       console.error("autoMarkCompletedGoals Error:", error);
       res.status(500).send({

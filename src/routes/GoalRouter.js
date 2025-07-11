@@ -20,7 +20,7 @@ router.get("/:id", goalMiddleware.checkGoalExistById, goalController.getById);
 router.patch("/:id", goalMiddleware.checkGoalExistById, goalController.update);
 //autoMarkCompletedGoals
 router.get(
-  "/completedgoal/:pupilId/:lessonId/:goalId",
+  "/completedgoal/:pupilId/:lessonId",
   pupilMiddleware.checkPupilExistById("pupilId"),
   lessonMiddleware.checkLessonExistById("lessonId"),
   goalController.autoMarkCompletedGoals
