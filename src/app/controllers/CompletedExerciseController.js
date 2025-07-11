@@ -14,7 +14,7 @@ const {
   where,
   orderBy,
   limit,
-  startAfter
+  startAfter,
 } = require("firebase/firestore");
 const db = getFirestore();
 
@@ -25,7 +25,7 @@ class CompletedExerciseController {
       const data = req.body;
       await addDoc(collection(db, "completed_exercises"), {
         ...data,
-        createAt: serverTimestamp(),
+        createdAt: serverTimestamp(),
       });
       res.status(201).send({
         message: {
@@ -53,9 +53,7 @@ class CompletedExerciseController {
   // Count all  completed exercises
   countAll = async (req, res, next) => {
     try {
-      const q = query(
-        collection(db, "completed_exercises"),
-      );
+      const q = query(collection(db, "completed_exercises"));
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
@@ -76,7 +74,9 @@ class CompletedExerciseController {
 
       let q;
       if (startAfterId) {
-        const startDoc = await getDoc(doc(db, "completed_exercises", startAfterId));
+        const startDoc = await getDoc(
+          doc(db, "completed_exercises", startAfterId)
+        );
         q = query(
           collection(db, "completed_exercises"),
           startAfter(startDoc),
@@ -92,7 +92,9 @@ class CompletedExerciseController {
       }
 
       const snapshot = await getDocs(q);
-      const tests = snapshot.docs.map((doc) => CompletedExercises.fromFirestore(doc));
+      const tests = snapshot.docs.map((doc) =>
+        CompletedExercises.fromFirestore(doc)
+      );
       const lastVisible = snapshot.docs[snapshot.docs.length - 1];
       const lastVisibleId = lastVisible ? lastVisible.id : null;
 
@@ -116,7 +118,7 @@ class CompletedExerciseController {
       const { pupilId } = req.params;
       const q = query(
         collection(db, "completed_exercises"),
-        where("pupilId", "==", pupilId),
+        where("pupilId", "==", pupilId)
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
@@ -139,7 +141,9 @@ class CompletedExerciseController {
 
       let q;
       if (startAfterId) {
-        const startDoc = await getDoc(doc(db, "completed_exercises", startAfterId));
+        const startDoc = await getDoc(
+          doc(db, "completed_exercises", startAfterId)
+        );
         q = query(
           collection(db, "completed_exercises"),
           where("pupilId", "==", pupilID),
@@ -157,7 +161,9 @@ class CompletedExerciseController {
       }
 
       const snapshot = await getDocs(q);
-      const Completedexercise = snapshot.docs.map((doc) => CompletedExercises.fromFirestore(doc));
+      const Completedexercise = snapshot.docs.map((doc) =>
+        CompletedExercises.fromFirestore(doc)
+      );
       const lastVisible = snapshot.docs[snapshot.docs.length - 1];
       const lastVisibleId = lastVisible ? lastVisible.id : null;
 
@@ -175,14 +181,13 @@ class CompletedExerciseController {
     }
   };
 
-
   // Count completed exercise by lesson ID
   countCompletedExerciseByLessonID = async (req, res, next) => {
     try {
       const { lessonId } = req.params;
       const q = query(
         collection(db, "completed_exercises"),
-        where("lessonId", "==", lessonId),
+        where("lessonId", "==", lessonId)
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
@@ -205,7 +210,9 @@ class CompletedExerciseController {
 
       let q;
       if (startAfterId) {
-        const startDoc = await getDoc(doc(db, "completed_exercises", startAfterId));
+        const startDoc = await getDoc(
+          doc(db, "completed_exercises", startAfterId)
+        );
         q = query(
           collection(db, "completed_exercises"),
           where("lessonId", "==", lessonID),
@@ -223,7 +230,9 @@ class CompletedExerciseController {
       }
 
       const snapshot = await getDocs(q);
-      const Completedexercise = snapshot.docs.map((doc) => CompletedExercises.fromFirestore(doc));
+      const Completedexercise = snapshot.docs.map((doc) =>
+        CompletedExercises.fromFirestore(doc)
+      );
       const lastVisible = snapshot.docs[snapshot.docs.length - 1];
       const lastVisibleId = lastVisible ? lastVisible.id : null;
 
@@ -243,23 +252,23 @@ class CompletedExerciseController {
 
   // Count completed exercise by point
   countCompletedExerciseByPoint = async (req, res, next) => {
-      try {
-        const {condition, point } = req.query;
-        const q = query(
-          collection(db, "completed_exercises"),
-          where("point", condition, parseInt(point)),
-        );
-        const snapshot = await getCountFromServer(q);
-        res.status(200).send({ count: snapshot.data().count });
-      } catch (error) {
-        res.status(500).send({
-          message: {
-            en: error.message,
-            vi: "Đã xảy ra lỗi nội bộ.",
-          },
-        });
-      }
-    };
+    try {
+      const { condition, point } = req.query;
+      const q = query(
+        collection(db, "completed_exercises"),
+        where("point", condition, parseInt(point))
+      );
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
 
   //Filter completed exercise by point
   filterByPoint = async (req, res) => {
@@ -269,7 +278,9 @@ class CompletedExerciseController {
       const { condition, point } = req.query;
       let q;
       if (startAfterId) {
-        const startDoc = await getDoc(doc(db, "completed_exercises", startAfterId));
+        const startDoc = await getDoc(
+          doc(db, "completed_exercises", startAfterId)
+        );
         q = query(
           collection(db, "completed_exercises"),
           where("point", condition, parseInt(point)),
@@ -287,7 +298,9 @@ class CompletedExerciseController {
       }
 
       const snapshot = await getDocs(q);
-      const Completedexercise = snapshot.docs.map((doc) => CompletedExercises.fromFirestore(doc));
+      const Completedexercise = snapshot.docs.map((doc) =>
+        CompletedExercises.fromFirestore(doc)
+      );
       const lastVisible = snapshot.docs[snapshot.docs.length - 1];
       const lastVisibleId = lastVisible ? lastVisible.id : null;
 
@@ -312,7 +325,7 @@ class CompletedExerciseController {
       const q = query(
         collection(db, "completed_exercises"),
         where("lessonID", "==", lessonID),
-        where("pupilID", "==", pupilID),
+        where("pupilID", "==", pupilID)
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
@@ -335,7 +348,9 @@ class CompletedExerciseController {
 
       let q;
       if (startAfterId) {
-        const startDoc = await getDoc(doc(db, "completed_exercises", startAfterId));
+        const startDoc = await getDoc(
+          doc(db, "completed_exercises", startAfterId)
+        );
         q = query(
           collection(db, "completed_exercises"),
           where("pupilId", "==", pupilID),
@@ -355,7 +370,9 @@ class CompletedExerciseController {
       }
 
       const snapshot = await getDocs(q);
-      const Completedexercise = snapshot.docs.map((doc) => CompletedExercises.fromFirestore(doc));
+      const Completedexercise = snapshot.docs.map((doc) =>
+        CompletedExercises.fromFirestore(doc)
+      );
       const lastVisible = snapshot.docs[snapshot.docs.length - 1];
       const lastVisibleId = lastVisible ? lastVisible.id : null;
 
@@ -384,7 +401,7 @@ class CompletedExerciseController {
       const q = query(
         collection(db, "completed_exercises"),
         where("lessonID", "==", lessonID),
-        where("point", condition, parsedPoint),
+        where("point", condition, parsedPoint)
       );
 
       const snapshot = await getCountFromServer(q);
@@ -408,7 +425,9 @@ class CompletedExerciseController {
       const { condition, point } = req.query;
       let q;
       if (startAfterId) {
-        const startDoc = await getDoc(doc(db, "completed_exercises", startAfterId));
+        const startDoc = await getDoc(
+          doc(db, "completed_exercises", startAfterId)
+        );
         q = query(
           collection(db, "completed_exercises"),
           where("lessonId", "==", lessonID),
@@ -428,7 +447,9 @@ class CompletedExerciseController {
       }
 
       const snapshot = await getDocs(q);
-      const Completedexercise = snapshot.docs.map((doc) => CompletedExercises.fromFirestore(doc));
+      const Completedexercise = snapshot.docs.map((doc) =>
+        CompletedExercises.fromFirestore(doc)
+      );
       const lastVisible = snapshot.docs[snapshot.docs.length - 1];
       const lastVisibleId = lastVisible ? lastVisible.id : null;
 
@@ -445,8 +466,6 @@ class CompletedExerciseController {
       });
     }
   };
-
-
 }
 
 module.exports = new CompletedExerciseController();
