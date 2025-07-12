@@ -407,6 +407,51 @@ class CompletedLessonController {
           en: `Lesson completed and next lesson "${nextLessonName}" unlocked successfully!`,
           vi: `Hoàn thành bài học và mở khóa bài học tiếp theo "${nextLessonName}" thành công!`,
         };
+      } else {
+        if (grade < 3) {
+          const nextGrade = grade + 1;
+          const firstLessonNextGradeQuery = query(
+            collection(db, "lessons"),
+            where("grade", "==", nextGrade),
+            where("type", "==", type),
+            where("isDisabled", "==", false),
+            orderBy("order"),
+            limit(1)
+          );
+          const firstLessonNextGradeSnapshot = await getDocs(firstLessonNextGradeQuery);
+          if (!firstLessonNextGradeSnapshot.empty) {
+            const firstLessonNextGrade = firstLessonNextGradeSnapshot.docs[0];
+            nextLessonName = firstLessonNextGrade.data().name;
+            const nextCompletedQuery = query(
+              collection(db, "completed_lessons"),
+              where("pupilId", "==", pupilId),
+              where("lessonId", "==", firstLessonNextGrade.id)
+            );
+            const nextCompletedSnapshot = await getDocs(nextCompletedQuery);
+            if (!nextCompletedSnapshot.empty) {
+              const nextCompletedDoc = nextCompletedSnapshot.docs[0];
+              await updateDoc(nextCompletedDoc.ref, {
+                isBlock: false,
+                updateAt: serverTimestamp(),
+              });
+            }
+            responseMessage = {
+              en: `All lessons in grade ${grade} completed! First lesson of grade ${nextGrade} "${nextLessonName}" unlocked successfully!`,
+              vi: `Đã hoàn thành tất cả bài học của lớp ${grade}! Bài học đầu tiên của lớp ${nextGrade} "${nextLessonName}" đã được mở khóa!`,
+            };
+          } else {
+            responseMessage = {
+              en: `All lessons in grade ${grade} completed! No lessons available in grade ${nextGrade}.`,
+              vi: `Đã hoàn thành tất cả bài học của lớp ${grade}! Không có bài học nào ở lớp ${nextGrade}.`,
+            };
+          }
+        } else {
+          // Step 6: If grade is 3, no further grades available
+          responseMessage = {
+            en: `Congratulations! All lessons in grade ${grade} completed. You have finished all available grades!`,
+            vi: `Chúc mừng! Đã hoàn thành tất cả bài học của lớp ${grade}. Bạn đã hoàn thành tất cả các lớp học!`,
+          };
+        }
       }
       res.status(200).send({
         message: responseMessage,
