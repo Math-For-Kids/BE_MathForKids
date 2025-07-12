@@ -120,6 +120,16 @@ class GoalController {
   autoMarkCompletedGoals = async (req, res) => {
     try {
       const { pupilId, lessonId } = req.params;
+      const { exercise } = req.query;
+
+      // Tách danh sách exercise (level)
+      const exerciseList = exercise
+        ? exercise
+            .split(",")
+            .map((e) => e.trim())
+            .filter(Boolean)
+        : [];
+
       if (!pupilId || !lessonId) {
         return res.status(400).send({
           message: {
@@ -128,7 +138,8 @@ class GoalController {
           },
         });
       }
-      //Tìm tất cả goal chưa hoàn thành của học sinh và lesson này
+
+      // 1. Goals chưa hoàn thành
       const goalSnap = await getDocs(
         query(
           collection(db, "goal"),
@@ -137,7 +148,6 @@ class GoalController {
           where("isCompleted", "==", false)
         )
       );
-
       const allGoals = goalSnap.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
@@ -151,7 +161,8 @@ class GoalController {
           },
         });
       }
-      //Lấy completed_lessons
+
+      // 2. completed_lessons
       const completedLessonsSnap = await getDocs(
         query(
           collection(db, "completed_lessons"),
@@ -162,7 +173,8 @@ class GoalController {
       const completedLessons = completedLessonsSnap.docs.map((doc) =>
         doc.data()
       );
-      //Lấy completed_exercises
+
+      // 3. completed_exercises
       const exerciseSnap = await getDocs(
         query(
           collection(db, "completed_exercises"),
@@ -191,11 +203,24 @@ class GoalController {
             : null;
         })
         .filter(Boolean);
-      // Tìm goal phù hợp
-      const matchingGoal = allGoals.find((goal) => {
+
+      // 4. Lọc goals phù hợp
+      const matchingGoals = allGoals.filter((goal) => {
         const start = toDateOnly(goal.dateStart);
         const end = toDateOnly(goal.dateEnd);
+        const goalLevels = goal.exercise || [];
 
+        // Nếu có exercise trong query mà goal không chứa → bỏ
+        const matchExerciseQuery =
+          exerciseList.length === 0 ||
+          exerciseList.some((e) => goalLevels.includes(e));
+
+        if (!matchExerciseQuery) {
+          console.log("Bỏ goal vì không khớp exercise query:", goal.id);
+          return false;
+        }
+
+        // Kiểm tra completed_lessons
         const hasMatchingLesson = completedLessons.some((cl) => {
           const updated = toDateOnly(
             cl.updatedAt?.toDate?.() || new Date(cl.updatedAt)
@@ -207,11 +232,16 @@ class GoalController {
             updated <= end
           );
         });
+
+        // Kiểm tra completed_exercises
         const hasMatchingExercise = completedExercises.some((ex) => {
-          const exLevelMatch = (goal.exercise || []).every((level) =>
-            (ex.levelId || []).includes(level)
-          );
+          const completedLevels = ex.levelId || [];
           const updated = toDateOnly(ex.createdAt);
+
+          const exLevelMatch =
+            goalLevels.length > 0 &&
+            goalLevels.every((level) => completedLevels.includes(level));
+
           return (
             ex.lessonId === lessonId &&
             exLevelMatch &&
@@ -219,64 +249,87 @@ class GoalController {
             updated <= end
           );
         });
+
+        // In log chi tiết
+        // console.log("GOAL CHECK:", {
+        //   goalId: goal.id,
+        //   goalLevels,
+        //   exerciseList,
+        //   matchExerciseQuery,
+        //   hasMatchingLesson,
+        //   hasMatchingExercise,
+        //   result: hasMatchingLesson || hasMatchingExercise,
+        //   dateRange: { start, end },
+        // });
+
         return hasMatchingLesson || hasMatchingExercise;
       });
-      if (!matchingGoal) {
+
+      if (matchingGoals.length === 0) {
         return res.status(200).send({
           message: {
-            en: "No matching completed lesson or exercise found.",
-            vi: "Không tìm thấy bài học hoặc bài tập phù hợp.",
+            en: "No matching completed goal found.",
+            vi: "Không tìm thấy mục tiêu phù hợp đã hoàn thành.",
           },
         });
       }
-      // Đánh dấu hoàn thành
+
+      // 5. Cập nhật goals
       const matchedData = [...completedLessons, ...completedExercises].find(
         (x) => x.lessonId === lessonId
       );
-      await updateDoc(doc(db, "goal", matchingGoal.id), {
-        isCompleted: true,
-        completedAt: matchedData?.createdAt || new Date(),
-        updatedAt: serverTimestamp(),
-      });
-      //Tăng phần thưởng nếu có
-      const { rewardId, rewardQuantity } = matchingGoal;
-      if (rewardId && rewardQuantity) {
-        const rewardRef = collection(db, "owned_rewards");
-        const ownedRewardQuery = query(
-          rewardRef,
-          where("pupilId", "==", pupilId),
-          where("rewardId", "==", rewardId)
-        );
-        const ownedRewardSnap = await getDocs(ownedRewardQuery);
-        if (!ownedRewardSnap.empty) {
-          const existingDoc = ownedRewardSnap.docs[0];
-          const existingData = existingDoc.data();
-          const newQuantity =
-            (existingData.quantity || 0) + Number(rewardQuantity || 0);
 
-          await updateDoc(doc(db, "owned_rewards", existingDoc.id), {
-            quantity: newQuantity,
-            updatedAt: serverTimestamp(),
-          });
-        } else {
-          await addDoc(rewardRef, {
-            pupilId,
-            rewardId,
-            quantity: Number(rewardQuantity || 0),
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          });
+      for (const goal of matchingGoals) {
+        await updateDoc(doc(db, "goal", goal.id), {
+          isCompleted: true,
+          completedAt: matchedData?.createdAt || new Date(),
+          updatedAt: serverTimestamp(),
+        });
+
+        // Thưởng
+        const { rewardId, rewardQuantity } = goal;
+        if (rewardId && rewardQuantity) {
+          const rewardRef = collection(db, "owned_rewards");
+          const ownedRewardQuery = query(
+            rewardRef,
+            where("pupilId", "==", pupilId),
+            where("rewardId", "==", rewardId)
+          );
+          const ownedRewardSnap = await getDocs(ownedRewardQuery);
+
+          if (!ownedRewardSnap.empty) {
+            const existingDoc = ownedRewardSnap.docs[0];
+            const existingData = existingDoc.data();
+            const newQuantity =
+              (existingData.quantity || 0) + Number(rewardQuantity || 0);
+
+            await updateDoc(doc(db, "owned_rewards", existingDoc.id), {
+              quantity: newQuantity,
+              updatedAt: serverTimestamp(),
+            });
+          } else {
+            await addDoc(rewardRef, {
+              pupilId,
+              rewardId,
+              quantity: Number(rewardQuantity || 0),
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp(),
+            });
+          }
         }
       }
+
+      // Trả kết quả
       const lessonDoc = await getDoc(doc(db, "lessons", lessonId));
       const lessonName =
         lessonDoc.exists() && lessonDoc.data().name?.vi
           ? lessonDoc.data().name.vi
           : "nhiệm vụ";
+
       return res.status(200).send({
         message: {
-          en: `Goal "${lessonName}" marked as completed.`,
-          vi: `Chúc mừng bạn đã hoàn thành nhiệm vụ "${lessonName}".`,
+          en: `Marked ${matchingGoals.length} goal(s) as completed.`,
+          vi: `Đã đánh dấu ${matchingGoals.length} mục tiêu hoàn thành: "${lessonName}".`,
         },
       });
     } catch (error) {
@@ -290,12 +343,17 @@ class GoalController {
     }
   };
 
-  //lấy các lesson chưa set goal full level
   getAvailableLessons = async (req, res) => {
     try {
       const { pupilId, skillType, startDate, endDate } = req.params;
 
       if (!pupilId || !skillType || !startDate || !endDate) {
+        // console.log("Thiếu tham số:", {
+        //   pupilId,
+        //   skillType,
+        //   startDate,
+        //   endDate,
+        // });
         return res.status(400).send({
           message: {
             en: "Missing required parameters",
@@ -308,14 +366,17 @@ class GoalController {
       const end = new Date(endDate);
       start.setHours(0, 0, 0, 0);
       end.setHours(23, 59, 59, 999);
-
-      const q = query(
-        collection(db, "goal"),
-        where("pupilId", "==", pupilId),
-        where("skillType", "==", skillType),
-        where("isCompleted", "==", false)
+      // console.log("Khoảng thời gian:", { start, end });
+      const snapshot = await getDocs(
+        query(
+          collection(db, "goal"),
+          where("pupilId", "==", pupilId),
+          where("skillType", "==", skillType),
+          where("isCompleted", "==", false)
+        )
       );
-      const snapshot = await getDocs(q);
+
+      // console.log(`Goals chưa hoàn thành: ${snapshot.size}`);
 
       const levelOptions = ["Easy", "Medium", "Hard"];
       const resultMap = {};
@@ -323,42 +384,62 @@ class GoalController {
       snapshot.forEach((doc) => {
         const goal = doc.data();
         const gStart = new Date(goal.dateStart);
-        gStart.setHours(0, 0, 0, 0);
         const gEnd = new Date(goal.dateEnd);
+        gStart.setHours(0, 0, 0, 0);
         gEnd.setHours(23, 59, 59, 999);
 
         const isOverlap = gStart <= end && gEnd >= start;
-        if (!isOverlap) return;
+        if (!isOverlap) {
+          // console.log(`Goal ${goalId} bị bỏ qua (ngoài khoảng ngày)`);
+          return;
+        }
 
         const lessonId = goal.lessonId;
-        if (!lessonId) return;
+        if (!lessonId) {
+          // console.log(`Goal ${goalId} không có lessonId`);
+          return;
+        }
 
         if (!resultMap[lessonId]) {
           resultMap[lessonId] = new Set();
         }
 
         (goal.exercise || []).forEach((e) => resultMap[lessonId].add(e));
+
+        // console.log(
+        //   `Goal ${goalId} lessonId=${lessonId} | exercise=`,
+        //   goal.exercise
+        // );
       });
 
       const availableLessons = [];
+
       for (const lessonId in resultMap) {
         const disabledSet = resultMap[lessonId];
         const allLevelsCovered = levelOptions.every((lv) =>
           disabledSet.has(lv)
         );
 
+        // console.log(
+        //   ` Lesson ${lessonId} - disabled:`,
+        //   Array.from(disabledSet)
+        // );
+
         if (!allLevelsCovered) {
           availableLessons.push({
             lessonId,
             disabledExercises: Array.from(disabledSet),
           });
+        } else {
+          // console.log(` Lesson ${lessonId} bị ẩn vì đủ cả 3 mức độ`);
         }
       }
 
-      res.status(200).send(availableLessons);
+      // console.log("Kết quả trả về:", availableLessons);
+      return res.status(200).send(availableLessons);
     } catch (error) {
-      console.error("getAvailableLessons Error:", error);
-      res.status(500).send({
+      console.error("❌ getAvailableLessons Error:", error);
+      return res.status(500).send({
         message: {
           en: error.message || "Internal error",
           vi: "Đã xảy ra lỗi nội bộ.",

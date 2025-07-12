@@ -243,6 +243,7 @@ class LessonController {
       });
     }
   };
+
   getLessonsByGradeAndTypeFiltered = async (req, res, next) => {
     try {
       const { grade, type, pupilId } = req.query;
@@ -258,7 +259,7 @@ class LessonController {
 
       const gradeNumber = Number(grade);
 
-      // 1. Lấy tất cả lessons theo grade, type, và isDisabled = false
+      // 1. Lấy tất cả lessons theo grade, type, isDisabled = false
       const lessonQuery = query(
         collection(db, "lessons"),
         where("grade", "==", gradeNumber),
@@ -267,56 +268,60 @@ class LessonController {
       );
       const lessonSnap = await getDocs(lessonQuery);
 
-      // 2. Tạo bản đồ lesson theo id
+      // 2. Map bài học theo id
       const lessonMap = new Map();
       lessonSnap.docs.forEach((doc) => {
         lessonMap.set(doc.id, { id: doc.id, ...doc.data() });
       });
 
-      // 3. Lấy tất cả completedLessons của học sinh
+      // 3. Lấy thông tin completed của học sinh
       const completedQuery = query(
         collection(db, "completed_lessons"),
         where("pupilId", "==", pupilId)
       );
       const completedSnap = await getDocs(completedQuery);
 
-      // 4. Gộp thông tin lesson + completedLesson (chỉ lấy các lesson còn tồn tại)
-      const mergedLessons = [];
-
+      // Map lessonId → completed info
+      const completedMap = new Map();
       completedSnap.docs.forEach((doc) => {
-        const completedData = doc.data();
-        const lessonId = completedData.lessonId;
-        const lesson = lessonMap.get(lessonId);
-
-        if (lesson) {
-          mergedLessons.push({
-            ...lesson,
-            isCompleted: completedData.isCompleted || false,
-            isBlock: completedData.isBlock || false,
-            isDisabled: completedData.isDisabled || false,
-            completedId: doc.id,
-            completedAt: completedData.createdAt
-              ? completedData.createdAt.toDate().toISOString()
-              : null,
-            updatedAt: completedData.updatedAt
-              ? completedData.updatedAt.toDate().toISOString()
-              : null,
-          });
-        }
+        const data = doc.data();
+        completedMap.set(data.lessonId, {
+          isCompleted: data.isCompleted || false,
+          isBlock: data.isBlock || false,
+          isDisabled: data.isDisabled || false,
+          completedId: doc.id,
+          completedAt: data.createdAt
+            ? data.createdAt.toDate().toISOString()
+            : null,
+          updatedAt: data.updatedAt
+            ? data.updatedAt.toDate().toISOString()
+            : null,
+        });
       });
 
-      // 5. Lọc ra những bài học chưa hoàn thành
-      const filteredLessons = mergedLessons.filter(
-        (item) => item.isCompleted === false
+      // 4. Trả về toàn bộ lessons (dù completed hay chưa)
+      const fullLessons = Array.from(lessonMap.entries()).map(
+        ([lessonId, lesson]) => {
+          const completed = completedMap.get(lessonId);
+          return {
+            ...lesson,
+            isCompleted: completed?.isCompleted || false,
+            isBlock: completed?.isBlock || false,
+            isDisabled: completed?.isDisabled || false,
+            completedId: completed?.completedId || null,
+            completedAt: completed?.completedAt || null,
+            updatedAt: completed?.updatedAt || null,
+          };
+        }
       );
 
-      res.status(200).send(filteredLessons);
+      res.status(200).send(fullLessons);
     } catch (error) {
-      console.error("🔥 Error in getLessonsByGradeAndTypeFiltered:", error);
+      console.error("Error in getLessonsByGradeAndTypeFiltered:", error);
       res.status(500).send({
         message: {
           en: error.message,
-          vi: "Lỗi lọc bài học chưa hoàn thành",
+          vi: "Lỗi lọc bài học",
         },
       });
     }
