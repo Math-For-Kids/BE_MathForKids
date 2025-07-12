@@ -446,7 +446,6 @@ class CompletedLessonController {
             };
           }
         } else {
-          // Step 6: If grade is 3, no further grades available
           responseMessage = {
             en: `Congratulations! All lessons in grade ${grade} completed. You have finished all available grades!`,
             vi: `Chúc mừng! Đã hoàn thành tất cả bài học của lớp ${grade}. Bạn đã hoàn thành tất cả các lớp học!`,
