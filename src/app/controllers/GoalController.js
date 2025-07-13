@@ -205,10 +205,18 @@ class GoalController {
         .filter(Boolean);
 
       // 4. Lọc goals phù hợp
+      const today = toDateOnly(new Date());
+
       const matchingGoals = allGoals.filter((goal) => {
         const start = toDateOnly(goal.dateStart);
         const end = toDateOnly(goal.dateEnd);
         const goalLevels = goal.exercise || [];
+
+        // ✅ Bỏ qua goal đã hết hạn
+        if (end < today) {
+          console.log("Bỏ goal vì đã hết hạn:", goal.id);
+          return false;
+        }
 
         // Nếu có exercise trong query mà goal không chứa → bỏ
         const matchExerciseQuery =
@@ -249,18 +257,6 @@ class GoalController {
             updated <= end
           );
         });
-
-        // In log chi tiết
-        // console.log("GOAL CHECK:", {
-        //   goalId: goal.id,
-        //   goalLevels,
-        //   exerciseList,
-        //   matchExerciseQuery,
-        //   hasMatchingLesson,
-        //   hasMatchingExercise,
-        //   result: hasMatchingLesson || hasMatchingExercise,
-        //   dateRange: { start, end },
-        // });
 
         return hasMatchingLesson || hasMatchingExercise;
       });
