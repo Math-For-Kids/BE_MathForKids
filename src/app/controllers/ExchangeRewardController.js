@@ -17,17 +17,24 @@ class ExchangeRewardController {
     // Create exchange reward
     create = async (req, res, next) => {
         try {
-            const { pupilId, rewardId, isAccept } = req.body;
-            await addDoc(collection(db, "exchange_rewards"), {
+            const { pupilId, rewardId } = req.body;
+            const docRef = await addDoc(collection(db, "exchange_rewards"), {
                 pupilId,
                 rewardId,
-                isAccept: isAccept || false,
+                isAccept: false,
                 createdAt: serverTimestamp(),
             });
             res.status(201).send({
+                id: docRef.id,
                 message: {
                     en: "Exchange reward created successfully!",
                     vi: "Tạo phần thưởng trao đổi thành công!",
+                },
+                data: {
+                    pupilId,
+                    rewardId,
+                    isAccept: false,
+                    createdAt: new Date().toISOString(),
                 },
             });
         } catch (error) {

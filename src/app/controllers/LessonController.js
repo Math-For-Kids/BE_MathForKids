@@ -264,7 +264,8 @@ class LessonController {
         collection(db, "lessons"),
         where("grade", "==", gradeNumber),
         where("type", "==", type),
-        where("isDisabled", "==", false)
+        where("isDisabled", "==", false),
+        orderBy("order"),
       );
       const lessonSnap = await getDocs(lessonQuery);
 
