@@ -12,6 +12,7 @@ const {
   query,
   where,
   orderBy,
+  getCountFromServer,
 } = require("firebase/firestore");
 
 const db = getFirestore();
@@ -26,7 +27,9 @@ class TestQuestionController {
         if (data && typeof data === "object") {
           data = [data];
         } else {
-          throw new Error("Dữ liệu gửi lên phải là mảng hoặc một đối tượng câu hỏi");
+          throw new Error(
+            "Dữ liệu gửi lên phải là mảng hoặc một đối tượng câu hỏi"
+          );
         }
       }
       // Kiểm tra dữ liệu (tùy chọn, nhưng nên làm)
@@ -78,7 +81,9 @@ class TestQuestionController {
         orderBy("createdAt", "desc")
       );
       const snapshot = await getDocs(q);
-      const testquestions = snapshot.docs.map((doc) => TestQuestion.fromFirestore(doc));
+      const testquestions = snapshot.docs.map((doc) =>
+        TestQuestion.fromFirestore(doc)
+      );
       const lastVisible = snapshot.docs[snapshot.docs.length - 1];
       const lastVisibleId = lastVisible ? lastVisible.id : null;
 
@@ -86,6 +91,40 @@ class TestQuestionController {
         data: testquestions,
         nextPageToken: lastVisibleId,
       });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Count test questions by exercise ID
+  countOptionByExercise = async (req, res, next) => {
+    try {
+      const exerciseId = req.params.exerciseId;
+      const { answer, options } = req.body;
+      const count = [];
+      const q1 = query(
+        collection(db, "test_questions"),
+        where("exerciseId", "==", exerciseId),
+        where("selectedAnswer", "==", answer)
+      );
+      const snapshot1 = await getCountFromServer(q1);
+      count.push(snapshot1.data().count);
+
+      for (const option of options) {
+        const q2 = query(
+          collection(db, "test_questions"),
+          where("exerciseId", "==", exerciseId),
+          where("selectedAnswer", "==", option)
+        );
+        const snapshot2 = await getCountFromServer(q2);
+        count.push(snapshot2.data().count);
+      }
+      res.status(200).send(count);
     } catch (error) {
       res.status(500).send({
         message: {

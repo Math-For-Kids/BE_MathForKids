@@ -24,20 +24,12 @@ class ExerciseController {
   // Create exercise
   create = async (req, res, next) => {
     try {
-      const {
-        levelId,
-        lessonId,
-        question,
-        option,
-        answer,
-      } = req.body;
+      const { levelId, lessonId, question, option, answer } = req.body;
       const parsedQuestion = JSON.parse(question);
       const parsedOption = JSON.parse(option);
       const parsedAnswer = JSON.parse(answer);
 
-      const { image } = await uploadMultipleFiles(
-        req.files,
-      );
+      const { image } = await uploadMultipleFiles(req.files);
       const exercisesRef = await addDoc(collection(db, "exercises"), {
         levelId,
         lessonId,
@@ -118,6 +110,36 @@ class ExerciseController {
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+  // Count by lesson and levels
+  countByLessonAndLevels = async (req, res, next) => {
+    try {
+      const { lessonId } = req.params;
+      const { levelIds } = req.body;
+
+      const count = [];
+
+      for (const levelId of levelIds) {
+        const q = query(
+          collection(db, "exercises"),
+          where("lessonId", "==", lessonId),
+          where("levelId", "==", levelId),
+          where("isDisabled", "==", false)
+        );
+
+        const snapshot = await getCountFromServer(q);
+        count.push(snapshot.data().count);
+      }
+
+      res.status(200).send(count);
     } catch (error) {
       res.status(500).send({
         message: {
@@ -398,14 +420,8 @@ class ExerciseController {
       const id = req.params.id;
       const exerciseRef = doc(db, "exercises", id);
       const oldData = req.exercise;
-      const {
-        levelId,
-        lessonId,
-        question,
-        option,
-        answer,
-        isDisabled,
-      } = req.body;
+      const { levelId, lessonId, question, option, answer, isDisabled } =
+        req.body;
       const updateData = {
         updatedAt: serverTimestamp(),
       };
@@ -422,7 +438,9 @@ class ExerciseController {
       ) {
         updateData.isDisabled = isDisabled === "true" || isDisabled === true;
       } else {
-        const parsedQuestion = question ? JSON.parse(question) : oldData.question;
+        const parsedQuestion = question
+          ? JSON.parse(question)
+          : oldData.question;
         const parsedOption = option ? JSON.parse(option) : oldData.option;
         const parsedAnswer = answer ? JSON.parse(answer) : oldData.answer;
 
@@ -504,8 +522,8 @@ class ExerciseController {
           levelIds.length === 1
             ? 10
             : levelIds.length === 2
-              ? (levelIds.length - i) * 4
-              : (levelIds.length - i) * 2
+            ? (levelIds.length - i) * 4
+            : (levelIds.length - i) * 2
         );
         randomResults.push(...selected);
       }
@@ -656,6 +674,44 @@ class ExerciseController {
       });
     }
   };
+
+  averageExercisePerLesson = async (req, res, next) => {
+    try {
+      // 1. Get all lessons where isDisabled == false
+      const lessonsSnapshot = await getDocs(
+        query(collection(db, "lessons"), where("isDisabled", "==", false))
+      );
+      const lessons = lessonsSnapshot.docs;
+
+      // 2. For each lesson, count exercises where isDisabled == false
+      let totalExerciseCount = 0;
+      for (const lessonDoc of lessons) {
+        const lessonId = lessonDoc.id;
+        const q = query(
+          collection(db, "exercises"),
+          where("lessonId", "==", lessonId),
+          where("isDisabled", "==", false)
+        );
+        const countSnap = await getCountFromServer(q);
+        totalExerciseCount += countSnap.data().count;
+      }
+
+      // 3. Calculate average
+      const average = parseFloat(
+        (totalExerciseCount / lessons.length).toFixed(2)
+      );
+
+      res.status(200).send(average);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
   countLevelIdsInLesson = async (req, res, next) => {
     try {
       const lessonId = req.params.lessonId;
@@ -671,7 +727,7 @@ class ExerciseController {
         );
         const snapshot = await getCountFromServer(q);
         return { levelId, count: snapshot.data().count };
-      })
+      });
       const results = await Promise.all(countPromises);
       const levelIdCounts = results.reduce((acc, { levelId, count }) => {
         acc[levelId] = count;
@@ -691,8 +747,7 @@ class ExerciseController {
         },
       });
     }
-  }
-
+  };
 }
 
 module.exports = new ExerciseController();
