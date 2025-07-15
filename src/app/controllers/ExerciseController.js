@@ -126,6 +126,36 @@ class ExerciseController {
       });
     }
   };
+  // Count by lesson and levels
+  countByLessonAndLevels = async (req, res, next) => {
+    try {
+      const { lessonId } = req.params;
+      const { levelIds } = req.body;
+
+      const count = [];
+
+      for (const levelId of levelIds) {
+        const q = query(
+          collection(db, "exercises"),
+          where("lessonId", "==", lessonId),
+          where("levelId", "==", levelId),
+          where("isDisabled", "==", false)
+        );
+
+        const snapshot = await getCountFromServer(q);
+        count.push(snapshot.data().count);
+      }
+
+      res.status(200).send(count);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
   // Get all paginated exercises by lesson ID
   getByLesson = async (req, res, next) => {
     try {
@@ -722,6 +752,43 @@ class ExerciseController {
       // 4. Xáo trộn toàn bộ danh sách cuối
       const finalShuffled = randomExercises.sort(() => 0.5 - Math.random());
       res.status(200).send(finalShuffled);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  averageExercisePerLesson = async (req, res, next) => {
+    try {
+      // 1. Get all lessons where isDisabled == false
+      const lessonsSnapshot = await getDocs(
+        query(collection(db, "lessons"), where("isDisabled", "==", false))
+      );
+      const lessons = lessonsSnapshot.docs;
+
+      // 2. For each lesson, count exercises where isDisabled == false
+      let totalExerciseCount = 0;
+      for (const lessonDoc of lessons) {
+        const lessonId = lessonDoc.id;
+        const q = query(
+          collection(db, "exercises"),
+          where("lessonId", "==", lessonId),
+          where("isDisabled", "==", false)
+        );
+        const countSnap = await getCountFromServer(q);
+        totalExerciseCount += countSnap.data().count;
+      }
+
+      // 3. Calculate average
+      const average = parseFloat(
+        (totalExerciseCount / lessons.length).toFixed(2)
+      );
+
+      res.status(200).send(average);
     } catch (error) {
       res.status(500).send({
         message: {

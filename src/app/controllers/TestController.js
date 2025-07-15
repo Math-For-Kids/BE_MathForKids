@@ -15,6 +15,7 @@ const {
   orderBy,
   limit,
   startAfter,
+  Timestamp,
 } = require("firebase/firestore");
 const db = getFirestore();
 
@@ -521,6 +522,173 @@ class TestController {
       });
     }
   };
+
+  // Get point statistic by lessons
+  getPointStatsByLessons = async (req, res) => {
+    try {
+      const { grade, type, startDate, endDate } = req.query;
+
+      // Parse thời gian nếu có
+      let start, end;
+      if (startDate) start = Timestamp.fromDate(new Date(startDate));
+      if (endDate) end = Timestamp.fromDate(new Date(endDate));
+
+      // 1. Lấy tất cả bài học phù hợp
+      const lessonSnapshot = await getDocs(
+        query(
+          collection(db, "lessons"),
+          where("grade", "==", parseInt(grade)),
+          where("type", "==", type),
+          where("isDisabled", "==", false)
+        )
+      );
+
+      const results = [];
+
+      for (const lessonDoc of lessonSnapshot.docs) {
+        const lesson = lessonDoc.data();
+        const lessonId = lessonDoc.id;
+
+        // Hàm tạo query có điều kiện ngày nếu có
+        const buildTestQuery = (pointCond) => {
+          let q = query(
+            collection(db, "tests"),
+            where("lessonId", "==", lessonId),
+            ...pointCond
+          );
+          if (start) q = query(q, where("createdAt", ">=", start));
+          if (end) q = query(q, where("createdAt", "<=", end));
+          return q;
+        };
+
+        // Các khoảng điểm
+        const q9 = buildTestQuery([where("point", ">=", 9)]);
+        const q7to9 = buildTestQuery([
+          where("point", ">=", 7),
+          where("point", "<", 9),
+        ]);
+        const q5to7 = buildTestQuery([
+          where("point", ">=", 5),
+          where("point", "<", 7),
+        ]);
+        const qlt5 = buildTestQuery([where("point", "<", 5)]);
+
+        // Lấy count
+        const count_9plus = await getCountFromServer(q9);
+        const count_7to9 = await getCountFromServer(q7to9);
+        const count_5to7 = await getCountFromServer(q5to7);
+        const count_lt5 = await getCountFromServer(qlt5);
+
+        results.push({
+          lessonId,
+          lessonName: lesson.name,
+          counts: {
+            "≥9": count_9plus.data().count,
+            "≥7": count_7to9.data().count,
+            "≥5": count_5to7.data().count,
+            "<5": count_lt5.data().count,
+          },
+        });
+      }
+
+      res.status(200).json(results);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Get point statistic by grade
+  getPointStatsByGrade = async (req, res) => {
+    try {
+      const { grade, startDate, endDate } = req.query;
+
+      // Parse thời gian nếu có
+      let start, end;
+      if (startDate) start = Timestamp.fromDate(new Date(startDate));
+      if (endDate) end = Timestamp.fromDate(new Date(endDate));
+
+      const gradeNumber = parseInt(grade);
+      const types =
+        gradeNumber === 1
+          ? ["addition", "subtraction"]
+          : ["addition", "subtraction", "multiplication", "division"];
+      const results = [];
+      for (const type of types) {
+        // 1. Lấy tất cả bài học phù hợp
+        const lessonSnapshot = await getDocs(
+          query(
+            collection(db, "lessons"),
+            where("grade", "==", gradeNumber),
+            where("type", "==", type),
+            where("isDisabled", "==", false)
+          )
+        );
+
+        let _9plus = 0;
+        let _7to9 = 0;
+        let _5to7 = 0;
+        let _lt5 = 0;
+
+        for (const lessonDoc of lessonSnapshot.docs) {
+          const lessonId = lessonDoc.id;
+
+          // Hàm tạo query có điều kiện ngày nếu có
+          const buildTestQuery = (pointCond) => {
+            let q = query(
+              collection(db, "tests"),
+              where("lessonId", "==", lessonId),
+              ...pointCond
+            );
+            if (start) q = query(q, where("createdAt", ">=", start));
+            if (end) q = query(q, where("createdAt", "<=", end));
+            return q;
+          };
+
+          // Các khoảng điểm
+          const q9 = buildTestQuery([where("point", ">=", 9)]);
+          const q7to9 = buildTestQuery([
+            where("point", ">=", 7),
+            where("point", "<", 9),
+          ]);
+          const q5to7 = buildTestQuery([
+            where("point", ">=", 5),
+            where("point", "<", 7),
+          ]);
+          const qlt5 = buildTestQuery([where("point", "<", 5)]);
+
+          // Lấy count
+          _9plus += (await getCountFromServer(q9))?.data().count;
+          _7to9 += (await getCountFromServer(q7to9))?.data().count;
+          _5to7 += (await getCountFromServer(q5to7))?.data().count;
+          _lt5 += (await getCountFromServer(qlt5))?.data().count;
+        }
+        results.push({
+          mathType: type,
+          counts: {
+            "≥9": _9plus,
+            "≥7": _7to9,
+            "≥5": _5to7,
+            "<5": _lt5,
+          },
+        });
+      }
+
+      res.status(200).json(results);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
   // Thống kê top 10 bài tập có điểm trung bình cao nhất
   top10TestsByAveragePoint = async (req, res) => {
     try {

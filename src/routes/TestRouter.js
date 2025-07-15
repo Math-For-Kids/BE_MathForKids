@@ -88,6 +88,9 @@ router.get("/top10TestsByAveragePoint", testController.top10TestsByAveragePoint)
 //   lessonMiddleware.checkLessonExistById("lessonId"),
 //   testController.getTestsByPupilIdAndLesson
 // );
+// Get point statistic by lessons
+router.get("/getPointStatsByLessons", testController.getPointStatsByLessons);
+router.get("/getPointStatsByGrade", testController.getPointStatsByGrade);
 // Get test by ID
 router.get("/:id", testMiddleware.checkTestExistById(), testController.getById);
 

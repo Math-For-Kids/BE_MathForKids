@@ -48,10 +48,7 @@ class UserController {
   countByRole = async (req, res, next) => {
     try {
       const { role } = req.query;
-      const q = query(
-        collection(db, "users"),
-        where("role", "==", role)
-      );
+      const q = query(collection(db, "users"), where("role", "==", role));
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
@@ -66,10 +63,7 @@ class UserController {
   countByGender = async (req, res, next) => {
     try {
       const { gender } = req.query;
-      const q = query(
-        collection(db, "users"),
-        where("gender", "==", gender)
-      );
+      const q = query(collection(db, "users"), where("gender", "==", gender));
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
@@ -168,10 +162,25 @@ class UserController {
       });
     }
   };
-  
+
   countAll = async (req, res, next) => {
     try {
       const q = query(collection(db, "users"));
+      const snapshot = await getCountFromServer(q);
+      res.status(200).send({ count: snapshot.data().count });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  countParents = async (req, res, next) => {
+    try {
+      const q = query(collection(db, "users"), where("role", "==", "user"));
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
@@ -253,55 +262,71 @@ class UserController {
   // Count new users by week
   countUsersByWeek = async (req, res, next) => {
     try {
-      const { week, year } = req.query; // ví dụ: week=45, year=2025
-      if (!week || !/^\d{1,2}$/.test(week) || !year || !/^\d{4}$/.test(year)) {
-        return res.status(400).send({
-          message: "Invalid week or year format. Use week=WW and year=YYYY",
-        });
-      }
+      const { startDate, endDate } = req.query;
 
-      const weekNum = parseInt(week);
-      const yearNum = parseInt(year);
+      const start = new Date(startDate);
+      const end = new Date(endDate);
 
-      // Tính ngày bắt đầu và kết thúc của tuần
-      const firstDayOfYear = new Date(yearNum, 0, 1);
-      const firstMonday = new Date(firstDayOfYear);
-      firstMonday.setDate(
-        firstDayOfYear.getDate() + ((8 - firstDayOfYear.getDay()) % 7)
+      // 🟦 Hàm tạo danh sách các tháng trong khoảng start - end
+      const getMonthKeys = (start, end) => {
+        const keys = [];
+        const current = new Date(start.getFullYear(), start.getMonth(), 1);
+
+        while (current <= end) {
+          const key = `${String(current.getMonth() + 1).padStart(
+            2,
+            "0"
+          )}-${current.getFullYear()}`;
+          keys.push(key);
+          current.setMonth(current.getMonth() + 1);
+        }
+
+        return keys;
+      };
+
+      // 🟦 Tạo sẵn result với số tuần thực tế từng tháng
+      const result = {};
+      const monthKeys = getMonthKeys(start, end);
+      monthKeys.forEach((key) => {
+        const [monthStr, yearStr] = key.split("-");
+        const month = parseInt(monthStr, 10) - 1; // 0-based
+        const year = parseInt(yearStr, 10);
+
+        const daysInMonth = new Date(year, month + 1, 0).getDate(); // số ngày trong tháng
+        const weekCount = Math.ceil(daysInMonth / 7); // số tuần thực tế
+
+        result[key] = Array(weekCount).fill(0);
+      });
+
+      // 🔍 Lấy dữ liệu user theo thời gian
+      const usersSnapshot = await getDocs(
+        query(
+          collection(db, "users"),
+          where("role", "==", "user"),
+          where("createdAt", ">=", start),
+          where("createdAt", "<", end)
+        )
       );
 
-      const weekStart = new Date(firstMonday);
-      weekStart.setDate(firstMonday.getDate() + (weekNum - 1) * 7);
-      const weekEnd = new Date(weekStart);
-      weekEnd.setDate(weekStart.getDate() + 7);
-
-      // Tính tuần trước
-      const prevWeekStart = new Date(weekStart);
-      prevWeekStart.setDate(weekStart.getDate() - 7);
-      const prevWeekEnd = new Date(weekStart);
-
-      const usersSnapshot = await getDocs(collection(db, "users"));
-      let currentWeekCount = 0;
-      let previousWeekCount = 0;
-
+      // 🟦 Duyệt qua từng user và cập nhật số lượng theo tuần
       usersSnapshot.forEach((docSnap) => {
         const data = docSnap.data();
-        if (data.createdAt && data.createdAt.toDate) {
-          const createdAt = data.createdAt.toDate();
-          if (createdAt >= weekStart && createdAt < weekEnd) {
-            currentWeekCount++;
-          } else if (createdAt >= prevWeekStart && createdAt < prevWeekEnd) {
-            previousWeekCount++;
-          }
+        const createdAt = data.createdAt?.toDate?.();
+        if (!createdAt) return;
+
+        const m = createdAt.getMonth() + 1;
+        const y = createdAt.getFullYear();
+        const key = `${String(m).padStart(2, "0")}-${y}`;
+        const day = createdAt.getDate();
+        const weekIndex = Math.floor((day - 1) / 7); // 0-based
+
+        if (result[key] && weekIndex < result[key].length) {
+          result[key][weekIndex]++;
         }
       });
 
-      res.status(200).send({
-        week: weekNum,
-        year: yearNum,
-        currentWeekCount,
-        previousWeekCount,
-      });
+      // ✅ Trả dữ liệu
+      res.status(200).send({ data: result });
     } catch (error) {
       res.status(400).send({
         message: {
@@ -312,49 +337,183 @@ class UserController {
     }
   };
 
-  // Count new users by month
+  // Count new users for the last 12 months (including current month)
   countUsersByMonth = async (req, res, next) => {
     try {
-      const { month } = req.query; // ví dụ: "05"
-      if (!month || !/^\d{2}$/.test(month)) {
-        return res
-          .status(400)
-          .send({ message: "Invalid month format. Use MM" });
-      }
+      const { startMonth, endMonth } = req.query;
 
-      const now = new Date();
-      const year = now.getFullYear();
-      const monthIndex = parseInt(month) - 1;
+      // ✅ Hàm tạo danh sách tháng trong khoảng
+      const getMonthRange = (start, end) => {
+        const startDate = new Date(start + "-01");
+        const endDate = new Date(end + "-01");
+        const months = [];
 
-      const currentStart = new Date(year, monthIndex, 1);
-      const currentEnd = new Date(year, monthIndex + 1, 1);
+        while (startDate <= endDate) {
+          months.push({
+            year: startDate.getFullYear(),
+            month: startDate.getMonth(), // 0-11
+          });
+          startDate.setMonth(startDate.getMonth() + 1);
+        }
 
-      const prevMonthIndex = (monthIndex - 1 + 12) % 12;
-      const prevYear = monthIndex === 0 ? year - 1 : year;
-      const prevStart = new Date(prevYear, prevMonthIndex, 1);
-      const prevEnd = new Date(prevYear, prevMonthIndex + 1, 1);
+        return months;
+      };
 
-      const usersSnapshot = await getDocs(collection(db, "users"));
-      let currentCount = 0;
-      let previousCount = 0;
+      const months = getMonthRange(startMonth, endMonth);
+      const monthlyCounts = Array(months.length).fill(0);
+
+      const usersSnapshot = await getDocs(
+        query(collection(db, "users"), where("role", "==", "user"))
+      );
 
       usersSnapshot.forEach((docSnap) => {
         const data = docSnap.data();
         if (data.createdAt && data.createdAt.toDate) {
           const createdAt = data.createdAt.toDate();
-          if (createdAt >= currentStart && createdAt < currentEnd) {
-            currentCount++;
-          } else if (createdAt >= prevStart && createdAt < prevEnd) {
-            previousCount++;
-          }
+          const year = createdAt.getFullYear();
+          const month = createdAt.getMonth();
+
+          const index = months.findIndex(
+            (m) => m.year === year && m.month === month
+          );
+          if (index !== -1) monthlyCounts[index]++;
         }
       });
 
-      res.status(200).send({
-        month,
-        currentMonthCount: currentCount,
-        previousMonthCount: previousCount,
+      const result = months.map((m, i) => ({
+        label: `${(m.month + 1).toString().padStart(2, "0")}-${m.year}`,
+        total: monthlyCounts[i],
+      }));
+
+      res.status(200).send({ data: result });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
       });
+    }
+  };
+
+  countUsersByQuarter = async (req, res, next) => {
+    try {
+      const { startYear, endYear } = req.query;
+      const fromYear = parseInt(startYear);
+      const toYear = parseInt(endYear);
+
+      const startDate = new Date(fromYear, 0, 1); // Jan 1 of startYear
+      const endDate = new Date(toYear + 1, 0, 1); // Jan 1 of next year
+
+      const result = {}; // { "Q1": 0, ... } or { "Q1-2024": 0, ... }
+
+      // 🟦 Tạo các key theo từng quý
+      for (let y = fromYear; y <= toYear; y++) {
+        for (let q = 1; q <= 4; q++) {
+          const label = `Q${q}-${y}`;
+          result[label] = 0;
+        }
+      }
+
+      // 🔍 Query user theo thời gian
+      const usersSnapshot = await getDocs(
+        query(
+          collection(db, "users"),
+          where("role", "==", "user"),
+          where("createdAt", ">=", startDate),
+          where("createdAt", "<", endDate)
+        )
+      );
+
+      // 🟦 Đếm số lượng theo quý
+      usersSnapshot.forEach((docSnap) => {
+        const createdAt = docSnap.data().createdAt?.toDate?.();
+        if (!createdAt) return;
+
+        const year = createdAt.getFullYear();
+        const month = createdAt.getMonth(); // 0–11
+        const quarter = Math.floor(month / 3) + 1; // 1–4
+        const label = `Q${quarter}-${year}`;
+
+        if (result[label] !== undefined) {
+          result[label]++;
+        }
+      });
+
+      // 🟩 Format dữ liệu trả về dạng mảng: [{ label, total }]
+      const data = Object.entries(result).map(([label, total]) => ({
+        label,
+        total,
+      }));
+
+      res.status(200).send({ data });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  countUsersBySeason = async (req, res, next) => {
+    try {
+      const { startYear, endYear } = req.query;
+      const fromYear = parseInt(startYear);
+      const toYear = parseInt(endYear);
+
+      const startDate = new Date(fromYear, 0, 1); // Jan 1 of startYear
+      const endDate = new Date(toYear + 1, 0, 1); // Jan 1 of next year
+
+      const result = {};
+
+      // 🟦 Tạo các key theo từng mùa
+      for (let y = fromYear; y <= toYear; y++) {
+        let label;
+        for (let q = 1; q <= 3; q++) {
+          if (q == 1) label = `spring-${y}`;
+          else if (q == 2) label = `summer-${y}`;
+          else label = `autumn_winter-${y}`;
+          result[label] = 0;
+        }
+      }
+
+      // 🔍 Query user theo thời gian
+      const usersSnapshot = await getDocs(
+        query(
+          collection(db, "users"),
+          where("role", "==", "user"),
+          where("createdAt", ">=", startDate),
+          where("createdAt", "<", endDate)
+        )
+      );
+
+      // 🟦 Đếm số lượng theo quý
+      usersSnapshot.forEach((docSnap) => {
+        const createdAt = docSnap.data().createdAt?.toDate?.();
+        if (!createdAt) return;
+
+        const year = createdAt.getFullYear();
+        const month = createdAt.getMonth(); // 0–11
+        const quarter = Math.floor(month / 4) + 1; // 1–3
+        let label;
+        if (quarter == 1) label = `spring-${year}`;
+        else if (quarter == 2) label = `summer-${year}`;
+        else label = `autumn_winter-${year}`;
+
+        if (result[label] !== undefined) {
+          result[label]++;
+        }
+      });
+
+      // 🟩 Format dữ liệu trả về dạng mảng: [{ label, total }]
+      const data = Object.entries(result).map(([label, total]) => ({
+        label,
+        total,
+      }));
+
+      res.status(200).send({ data });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -368,42 +527,44 @@ class UserController {
   // Count new users by year
   countUsersByYear = async (req, res, next) => {
     try {
-      const { year } = req.query; // ví dụ: year=2025
-      if (!year || !/^\d{4}$/.test(year)) {
-        return res
-          .status(400)
-          .send({ message: "Invalid year format. Use year=YYYY" });
-      }
+      const { startYear, endYear } = req.query;
 
-      const yearNum = parseInt(year);
-      const yearStart = new Date(yearNum, 0, 1);
-      const yearEnd = new Date(yearNum + 1, 0, 1);
-      const prevYearStart = new Date(yearNum - 1, 0, 1);
-      const prevYearEnd = new Date(yearNum, 0, 1);
+      const start = parseInt(startYear);
+      const end = parseInt(endYear);
 
-      const usersSnapshot = await getDocs(collection(db, "users"));
-      let currentYearCount = 0;
-      let previousYearCount = 0;
+      const startDate = new Date(`${start}-01-01`);
+      const endDate = new Date(`${end + 1}-01-01`);
+
+      const usersSnapshot = await getDocs(
+        query(
+          collection(db, "users"),
+          where("role", "==", "user"),
+          where("createdAt", ">=", startDate),
+          where("createdAt", "<", endDate)
+        )
+      );
+
+      const yearlyCounts = Array(end - start + 1).fill(0);
 
       usersSnapshot.forEach((docSnap) => {
-        const data = docSnap.data();
-        if (data.createdAt && data.createdAt.toDate) {
-          const createdAt = data.createdAt.toDate();
-          if (createdAt >= yearStart && createdAt < yearEnd) {
-            currentYearCount++;
-          } else if (createdAt >= prevYearStart && createdAt < prevYearEnd) {
-            previousYearCount++;
+        const createdAt = docSnap.data()?.createdAt?.toDate?.();
+        if (createdAt) {
+          const year = createdAt.getFullYear();
+          const index = year - start;
+          if (index >= 0 && index < yearlyCounts.length) {
+            yearlyCounts[index]++;
           }
         }
       });
 
-      res.status(200).send({
-        year: yearNum,
-        currentYearCount,
-        previousYearCount,
-      });
+      const result = yearlyCounts.map((count, i) => ({
+        label: `${start + i}`,
+        total: count,
+      }));
+
+      res.status(200).send({ data: result });
     } catch (error) {
-      res.status(400).send({
+      res.status(500).send({
         message: {
           en: error.message,
           vi: "Đã xảy ra lỗi nội bộ.",
@@ -456,7 +617,7 @@ class UserController {
   };
 
   // Update user
-    update = async (req, res, next) => {
+  update = async (req, res, next) => {
     try {
       const id = req.params.id;
       const data = req.body;

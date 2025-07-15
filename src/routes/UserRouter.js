@@ -22,12 +22,18 @@ router.get("/filterByRole", userController.filterByRole);
 router.get("/countByGender", userController.countByGender);
 // Get total count of all users
 router.get("/countAll", userController.countAll);
+// Count all parents
+router.get("/countParents", userController.countParents);
 // Get all users
 router.get("/", userController.getAll);
 // Count all exist user
 router.get("/countuser", userController.countUsers);
 // Count new users by month
 router.get("/countusersbymonth", userController.countUsersByMonth);
+// Count new users by quarter
+router.get("/countUsersByQuarter", userController.countUsersByQuarter);
+// Count new users by season
+router.get("/countUsersBySeason", userController.countUsersBySeason);
 // Count new users by week
 router.get("/countusersbyweek", userController.countUsersByWeek);
 // Count new users by year

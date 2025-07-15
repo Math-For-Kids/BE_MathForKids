@@ -66,12 +66,10 @@ router.get(
 );
 // Get enabled exercise by grade & type
 router.get("/getByGradeAndType", exerciseController.getByGradeAndType);
-
-// Get an exercise by ID
+// Average exercise per enabled lesson
 router.get(
-  "/:id",
-  exerciseMiddleware.checkExerciseExistById,
-  exerciseController.getById
+  "/averageExercisePerLesson",
+  exerciseController.averageExercisePerLesson
 );
 // Update exercise
 router.put(
@@ -93,9 +91,18 @@ router.get(
   exerciseController.randomTests
 );
 // Random assessments
+router.get("/randomAssessments/:grade", exerciseController.randomAssessments);
+// Count by lesson and levels
+router.post(
+  "/countByLessonAndLevels/:lessonId",
+  lessonMiddleware.checkLessonExistById("lessonId"),
+  exerciseController.countByLessonAndLevels
+);
+// Get an exercise by ID
 router.get(
-  "/randomAssessments/:grade",
-  exerciseController.randomAssessments
+  "/:id",
+  exerciseMiddleware.checkExerciseExistById,
+  exerciseController.getById
 );
 
 module.exports = router;

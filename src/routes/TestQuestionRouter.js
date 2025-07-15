@@ -12,6 +12,11 @@ router.get(
   testMiddleware.checkTestExistById("testId"),
   testQuestionController.getByTest
 );
+// Count test questions by exercise ID
+router.post(
+  "/countOptionByExercise/:exerciseId",
+  testQuestionController.countOptionByExercise
+);
 // Get test question by ID
 router.get(
   "/:id",

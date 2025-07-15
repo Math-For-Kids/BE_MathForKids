@@ -52,7 +52,7 @@ class LessonController {
       const q = query(
         collection(db, "lessons"),
         where("grade", "==", parseInt(grade)),
-        where("type", "==", type),
+        where("type", "==", type)
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
@@ -65,9 +65,12 @@ class LessonController {
       });
     }
   };
-  countAllLesson = async (req, res, next) => {
+  countEnabledLesson = async (req, res, next) => {
     try {
-      const q = query(collection(db, "lessons"));
+      const q = query(
+        collection(db, "lessons"),
+        where("isDisabled", "==", false)
+      );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
     } catch (error) {

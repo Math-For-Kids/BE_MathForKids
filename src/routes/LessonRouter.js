@@ -16,7 +16,7 @@ router.get("/countByDisabledStatus", lessonController.countByDisabledStatus);
 // Count all lessons by grade & type
 router.get("/countAll", lessonController.countAll);
 // Count all lessons
-router.get("/countAllLesson", lessonController.countAllLesson);
+router.get("/countEnabledLesson", lessonController.countEnabledLesson);
 // Get all paginated lessons by grade & type
 router.get("/getAll", lessonController.getAll);
 // Get enabled lessons by grade & type

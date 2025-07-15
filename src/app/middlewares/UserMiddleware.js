@@ -86,8 +86,8 @@ class UserMiddleware {
       if (querySnapshot.empty)
         return res.status(404).json({
           message: {
-            en: "User not found!",
-            vi: "Không tìm thấy người dùng!",
+            en: "Phone number does not exist. Please register an account before logging in.",
+            vi: "Số điện thoại không tồn tại. Vui lòng đăng ký tài khoản trước khi đăng nhập.",
           },
         });
       req.user = {
@@ -114,8 +114,8 @@ class UserMiddleware {
       if (querySnapshot.empty)
         return res.status(404).json({
           message: {
-            en: "User not found!",
-            vi: "Không tìm thấy người dùng!",
+            en: "Email does not exist. Please register an account before logging in.",
+            vi: "Email không tồn tại. Vui lòng đăng ký tài khoản trước khi đăng nhập.",
           },
         });
       req.user = {
