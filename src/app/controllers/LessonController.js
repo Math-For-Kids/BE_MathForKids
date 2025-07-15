@@ -84,9 +84,12 @@ class LessonController {
       });
     }
   };
-  countAllLesson = async (req, res, next) => {
+  countEnabledLesson = async (req, res, next) => {
     try {
-      const q = query(collection(db, "lessons"));
+      const q = query(
+        collection(db, "lessons"),
+        where("isDisabled", "==", false)
+      );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
     } catch (error) {
