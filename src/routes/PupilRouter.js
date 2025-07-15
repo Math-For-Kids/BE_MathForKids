@@ -27,12 +27,16 @@ router.get("/countAll", pupilController.countAll);
 router.get("/countpupil", pupilController.countPupils);
 // Count new pupils by month
 router.get("/countpupilsbymonth", pupilController.countPupilsByMonth);
+// Count new pupils by quarter
+router.get("/countPupilsByQuarter", pupilController.countPupilsByQuarter);
+// Count new pupils by season
+router.get("/countPupilsBySeason", pupilController.countPupilsBySeason);
 // Count new pupils by week
 router.get("/countpupilsbyweek", pupilController.countPupilsByWeek);
 // Count new pupils by year
 router.get("/countpupilsbyyear", pupilController.countPupilsByYear);
 // Count pupils by grade
-router.get("/countbygrade", pupilController.countPupilsByGrade);
+router.get("/countPupilsByGrade", pupilController.countPupilsByGrade);
 // Get all pupils
 router.get("/", pupilController.getAll);
 // Get enabled pupils by user ID
