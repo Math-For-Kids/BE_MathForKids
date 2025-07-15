@@ -259,7 +259,6 @@ class UserController {
     }
   };
 
-  // Count new users by week
   countUsersByWeek = async (req, res, next) => {
     try {
       const { startDate, endDate } = req.query;
@@ -621,14 +620,18 @@ class UserController {
     try {
       const id = req.params.id;
       const data = req.body;
+
       if (data.dateOfBirth) {
         const date = new Date(data.dateOfBirth);
         data.dateOfBirth = Timestamp.fromDate(date);
       }
-      if (data.email) {
-        data.email = data.email.toLowerCase();
-      }
+      // if (data.email) {
+      //   data.email = data.email.toLowerCase();
+      //   data.newEmail = deleteField();
+      // }
+
       const userRef = doc(db, "users", id);
+
       await updateDoc(userRef, {
         ...data,
         updatedAt: serverTimestamp(),
@@ -639,6 +642,7 @@ class UserController {
           en: "User information updated successfully!",
           vi: "Cập nhật thông tin người dùng thành công!",
         },
+        user: data,
       });
     } catch (error) {
       console.error("Update user error:", error);

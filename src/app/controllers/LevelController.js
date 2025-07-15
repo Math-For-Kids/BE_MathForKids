@@ -111,7 +111,7 @@ class LevelController {
   getEnabledLevels = async (req, res) => {
     try {
       const levelsRef = collection(db, "levels");
-      const q = query(levelsRef, where("isDisabled", "==", false));
+      const q = query(levelsRef, where("isDisabled", "==", false), orderBy("level"),);
       const snapshot = await getDocs(q);
       const levels = snapshot.docs.map((doc) => Level.fromFirestore(doc));
       res.status(200).send(levels);
@@ -139,6 +139,7 @@ class LevelController {
       const q = query(
         collection(db, "levels"),
         where("isDisabled", "==", isDisabled === "true"),
+        orderBy("level"),
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });
@@ -200,7 +201,7 @@ class LevelController {
   update = async (req, res) => {
     try {
       const levelId = req.params.id;
-      const data = req.body;
+      const { createdAt, ...data } = req.body;
       const docRef = doc(db, "levels", levelId);
       await updateDoc(docRef, {
         ...data,

@@ -24,12 +24,14 @@ class TestController {
   create = async (req, res, next) => {
     try {
       const data = req.body;
-      await addDoc(collection(db, "tests"), {
+      const docRef = await addDoc(collection(db, "tests"), {
         ...data,
         createdAt: serverTimestamp(),
       });
+
       res.status(201).send({
         message: {
+          id: docRef.id, // <-- đúng nè, ID thực tế của document mới tạo
           en: "Test created successfully",
           vi: "Tạo bài kiểm tra thành công!",
         },
@@ -66,7 +68,73 @@ class TestController {
       });
     }
   };
+  countCompletedTestPupil = async (req, res, next) => {
+    try {
+      const pupilId = req.params.pupilId;
+      const grade = req.query.grade;
+      console.log("Querying for pupilId:", pupilId); // Debug log
+      const lessonQuery = query(
+        collection(db, "lessons"),
+        where("grade", "==", parseInt(grade))
+      );
+      const lessonSnapshot = await getDocs(lessonQuery);
+      const lessonIds = lessonSnapshot.docs.map(doc => doc.id);
+      if (lessonIds.length === 0) {
+        return res.status(200).send({
+          totalLessons: 0,
+          completedLessons: 0,
+          completedTest: 0
+        })
+      }
+      const chunkArray = (array, size) => {
+        const chunks = [];
+        for (let i = 0; i < array.length; i += size) {
+          chunks.push(array.slice(i, i + size));
+        }
+        return chunks;
+      }
+      const lessonIdChunks = chunkArray(lessonIds, 30);
+      let totalLessons = lessonIds.length;
+      let completedLessons = 0;
+      let uniqueTest = new Set();
+      for (const chunk of lessonIdChunks) {
+        const lessonQuery = query(
+          collection(db, "completed_lessons"),
+          where("pupilId", "==", pupilId),
+          where("lessonId", "in", chunk),
+          where("isBlock", "==", false),
+          where("isCompleted", "==", true),
+        );
+        const LessonSnapshot = await getCountFromServer(lessonQuery);
+        completedLessons += LessonSnapshot.data().count;
 
+        const testQuery = query(
+          collection(db, "tests"),
+          where("pupilId", "==", pupilId),
+          where("lessonId", "in", chunk)
+        )
+        const TestSnapshot = await getDocs(testQuery);
+        TestSnapshot.docs.forEach(doc => {
+          const data = doc.data();
+          if (data.lessonId) {
+            uniqueTest.add(data.lessonId);
+          }
+        })
+      }
+      res.status(200).send({
+        totalLessons,
+        completedLessons,
+        completedTest: uniqueTest.size
+      });
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
   // Get all paginated tests
   getAll = async (req, res, next) => {
     try {

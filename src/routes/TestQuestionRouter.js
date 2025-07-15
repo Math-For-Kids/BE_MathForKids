@@ -5,7 +5,7 @@ const testQuestionMiddleware = require("../app/middlewares/TestQuestionMiddlewar
 const router = express.Router();
 
 // Create multiple test questions
-router.post("/", testQuestionController.createMultiple);
+router.post("/multiple", testQuestionController.createMultiple);
 // Get test questions by test ID
 router.get(
   "/getByTest/:testId",

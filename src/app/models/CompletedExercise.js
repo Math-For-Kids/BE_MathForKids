@@ -1,10 +1,10 @@
 class CompletedExercise {
-  constructor(id, pupilId, lessonId, point, duration, createdAt) {
+  constructor(id, pupilId, lessonId, levelId, point, createdAt) {
     this.id = id;
     this.pupilId = pupilId;
     this.lessonId = lessonId;
+    this.levelId = levelId;
     this.point = point;
-    this.duration = duration;
     this.createdAt = createdAt;
   }
 
@@ -14,8 +14,8 @@ class CompletedExercise {
       doc.id,
       data.pupilId ?? "",
       data.lessonId ?? "",
+      data.levelId ?? "",
       data.point ?? 0,
-      data.duration ?? 0,
       data.createdAt?.toDate().toLocaleString("vi-VN") ?? ""
     );
   }

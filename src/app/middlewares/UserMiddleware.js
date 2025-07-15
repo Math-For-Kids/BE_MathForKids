@@ -196,6 +196,7 @@ class UserMiddleware {
     try {
       const id = req.params.id;
       const { newEmail } = req.body;
+      console.log("newEmail", newEmail);
       const querySnapshot = await queryEmail(newEmail);
       const conflict = querySnapshot.docs.find((doc) => doc.id !== id);
       if (conflict)
@@ -220,7 +221,7 @@ class UserMiddleware {
   };
 
   // When update pin, check if oldPin field is similar to the PIN of the user
-  checkPin = async (req, res, next) => {
+checkPin = async (req, res, next) => {
     try {
       const user = req.user;
       const { oldPin, newPin } = req.body;

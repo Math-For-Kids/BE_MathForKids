@@ -24,25 +24,18 @@ class ExerciseController {
   // Create exercise
   create = async (req, res, next) => {
     try {
-      const {
-        levelId,
-        lessonId,
-        question,
-        option: textOption,
-        answer: textAnswer,
-      } = req.body;
+      const { levelId, lessonId, question, option, answer } = req.body;
       const parsedQuestion = JSON.parse(question);
-      const { image, option, answer } = await uploadMultipleFiles(
-        req.files,
-        textOption,
-        textAnswer
-      );
+      const parsedOption = JSON.parse(option);
+      const parsedAnswer = JSON.parse(answer);
+
+      const { image } = await uploadMultipleFiles(req.files);
       const exercisesRef = await addDoc(collection(db, "exercises"), {
         levelId,
         lessonId,
         question: parsedQuestion,
-        option, // Array of text or image URLs
-        answer,
+        option: parsedOption, // Array of text or image URLs
+        answer: parsedAnswer,
         image,
         isDisabled: false,
         createdAt: serverTimestamp(),
@@ -427,14 +420,8 @@ class ExerciseController {
       const id = req.params.id;
       const exerciseRef = doc(db, "exercises", id);
       const oldData = req.exercise;
-      const {
-        levelId,
-        lessonId,
-        question,
-        option: textOption,
-        answer: textAnswer,
-        isDisabled,
-      } = req.body;
+      const { levelId, lessonId, question, option, answer, isDisabled } =
+        req.body;
       const updateData = {
         updatedAt: serverTimestamp(),
       };
@@ -445,112 +432,27 @@ class ExerciseController {
         !levelId &&
         !lessonId &&
         !question &&
-        !textOption &&
-        !textAnswer &&
+        !option &&
+        !answer &&
         (!req.files || Object.keys(req.files).length === 0)
       ) {
         updateData.isDisabled = isDisabled === "true" || isDisabled === true;
       } else {
-        let parsedQuestion, parsedOption, parsedAnswer;
+        const parsedQuestion = question
+          ? JSON.parse(question)
+          : oldData.question;
+        const parsedOption = option ? JSON.parse(option) : oldData.option;
+        const parsedAnswer = answer ? JSON.parse(answer) : oldData.answer;
 
-        // Parse question
-        try {
-          parsedQuestion = question ? JSON.parse(question) : oldData.question;
-        } catch (error) {
-          return res
-            .status(400)
-            .send({ message: "Invalid JSON format for question!" });
-        }
-
-        // Parse textOption and textAnswer
-        try {
-          parsedOption = textOption
-            ? typeof textOption === "string" && textOption.startsWith("[")
-              ? JSON.parse(textOption)
-              : Array.isArray(textOption)
-              ? textOption
-              : [textOption]
-            : null;
-          parsedAnswer = textAnswer || null;
-        } catch (error) {
-          return res
-            .status(400)
-            .send({ message: "Invalid format for option or answer!" });
-        }
-
-        // Process file uploads
-        const {
-          image,
-          option: uploadedOption,
-          answer: uploadedAnswer,
-        } = await uploadMultipleFiles(
-          req.files || {},
-          parsedOption,
-          parsedAnswer
-        );
-
-        // Determine if dealing with image or text options
-        const isImageOption =
-          (req.files && (req.files.option || req.files.answer)) ||
-          (parsedOption &&
-            Array.isArray(parsedOption) &&
-            parsedOption.some(
-              (opt) => typeof opt === "string" && opt.startsWith("http")
-            ));
-
-        // Handle options
-        let finalOption;
-        if (isImageOption) {
-          if (uploadedOption && uploadedOption.length > 0) {
-            finalOption = uploadedOption.filter(
-              (opt) => opt !== null && opt !== ""
-            );
-          } else if (
-            parsedOption &&
-            Array.isArray(parsedOption) &&
-            parsedOption.some(
-              (opt) => typeof opt === "string" && opt.startsWith("http")
-            )
-          ) {
-            finalOption = parsedOption.filter(
-              (opt) => typeof opt === "string" && opt !== ""
-            );
-          } else {
-            finalOption = oldData.option || [];
-          }
-        } else {
-          finalOption =
-            parsedOption &&
-            Array.isArray(parsedOption) &&
-            parsedOption.length > 0
-              ? parsedOption.filter(
-                  (opt) => typeof opt === "string" && opt !== ""
-                )
-              : oldData.option || [];
-        }
-
-        // Handle answer
-        const finalAnswer = isImageOption
-          ? uploadedAnswer !== null
-            ? uploadedAnswer
-            : parsedAnswer &&
-              typeof parsedAnswer === "string" &&
-              parsedAnswer.startsWith("http")
-            ? parsedAnswer
-            : oldData.answer
-          : parsedAnswer !== null
-          ? parsedAnswer
-          : oldData.answer;
-
-        // Handle image
-        const finalImage = image !== null ? image : oldData.image;
+        const { image } = await uploadMultipleFiles(req.files || {});
+        const finalImage = image != null ? image : oldData.image;
 
         // Build update data
         updateData.levelId = levelId || oldData.levelId;
         updateData.lessonId = lessonId || oldData.lessonId;
         updateData.question = parsedQuestion;
-        updateData.option = finalOption;
-        updateData.answer = finalAnswer;
+        updateData.option = parsedOption;
+        updateData.answer = parsedAnswer;
         updateData.image = finalImage;
 
         if (typeof isDisabled !== "undefined") {
@@ -593,7 +495,8 @@ class ExerciseController {
     try {
       const lessonId = req.params.lessonId;
       const levelIds = req.body.levelIds;
-
+      console.log("lessonId:", lessonId);
+      console.log("levelIds:", levelIds);
       // Lấy tất cả bài tập theo lessonId
       const q = query(
         collection(db, "exercises"),
@@ -665,12 +568,13 @@ class ExerciseController {
       // 3. Random 6 bài từ mỗi level
       const randomResults = [];
 
-      for (const levelId of levelIds) {
+      for (let i = 0; i < levelIds.length; i++) {
+        const levelId = levelIds[i];
         const exercisesByLevel = allExercises.filter(
           (e) => e.levelId === levelId
         );
         const shuffled = exercisesByLevel.sort(() => 0.5 - Math.random());
-        const selected = shuffled.slice(0, 5);
+        const selected = shuffled.slice(0, (levelIds.length - i) * 2);
         randomResults.push(...selected);
       }
 
@@ -700,19 +604,20 @@ class ExerciseController {
         "multiplication",
         "division",
       ];
-      const lessonIds = [];
+      const lessonsByType = {};
+
       for (const type of lessonTypes) {
         const snapshot = await getDocs(
           query(
             collection(db, "lessons"),
-            where("grade", "==", grade),
+            where("grade", "==", parseInt(grade)),
             where("type", "==", type),
             where("isDisabled", "==", false),
             orderBy("order"),
             limit(2)
           )
         );
-        snapshot.docs.forEach((doc) => lessonIds.push(doc.id));
+        lessonsByType[type] = snapshot.docs.map((doc) => doc.id);
       }
 
       // 2. Lấy tất cả level có isDisabled = false
@@ -728,30 +633,38 @@ class ExerciseController {
       // 3. Tạo danh sách các bài tập random 1 bài cho mỗi cặp (lessonId, levelId)
       const randomExercises = [];
 
-      for (const lessonId of lessonIds) {
-        for (const levelId of levelIds) {
-          const exerciseSnapshot = await getDocs(
-            query(
-              collection(db, "exercises"),
-              where("lessonId", "==", lessonId),
-              where("levelId", "==", levelId),
-              where("isDisabled", "==", false)
-            )
-          );
-          const exercises = exerciseSnapshot.docs.map((doc) =>
-            Exercise.fromFirestore(doc)
-          );
-          if (exercises.length > 0) {
-            // Xáo trộn và chọn 1 bài
-            const shuffled = exercises.sort(() => 0.5 - Math.random());
-            randomExercises.push(shuffled[0]);
+      for (const type of lessonTypes) {
+        const lessonIds = lessonsByType[type];
+        for (const lessonId of lessonIds) {
+          for (const levelId of levelIds) {
+            const exerciseSnapshot = await getDocs(
+              query(
+                collection(db, "exercises"),
+                where("lessonId", "==", lessonId),
+                where("levelId", "==", levelId),
+                where("isDisabled", "==", false)
+              )
+            );
+            const exercises = exerciseSnapshot.docs.map((doc) =>
+              Exercise.fromFirestore(doc)
+            );
+            if (exercises.length > 0) {
+              // Xáo trộn và chọn 1 bài
+              const shuffled = exercises.sort(() => 0.5 - Math.random());
+              randomExercises.push(shuffled[0]);
+            }
           }
         }
       }
 
       // 4. Xáo trộn toàn bộ danh sách cuối
       const finalShuffled = randomExercises.sort(() => 0.5 - Math.random());
-      res.status(200).send(finalShuffled);
+
+      // 5. Trả về lessonsByType cùng với randomExercises
+      res.status(200).send({
+        lessonsByType, // Danh sách lessonId theo từng phép tính
+        exercises: finalShuffled,
+      });
     } catch (error) {
       res.status(500).send({
         message: {
@@ -789,6 +702,43 @@ class ExerciseController {
       );
 
       res.status(200).send(average);
+    } catch (error) {
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  countLevelIdsInLesson = async (req, res, next) => {
+    try {
+      const lessonId = req.params.lessonId;
+      const { levelIds } = req.body;
+
+      //step 1
+      const countPromises = levelIds.map(async (levelId) => {
+        const q = query(
+          collection(db, "exercises"),
+          where("lessonId", "==", lessonId),
+          where("levelId", "==", levelId),
+          where("isDisabled", "==", false)
+        );
+        const snapshot = await getCountFromServer(q);
+        return { levelId, count: snapshot.data().count };
+      });
+      const results = await Promise.all(countPromises);
+      const levelIdCounts = results.reduce((acc, { levelId, count }) => {
+        acc[levelId] = count;
+        return acc;
+      }, {});
+      res.status(200).send({
+        data: {
+          lessonId,
+          levelIdCounts,
+        },
+      });
     } catch (error) {
       res.status(500).send({
         message: {

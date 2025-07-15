@@ -3,7 +3,7 @@ class TestQuestion {
     id,
     testId,
     exerciseId,
-    level,
+    levelId,
     question,
     image,
     option,
@@ -15,7 +15,7 @@ class TestQuestion {
     this.id = id;
     this.testId = testId;
     this.exerciseId = exerciseId;
-    this.level = level;
+    this.levelId = levelId;
     this.question = question;
     this.image = image;
     this.option = option;
@@ -31,7 +31,7 @@ class TestQuestion {
       doc.id,
       data.testId ?? "",
       data.exerciseId ?? "",
-      data.level ?? {},
+      data.levelId ?? {},
       data.question ?? {},
       data.image ?? "",
       data.option ?? [],

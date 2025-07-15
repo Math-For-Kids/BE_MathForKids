@@ -22,6 +22,8 @@ class PupilNotificationController {
   create = async (req, res, next) => {
     try {
       const data = req.body;
+      console.log("🚨 Notification data:", data);
+
       await addDoc(collection(db, "pupil_notifications"), {
         ...data,
         isRead: false,
@@ -57,9 +59,11 @@ class PupilNotificationController {
         orderBy("createdAt", "desc")
       );
       const notificationSnapshot = await getDocs(q);
-      const notifications = notificationSnapshot.docs.map((doc) =>
-        PupilNotification.fromFirestore(doc)
-      );
+      const notifications = notificationSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(), 
+      }));
+
       res.status(200).send(notifications);
     } catch (error) {
       res.status(500).send({

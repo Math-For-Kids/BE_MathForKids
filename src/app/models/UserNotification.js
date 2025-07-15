@@ -1,5 +1,15 @@
 class UserNotification {
-  constructor(id, userId, title, content, goalId, exchangedRewardId, type, isRead, createdAt) {
+  constructor(
+    id,
+    userId,
+    title,
+    content,
+    goalId,
+    exchangedRewardId,
+    type,
+    isRead,
+    createdAt
+  ) {
     this.id = id;
     this.userId = userId;
     this.title = title;
@@ -22,7 +32,7 @@ class UserNotification {
       data.exchangedRewardId,
       data.type,
       data.isRead,
-      data.createdAt?.toDate().toLocaleString("vi-VN")
+      data.createdAt || null
     );
   }
 }

@@ -21,6 +21,11 @@ router.get("/countEnabledLesson", lessonController.countEnabledLesson);
 router.get("/getAll", lessonController.getAll);
 // Get enabled lessons by grade & type
 router.get("/getByGradeAndType", lessonController.getByGradeAndType);
+// Get enabled lessons by grade & type
+router.get(
+  "/getLessonsByGradeAndTypeFiltered",
+  lessonController.getLessonsByGradeAndTypeFiltered
+);
 // Get a lesson by ID
 router.get(
   "/:id",

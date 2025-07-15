@@ -1,4 +1,5 @@
 const Lesson = require("../models/Lesson");
+const CompletedLesson = require("../models/CompletedLesson");
 const {
   getFirestore,
   collection,
@@ -24,11 +25,29 @@ class LessonController {
   create = async (req, res, next) => {
     try {
       const data = req.body;
-      await addDoc(collection(db, "lessons"), {
+      const lessonRef = await addDoc(collection(db, "lessons"), {
         ...data,
         isDisabled: false,
         createdAt: serverTimestamp(),
       });
+      // Fetch all pupil IDs from the pupils collection
+      const pupilsSnapshot = await getDocs(collection(db, "pupils"));
+      const pupilIds = pupilsSnapshot.docs.map((doc) => doc.id);
+
+      // Create completed lesson records for each pupil
+      const completedLessonsPromises = pupilIds.map((pupilId) =>
+        addDoc(collection(db, "completed_lessons"), {
+          pupilId,
+          lessonId: lessonRef.id,
+          isCompleted: false,
+          isBlock: true,
+          isDisabled: false,
+          createdAt: serverTimestamp(),
+        })
+      );
+      // Execute all completed lesson creations
+      await Promise.all(completedLessonsPromises);
+
       res.status(201).send({
         message: {
           en: "Lesson created successfully!",
@@ -228,6 +247,89 @@ class LessonController {
     }
   };
 
+  getLessonsByGradeAndTypeFiltered = async (req, res, next) => {
+    try {
+      const { grade, type, pupilId } = req.query;
+
+      if (!grade || !type || !pupilId) {
+        return res.status(400).send({
+          message: {
+            en: "Missing grade, type or pupilId",
+            vi: "Thiếu thông tin grade, type hoặc pupilId",
+          },
+        });
+      }
+
+      const gradeNumber = Number(grade);
+
+      // 1. Lấy tất cả lessons theo grade, type, isDisabled = false
+      const lessonQuery = query(
+        collection(db, "lessons"),
+        where("grade", "==", gradeNumber),
+        where("type", "==", type),
+        where("isDisabled", "==", false)
+      );
+      const lessonSnap = await getDocs(lessonQuery);
+
+      // 2. Map bài học theo id
+      const lessonMap = new Map();
+      lessonSnap.docs.forEach((doc) => {
+        lessonMap.set(doc.id, { id: doc.id, ...doc.data() });
+      });
+
+      // 3. Lấy thông tin completed của học sinh
+      const completedQuery = query(
+        collection(db, "completed_lessons"),
+        where("pupilId", "==", pupilId)
+      );
+      const completedSnap = await getDocs(completedQuery);
+
+      // Map lessonId → completed info
+      const completedMap = new Map();
+      completedSnap.docs.forEach((doc) => {
+        const data = doc.data();
+        completedMap.set(data.lessonId, {
+          isCompleted: data.isCompleted || false,
+          isBlock: data.isBlock || false,
+          isDisabled: data.isDisabled || false,
+          completedId: doc.id,
+          completedAt: data.createdAt
+            ? data.createdAt.toDate().toISOString()
+            : null,
+          updatedAt: data.updatedAt
+            ? data.updatedAt.toDate().toISOString()
+            : null,
+        });
+      });
+
+      // 4. Trả về toàn bộ lessons (dù completed hay chưa)
+      const fullLessons = Array.from(lessonMap.entries()).map(
+        ([lessonId, lesson]) => {
+          const completed = completedMap.get(lessonId);
+          return {
+            ...lesson,
+            isCompleted: completed?.isCompleted || false,
+            isBlock: completed?.isBlock || false,
+            isDisabled: completed?.isDisabled || false,
+            completedId: completed?.completedId || null,
+            completedAt: completed?.completedAt || null,
+            updatedAt: completed?.updatedAt || null,
+          };
+        }
+      );
+
+      res.status(200).send(fullLessons);
+    } catch (error) {
+      console.error("Error in getLessonsByGradeAndTypeFiltered:", error);
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Lỗi lọc bài học",
+        },
+      });
+    }
+  };
+
   // Get a lesson by ID
   getById = async (req, res, next) => {
     const id = req.params.id;
@@ -240,9 +342,31 @@ class LessonController {
     try {
       const id = req.params.id;
       const { createdAt, ...data } = req.body;
-      const lesson = doc(db, "lessons", id);
-      await updateDoc(lesson, { ...data, updatedAt: serverTimestamp() });
-      res.status(200).send({ message: "Lesson updated successfully!" });
+      const lessonRef = doc(db, "lessons", id);
+
+      await updateDoc(lessonRef, { ...data, updatedAt: serverTimestamp() });
+
+      if (data.hasOwnProperty("isDisabled")) {
+        const completedLessonQuery = query(
+          collection(db, "completed_lessons"),
+          where("lessonId", "==", id)
+        );
+        const completedlessonSnapshot = await getDocs(completedLessonQuery);
+        const updatePromises = completedlessonSnapshot.docs.map((doc) =>
+          updateDoc(doc.ref, {
+            isDisabled: data.isDisabled,
+            updatedAt: serverTimestamp(),
+          })
+        );
+        await Promise.all(updatePromises);
+      }
+
+      res.status(200).send({
+        message: {
+          en: "Lesson and related completed lessons updated successfully!",
+          vi: "Cập nhật bài học và bản ghi hoàn thành bài học thành công!",
+        },
+      });
     } catch (error) {
       res.status(500).send({
         message: {

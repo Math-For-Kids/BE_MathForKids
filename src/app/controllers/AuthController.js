@@ -100,6 +100,7 @@ class AuthController {
     try {
       const { email } = req.params;
       const id = req.user.id || req.params.id;
+
       const otpCode = generateOTPCode();
       const otpExpiration = convertToTimeStamp(5 * 60 * 1000);
       await mailService(email, otpCode);
@@ -112,6 +113,7 @@ class AuthController {
         userId: id,
       });
     } catch (error) {
+      console.error("LỖI GỬI EMAIL:", error);
       res.status(500).send({
         message: {
           en: error.message,
