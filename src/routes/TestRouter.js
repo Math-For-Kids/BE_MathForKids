@@ -69,11 +69,17 @@ router.get(
   "/filterByLessonIDAndPoint/:lessonID",
   lessonMiddleware.checkLessonExistById("lessonID"),
   testController.filterByLessonIDAndPoint
-)
+);
 // Thống kê top 10 học sinh có điểm trung bình cao nhất
-router.get("/top10PupilsByAveragePoint", testController.top10PupilsByAveragePoint);
+router.get(
+  "/top10PupilsByAveragePoint",
+  testController.top10PupilsByAveragePoint
+);
 // Thống kê top 10 bài tập có điểm trung bình cao nhất
-router.get("/top10TestsByAveragePoint", testController.top10TestsByAveragePoint);
+router.get(
+  "/top10TestsByAveragePoint",
+  testController.top10TestsByAveragePoint
+);
 // // Get tests by pupil IDAdd commentMore actions
 // router.get(
 //   "/getByPupil/:pupilId",
@@ -98,5 +104,16 @@ router.get("/getPointStatsByLessons", testController.getPointStatsByLessons);
 router.get("/getPointStatsByGrade", testController.getPointStatsByGrade);
 // Get test by ID
 router.get("/:id", testMiddleware.checkTestExistById(), testController.getById);
-
+//Get point statistic by pupilId
+router.get(
+  "/getUserPointStatsComparison/:pupilId",
+  pupilMiddleware.checkPupilExistById("pupilID"),
+  testController.getUserPointStatsComparison
+);
+//Get point statistic by pupilId
+router.get(
+  "/getAnswerStats/:pupilId",
+  pupilMiddleware.checkPupilExistById("pupilID"),
+  testController.getAnswerStats
+);
 module.exports = router;
