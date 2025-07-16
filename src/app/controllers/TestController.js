@@ -78,13 +78,13 @@ class TestController {
         where("grade", "==", parseInt(grade))
       );
       const lessonSnapshot = await getDocs(lessonQuery);
-      const lessonIds = lessonSnapshot.docs.map(doc => doc.id);
+      const lessonIds = lessonSnapshot.docs.map((doc) => doc.id);
       if (lessonIds.length === 0) {
         return res.status(200).send({
           totalLessons: 0,
           completedLessons: 0,
-          completedTest: 0
-        })
+          completedTest: 0,
+        });
       }
       const chunkArray = (array, size) => {
         const chunks = [];
@@ -92,7 +92,7 @@ class TestController {
           chunks.push(array.slice(i, i + size));
         }
         return chunks;
-      }
+      };
       const lessonIdChunks = chunkArray(lessonIds, 30);
       let totalLessons = lessonIds.length;
       let completedLessons = 0;
@@ -103,7 +103,7 @@ class TestController {
           where("pupilId", "==", pupilId),
           where("lessonId", "in", chunk),
           where("isBlock", "==", false),
-          where("isCompleted", "==", true),
+          where("isCompleted", "==", true)
         );
         const LessonSnapshot = await getCountFromServer(lessonQuery);
         completedLessons += LessonSnapshot.data().count;
@@ -112,19 +112,19 @@ class TestController {
           collection(db, "tests"),
           where("pupilId", "==", pupilId),
           where("lessonId", "in", chunk)
-        )
+        );
         const TestSnapshot = await getDocs(testQuery);
-        TestSnapshot.docs.forEach(doc => {
+        TestSnapshot.docs.forEach((doc) => {
           const data = doc.data();
           if (data.lessonId) {
             uniqueTest.add(data.lessonId);
           }
-        })
+        });
       }
       res.status(200).send({
         totalLessons,
         completedLessons,
-        completedTest: uniqueTest.size
+        completedTest: uniqueTest.size,
       });
     } catch (error) {
       res.status(500).send({
@@ -873,6 +873,342 @@ class TestController {
         });
       }
     };
+  };
+  // get point statitic by pupil
+  getUserPointStatsComparison = async (req, res) => {
+    try {
+      const { pupilId } = req.params;
+      const { grade, ranges } = req.query;
+
+      if (!pupilId || !grade) {
+        return res.status(400).json({
+          message: "Thiếu pupilId (params) hoặc grade (query).",
+        });
+      }
+
+      const gradeNumber = parseInt(grade);
+      const expectedTypes =
+        gradeNumber === 1
+          ? ["addition", "subtraction"]
+          : ["addition", "subtraction", "multiplication", "division"];
+
+      const now = new Date();
+      const startOfWeek = (d) => {
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        return new Date(d.getFullYear(), d.getMonth(), diff);
+      };
+
+      const thisWeekStart = startOfWeek(new Date(now));
+      const lastWeekStart = new Date(thisWeekStart);
+      lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+      const lastWeekEnd = new Date(thisWeekStart);
+      lastWeekEnd.setDate(lastWeekEnd.getDate() - 1);
+
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+      const currentQuarter = Math.floor(now.getMonth() / 3);
+      const thisQuarterStart = new Date(
+        now.getFullYear(),
+        currentQuarter * 3,
+        1
+      );
+      const lastQuarterStart = new Date(
+        now.getFullYear(),
+        (currentQuarter - 1) * 3,
+        1
+      );
+      const lastQuarterEnd = new Date(now.getFullYear(), currentQuarter * 3, 0);
+
+      const timeRanges = {
+        thisWeek: [Timestamp.fromDate(thisWeekStart), Timestamp.fromDate(now)],
+        lastWeek: [
+          Timestamp.fromDate(lastWeekStart),
+          Timestamp.fromDate(lastWeekEnd),
+        ],
+        thisMonth: [
+          Timestamp.fromDate(thisMonthStart),
+          Timestamp.fromDate(now),
+        ],
+        lastMonth: [
+          Timestamp.fromDate(lastMonthStart),
+          Timestamp.fromDate(lastMonthEnd),
+        ],
+        thisQuarter: [
+          Timestamp.fromDate(thisQuarterStart),
+          Timestamp.fromDate(now),
+        ],
+        lastQuarter: [
+          Timestamp.fromDate(lastQuarterStart),
+          Timestamp.fromDate(lastQuarterEnd),
+        ],
+      };
+
+      const requestedRanges = ranges
+        ? ranges
+            .split(",")
+            .map((r) => r.trim())
+            .filter((r) => r in timeRanges)
+        : Object.keys(timeRanges);
+
+      const getPointStatsByType = async (start, end) => {
+        const q = query(
+          collection(db, "tests"),
+          where("pupilId", "==", pupilId),
+          where("createdAt", ">=", start),
+          where("createdAt", "<=", end)
+        );
+        const snapshot = await getDocs(q);
+        const tests = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        if (tests.length === 0) return {};
+        const lessonIds = new Set(tests.map((t) => t.lessonId));
+        const lessonTypeMap = {};
+
+        for (const lessonId of lessonIds) {
+          const lessonDoc = await getDoc(doc(db, "lessons", lessonId));
+          if (lessonDoc.exists()) {
+            const lesson = lessonDoc.data();
+            lessonTypeMap[lessonId] = lesson.type;
+          }
+        }
+
+        const stats = {};
+        for (const test of tests) {
+          const type = lessonTypeMap[test.lessonId];
+          if (!type || !expectedTypes.includes(type)) continue;
+
+          if (!stats[type]) {
+            stats[type] = { "≥9": 0, "≥7": 0, "≥5": 0, "<5": 0 };
+          }
+
+          const point = test.point;
+          if (point >= 9) stats[type]["≥9"]++;
+          else if (point >= 7) stats[type]["≥7"]++;
+          else if (point >= 5) stats[type]["≥5"]++;
+          else stats[type]["<5"]++;
+        }
+
+        return stats;
+      };
+
+      // Kết quả dạng mảng
+      const resultMap = {}; // tạm lưu { type -> { label -> stats } }
+
+      for (const label of requestedRanges) {
+        const [start, end] = timeRanges[label];
+        const stats = await getPointStatsByType(start, end);
+
+        for (const type of expectedTypes) {
+          if (!resultMap[type]) resultMap[type] = {};
+          resultMap[type][label] = stats[type] || {
+            "≥9": 0,
+            "≥7": 0,
+            "≥5": 0,
+            "<5": 0,
+          };
+        }
+      }
+      // mảng
+      const compareByType = Object.entries(resultMap).map(([type, ranges]) => ({
+        type,
+        ranges,
+      }));
+
+      return res.status(200).json({
+        pupilId,
+        grade: gradeNumber,
+        compareByType,
+      });
+    } catch (err) {
+      console.error("Error:", err);
+      return res.status(500).json({
+        message: {
+          en: err.message,
+          vi: "Đã xảy ra lỗi khi thống kê điểm theo kỹ năng.",
+        },
+      });
+    }
+  };
+  // get true/false answer statitic by pupil
+  getAnswerStats = async (req, res) => {
+    try {
+      const { pupilId } = req.params;
+      const { grade, ranges } = req.query;
+
+      if (!pupilId || !grade) {
+        return res.status(400).json({ message: "Thiếu pupilId hoặc grade." });
+      }
+
+      const gradeNumber = parseInt(grade);
+      const expectedTypes =
+        gradeNumber === 1
+          ? ["addition", "subtraction"]
+          : ["addition", "subtraction", "multiplication", "division"];
+
+      const now = new Date();
+      const startOfWeek = (d) => {
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        return new Date(d.getFullYear(), d.getMonth(), diff);
+      };
+
+      const thisWeekStart = startOfWeek(now);
+      const lastWeekStart = new Date(thisWeekStart);
+      lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+      const lastWeekEnd = new Date(thisWeekStart);
+      lastWeekEnd.setDate(lastWeekEnd.getDate() - 1);
+
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+      const currentQuarter = Math.floor(now.getMonth() / 3);
+      const thisQuarterStart = new Date(
+        now.getFullYear(),
+        currentQuarter * 3,
+        1
+      );
+      const lastQuarterStart = new Date(
+        now.getFullYear(),
+        (currentQuarter - 1) * 3,
+        1
+      );
+      const lastQuarterEnd = new Date(now.getFullYear(), currentQuarter * 3, 0);
+
+      const timeRanges = {
+        thisWeek: [Timestamp.fromDate(thisWeekStart), Timestamp.fromDate(now)],
+        lastWeek: [
+          Timestamp.fromDate(lastWeekStart),
+          Timestamp.fromDate(lastWeekEnd),
+        ],
+        thisMonth: [
+          Timestamp.fromDate(thisMonthStart),
+          Timestamp.fromDate(now),
+        ],
+        lastMonth: [
+          Timestamp.fromDate(lastMonthStart),
+          Timestamp.fromDate(lastMonthEnd),
+        ],
+        thisQuarter: [
+          Timestamp.fromDate(thisQuarterStart),
+          Timestamp.fromDate(now),
+        ],
+        lastQuarter: [
+          Timestamp.fromDate(lastQuarterStart),
+          Timestamp.fromDate(lastQuarterEnd),
+        ],
+      };
+
+      const requestedRanges = ranges
+        ? ranges
+            .split(",")
+            .map((r) => r.trim())
+            .filter((r) => r in timeRanges)
+        : Object.keys(timeRanges);
+
+      // Khởi tạo map tạm: { type -> { range -> [ { levelId, correct, wrong } ] } }
+      const resultMap = {};
+
+      for (const label of requestedRanges) {
+        const [start, end] = timeRanges[label];
+
+        const q = query(
+          collection(db, "test_questions"),
+          where("createdAt", ">=", start),
+          where("createdAt", "<=", end)
+        );
+
+        const snapshot = await getDocs(q);
+        const questions = snapshot.docs;
+
+        // Map testId → pupilId, lessonId
+        const testCache = {};
+
+        for (const docSnap of questions) {
+          const data = docSnap.data();
+          const testId = data.testId;
+          if (!testId) continue;
+
+          if (!testCache[testId]) {
+            const testDoc = await getDoc(doc(db, "tests", testId));
+            if (!testDoc.exists()) continue;
+            testCache[testId] = testDoc.data();
+          }
+
+          const testData = testCache[testId];
+          if (testData.pupilId !== pupilId) continue;
+
+          const lessonId = testData.lessonId;
+          const levelId = data.levelId || "unknown";
+
+          // Lấy type từ lesson
+          const lessonDoc = await getDoc(doc(db, "lessons", lessonId));
+          if (!lessonDoc.exists()) continue;
+          const lesson = lessonDoc.data();
+          const type = lesson.type;
+          if (!expectedTypes.includes(type)) continue;
+
+          // Khởi tạo nếu chưa có
+          if (!resultMap[type]) resultMap[type] = {};
+          if (!resultMap[type][label]) resultMap[type][label] = {};
+          if (!resultMap[type][label][levelId]) {
+            resultMap[type][label][levelId] = { correct: 0, wrong: 0 };
+          }
+
+          const correctAnswer = data.correctAnswer;
+          const selectedAnswer = data.selectedAnswer;
+          const isCorrect =
+            correctAnswer?.en?.trim() === selectedAnswer?.en?.trim() &&
+            correctAnswer?.vi?.trim() === selectedAnswer?.vi?.trim();
+
+          if (isCorrect) {
+            resultMap[type][label][levelId].correct++;
+          } else {
+            resultMap[type][label][levelId].wrong++;
+          }
+        }
+      }
+
+      // mảng
+      const statsByType = Object.entries(resultMap).map(([type, rangesObj]) => {
+        const ranges = {};
+        for (const [rangeName, levelMap] of Object.entries(rangesObj)) {
+          ranges[rangeName] = Object.entries(levelMap).map(
+            ([levelId, stats]) => ({
+              levelId,
+              ...stats,
+            })
+          );
+        }
+        for (const rangeName of requestedRanges) {
+          if (!ranges[rangeName]) {
+            ranges[rangeName] = [];
+          }
+        }
+
+        return { type, ranges };
+      });
+
+      return res.status(200).json({
+        pupilId,
+        grade: gradeNumber,
+        statsByType,
+      });
+    } catch (err) {
+      console.error("Error:", err);
+      return res.status(500).json({
+        message: {
+          en: err.message,
+          vi: "Đã xảy ra lỗi khi thống kê câu đúng/sai theo kỹ năng.",
+        },
+      });
+    }
   };
 }
 
