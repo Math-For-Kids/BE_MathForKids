@@ -874,15 +874,15 @@ class TestController {
       }
     };
   };
-  // get point statitic by pupil
+
   getUserPointStatsComparison = async (req, res) => {
     try {
       const { pupilId } = req.params;
-      const { grade, ranges } = req.query;
+      const { grade, ranges, lessonId } = req.query;
 
-      if (!pupilId || !grade) {
+      if (!pupilId || !grade || !lessonId) {
         return res.status(400).json({
-          message: "Thiếu pupilId (params) hoặc grade (query).",
+          message: "Thiếu pupilId, lessonId (params) hoặc grade (query).",
         });
       }
 
@@ -946,17 +946,18 @@ class TestController {
         ],
       };
 
-      const requestedRanges = ranges
+      const requestedRanges = ranges && typeof ranges === "string"
         ? ranges
-            .split(",")
-            .map((r) => r.trim())
-            .filter((r) => r in timeRanges)
+          .split(",")
+          .map((r) => r.trim())
+          .filter((r) => r in timeRanges)
         : Object.keys(timeRanges);
 
       const getPointStatsByType = async (start, end) => {
         const q = query(
           collection(db, "tests"),
           where("pupilId", "==", pupilId),
+          where("lessonId", "==", lessonId),
           where("createdAt", ">=", start),
           where("createdAt", "<=", end)
         );
@@ -967,46 +968,42 @@ class TestController {
         }));
 
         if (tests.length === 0) return {};
-        const lessonIds = new Set(tests.map((t) => t.lessonId));
-        const lessonTypeMap = {};
 
-        for (const lessonId of lessonIds) {
-          const lessonDoc = await getDoc(doc(db, "lessons", lessonId));
-          if (lessonDoc.exists()) {
-            const lesson = lessonDoc.data();
-            lessonTypeMap[lessonId] = lesson.type;
-          }
+        const lessonDoc = await getDoc(doc(db, "lessons", lessonId));
+        if (!lessonDoc.exists()) {
+          return {};
+        }
+        const lessonType = lessonDoc.data().type;
+
+        if (!expectedTypes.includes(lessonType)) {
+          return {};
         }
 
-        const stats = {};
+        const stats = { [lessonType]: { "≥9": 0, "≥7": 0, "≥5": 0, "<5": 0 } };
+
         for (const test of tests) {
-          const type = lessonTypeMap[test.lessonId];
-          if (!type || !expectedTypes.includes(type)) continue;
-
-          if (!stats[type]) {
-            stats[type] = { "≥9": 0, "≥7": 0, "≥5": 0, "<5": 0 };
-          }
-
           const point = test.point;
-          if (point >= 9) stats[type]["≥9"]++;
-          else if (point >= 7) stats[type]["≥7"]++;
-          else if (point >= 5) stats[type]["≥5"]++;
-          else stats[type]["<5"]++;
+          if (point >= 9) stats[lessonType]["≥9"]++;
+          else if (point >= 7) stats[lessonType]["≥7"]++;
+          else if (point >= 5) stats[lessonType]["≥5"]++;
+          else stats[lessonType]["<5"]++;
         }
 
         return stats;
       };
 
-      // Kết quả dạng mảng
-      const resultMap = {}; // tạm lưu { type -> { label -> stats } }
+      const result = {};
 
       for (const label of requestedRanges) {
         const [start, end] = timeRanges[label];
         const stats = await getPointStatsByType(start, end);
 
-        for (const type of expectedTypes) {
-          if (!resultMap[type]) resultMap[type] = {};
-          resultMap[type][label] = stats[type] || {
+        const lessonDoc = await getDoc(doc(db, "lessons", lessonId));
+        const lessonType = lessonDoc.exists() ? lessonDoc.data().type : null;
+
+        if (lessonType && expectedTypes.includes(lessonType)) {
+          if (!result[lessonType]) result[lessonType] = {};
+          result[lessonType][label] = stats[lessonType] || {
             "≥9": 0,
             "≥7": 0,
             "≥5": 0,
@@ -1014,16 +1011,12 @@ class TestController {
           };
         }
       }
-      // mảng
-      const compareByType = Object.entries(resultMap).map(([type, ranges]) => ({
-        type,
-        ranges,
-      }));
 
       return res.status(200).json({
         pupilId,
+        lessonId,
         grade: gradeNumber,
-        compareByType,
+        compareByType: result,
       });
     } catch (err) {
       console.error("Error:", err);
@@ -1107,9 +1100,9 @@ class TestController {
 
       const requestedRanges = ranges
         ? ranges
-            .split(",")
-            .map((r) => r.trim())
-            .filter((r) => r in timeRanges)
+          .split(",")
+          .map((r) => r.trim())
+          .filter((r) => r in timeRanges)
         : Object.keys(timeRanges);
 
       // Khởi tạo map tạm: { type -> { range -> [ { levelId, correct, wrong } ] } }
