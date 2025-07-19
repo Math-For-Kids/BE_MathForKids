@@ -107,13 +107,13 @@ router.get("/:id", testMiddleware.checkTestExistById(), testController.getById);
 //Get point statistic by pupilId
 router.get(
   "/getUserPointStatsComparison/:pupilId",
-  pupilMiddleware.checkPupilExistById("pupilID"),
+  pupilMiddleware.checkPupilExistById("pupilId"),
   testController.getUserPointStatsComparison
 );
 //Get point statistic by pupilId
 router.get(
   "/getAnswerStats/:pupilId",
-  pupilMiddleware.checkPupilExistById("pupilID"),
+  pupilMiddleware.checkPupilExistById("pupilId"),
   testController.getAnswerStats
 );
 module.exports = router;
