@@ -882,7 +882,10 @@ class TestController {
 
       if (!pupilId || !grade || !lessonId) {
         return res.status(400).json({
-          message: "Thiếu pupilId, lessonId (params) hoặc grade (query).",
+          message: {
+            en: "Missing pupilId, lessonId (params) or grade (query).",
+            vi: "Thiếu pupilId, lessonId (params) hoặc grade (query).",
+          },
         });
       }
 
