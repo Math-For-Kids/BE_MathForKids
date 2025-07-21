@@ -10,6 +10,7 @@ const {
     serverTimestamp,
     query,
     where,
+    getCountFromServer,
 } = require("firebase/firestore");
 const db = getFirestore();
 
@@ -110,21 +111,56 @@ class ExchangeRewardController {
         }
     };
 
-    // Get exchange rewards by pupilId
     getByPupilId = async (req, res, next) => {
         try {
             const { pupilId } = req.params;
             const q = query(
                 collection(db, "exchange_rewards"),
-                where("pupilId", "==", pupilId)
+                where("pupilId", "==", pupilId),
+                where("isAccept", "==", true)
             );
             const snapshot = await getDocs(q);
-            const exchangeRewards = snapshot.docs.map((doc) =>
-                ExchangeReward.fromFirestore(doc)
-            );
-            res.status(200).send({
-                data: exchangeRewards,
+
+            // Tạo object để đếm số lượng mỗi rewardId
+            const rewardCount = {};
+            const rewardIds = snapshot.docs.map((doc) => {
+                const data = ExchangeReward.fromFirestore(doc);
+                const rewardId = data.rewardId; // Giả sử rewardId là một field trong ExchangeReward
+                rewardCount[rewardId] = (rewardCount[rewardId] || 0) + 1;
+                return rewardId;
             });
+
+            // Chuyển rewardCount thành array nếu cần
+            const rewardCountArray = Object.entries(rewardCount).map(([rewardId, count]) => ({
+                rewardId,
+                count
+            }));
+
+            res.status(200).send({
+                data: {
+                    rewardIds: [...new Set(rewardIds)], // Loại bỏ duplicate rewardIds
+                    rewardCount: rewardCountArray
+                }
+            });
+        } catch (error) {
+            res.status(500).send({
+                message: {
+                    en: error.message,
+                    vi: "Đã xảy ra lỗi nội bộ."
+                }
+            });
+        }
+    };
+    countRewardByPupilId = async (req, res, next) => {
+        try {
+            const pupilId = req.params.pupilId;
+            const q = query(
+                collection(db, "exchange_rewards"),
+                where("pupilId", "==", pupilId),
+                where("isAccept", "==", true)
+            );
+            const snapshot = await getCountFromServer(q);
+            res.status(200).send({ count: snapshot.data().count });
         } catch (error) {
             res.status(500).send({
                 message: {
@@ -134,7 +170,6 @@ class ExchangeRewardController {
             });
         }
     };
-
     // Get exchange reward by ID
     getById = async (req, res, next) => {
         try {
@@ -150,7 +185,30 @@ class ExchangeRewardController {
                 });
             }
             const exchangeReward = ExchangeReward.fromFirestore(docSnap);
-            res.status(200).send({ id, ...exchangeReward });
+            const exchangeData = docSnap.data();
+            let rewardName = {};
+            if (exchangeData.rewardId) {
+                const rewardDocRef = doc(db, "reward", exchangeData.rewardId);
+                const rewardDocSnap = await getDoc(rewardDocRef);
+                if (rewardDocSnap.exists()) {
+                    const rewardData = rewardDocSnap.data();
+                    rewardName = {
+                        en: rewardData.name?.en || "Reward",
+                        vi: rewardData.name?.vi || "Phần thưởng",
+                    };
+                } else {
+                    console.warn(`Reward with ID ${exchangeData.rewardId} not found`);
+                }
+            } else {
+                console.warn(`No rewardId found for exchange reward ${id}`);
+            }
+
+            res.status(200).send({
+                id,
+                ...exchangeReward,
+                name: rewardName, // Include name in the response
+                pupilId: exchangeData.pupilId, // Ensure pupilId is included
+            });
         } catch (error) {
             res.status(500).send({
                 message: {
