@@ -413,38 +413,45 @@ class CompletedLessonController {
           const firstLessonNextGradeQuery = query(
             collection(db, "lessons"),
             where("grade", "==", nextGrade),
-            where("type", "==", type),
+            where("type", "in", ["multiplication", "division"]), // Tìm phép nhân hoặc chia
             where("isDisabled", "==", false),
             orderBy("order"),
-            limit(1)
+            limit(2) // Lấy tối đa hai bài học
           );
           const firstLessonNextGradeSnapshot = await getDocs(firstLessonNextGradeQuery);
           if (!firstLessonNextGradeSnapshot.empty) {
-            const firstLessonNextGrade = firstLessonNextGradeSnapshot.docs[0];
-            nextLessonName = firstLessonNextGrade.data().name;
-            const nextCompletedQuery = query(
-              collection(db, "completed_lessons"),
-              where("pupilId", "==", pupilId),
-              where("lessonId", "==", firstLessonNextGrade.id)
-            );
-            const nextCompletedSnapshot = await getDocs(nextCompletedQuery);
-            if (!nextCompletedSnapshot.empty) {
-              const nextCompletedDoc = nextCompletedSnapshot.docs[0];
-              await updateDoc(nextCompletedDoc.ref, {
-                isBlock: false,
-                updateAt: serverTimestamp(),
-              });
+            const unlockedLessons = [];
+            for (const lessonDoc of firstLessonNextGradeSnapshot.docs) {
+              const lesson = lessonDoc.data();
+              const lessonId = lessonDoc.id;
+              unlockedLessons.push(lesson.name);
+
+              const nextCompletedQuery = query(
+                collection(db, "completed_lessons"),
+                where("pupilId", "==", pupilId),
+                where("lessonId", "==", lessonId)
+              );
+              const nextCompletedSnapshot = await getDocs(nextCompletedQuery);
+              if (!nextCompletedSnapshot.empty) {
+                const nextCompletedDoc = nextCompletedSnapshot.docs[0];
+                await updateDoc(nextCompletedDoc.ref, {
+                  isBlock: false,
+                  updatedAt: serverTimestamp(),
+                });
+              }
             }
+            nextLessonName = unlockedLessons.join(" and ");
             responseMessage = {
-              en: `All lessons in grade ${grade} completed! First lesson of grade ${nextGrade} "${nextLessonName}" unlocked successfully!`,
-              vi: `Đã hoàn thành tất cả bài học của lớp ${grade}! Bài học đầu tiên của lớp ${nextGrade} "${nextLessonName}" đã được mở khóa!`,
+              en: `All lessons in grade ${grade} completed! Lesson(s) "${nextLessonName}" in grade ${nextGrade} unlocked successfully!`,
+              vi: `Đã hoàn thành tất cả bài học của lớp CS${grade}! Bài học "${nextLessonName}" của lớp ${nextGrade} đã được mở khóa!`,
             };
           } else {
             responseMessage = {
-              en: `All lessons in grade ${grade} completed! No lessons available in grade ${nextGrade}.`,
-              vi: `Đã hoàn thành tất cả bài học của lớp ${grade}! Không có bài học nào ở lớp ${nextGrade}.`,
+              en: `All lessons in grade ${grade} completed! No lessons available in grade ${nextGrade} for multiplication or division.`,
+              vi: `Đã hoàn thành tất cả bài học của lớp ${grade}! Không có bài học nào ở lớp ${nextGrade} cho phép nhân hoặc chia.`,
             };
           }
+
         } else {
           responseMessage = {
             en: `Congratulations! All lessons in grade ${grade} completed. You have finished all available grades!`,

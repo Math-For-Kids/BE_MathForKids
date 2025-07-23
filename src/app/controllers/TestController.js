@@ -1031,6 +1031,153 @@ class TestController {
       });
     }
   };
+ getUserPointFullLesson = async (req, res) => {
+    try {
+      const { pupilId } = req.params;
+      const { grade, type, ranges } = req.query;
+
+      // Validate pupilId, grade, and type
+      if (!pupilId || !grade) {
+        return res.status(400).json({
+          message: {
+            en: "Missing pupilId (params) or grade (query).",
+            vi: "Thiếu pupilId (params) hoặc grade (query).",
+          },
+        });
+      }
+
+      const gradeNumber = parseInt(grade);
+      const expectedTypes =
+        gradeNumber === 1
+          ? ["addition", "subtraction"]
+          : ["addition", "subtraction", "multiplication", "division"];
+
+      // Validate type if provided
+      if (type && !expectedTypes.includes(type)) {
+        return res.status(400).json({
+          message: {
+            en: `Invalid type. Expected one of: ${expectedTypes.join(", ")}.`,
+            vi: `Kỹ năng không hợp lệ. Cần là một trong: ${expectedTypes.join(", ")}.`,
+          },
+        });
+      }
+
+      const now = new Date();
+      const startOfWeek = (d) => {
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        return new Date(d.getFullYear(), d.getMonth(), diff);
+      };
+
+      const thisWeekStart = startOfWeek(new Date(now));
+      const lastWeekStart = new Date(thisWeekStart);
+      lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+      const lastWeekEnd = new Date(thisWeekStart);
+      lastWeekEnd.setDate(lastWeekEnd.getDate() - 1);
+
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+      const currentQuarter = Math.floor(now.getMonth() / 3);
+      const thisQuarterStart = new Date(now.getFullYear(), currentQuarter * 3, 1);
+      const lastQuarterStart = new Date(now.getFullYear(), (currentQuarter - 1) * 3, 1);
+      const lastQuarterEnd = new Date(now.getFullYear(), currentQuarter * 3, 0);
+
+      const timeRanges = {
+        thisWeek: [Timestamp.fromDate(thisWeekStart), Timestamp.fromDate(now)],
+        lastWeek: [Timestamp.fromDate(lastWeekStart), Timestamp.fromDate(lastWeekEnd)],
+        thisMonth: [Timestamp.fromDate(thisMonthStart), Timestamp.fromDate(now)],
+        lastMonth: [Timestamp.fromDate(lastMonthStart), Timestamp.fromDate(lastMonthEnd)],
+        thisQuarter: [Timestamp.fromDate(thisQuarterStart), Timestamp.fromDate(now)],
+        lastQuarter: [Timestamp.fromDate(lastQuarterStart), Timestamp.fromDate(lastQuarterEnd)],
+      };
+
+      const requestedRanges = ranges && typeof ranges === "string"
+        ? ranges.split(",").map((r) => r.trim()).filter((r) => r in timeRanges)
+        : Object.keys(timeRanges);
+
+      // Fetch lessons for the given grade and type (if provided)
+      const lessonsQuery = query(
+        collection(db, "lessons"),
+        where("grade", "==", gradeNumber),
+        ...(type ? [where("type", "==", type)] : [])
+      );
+      const lessonsSnapshot = await getDocs(lessonsQuery);
+      const lessons = lessonsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        type: doc.data().type,
+      }));
+
+      const getPointStatsByLesson = async (lessonId, start, end) => {
+        const q = query(
+          collection(db, "tests"),
+          where("pupilId", "==", pupilId),
+          where("lessonId", "==", lessonId),
+          where("createdAt", ">=", start),
+          where("createdAt", "<=", end)
+        );
+        const snapshot = await getDocs(q);
+        const tests = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        if (tests.length === 0) {
+          return { "≥9": 0, "≥7": 0, "≥5": 0, "<5": 0 };
+        }
+
+        const stats = { "≥9": 0, "≥7": 0, "≥5": 0, "<5": 0 };
+        for (const test of tests) {
+          const point = test.point;
+          if (point >= 9) stats["≥9"]++;
+          else if (point >= 7) stats["≥7"]++;
+          else if (point >= 5) stats["≥5"]++;
+          else stats["<5"]++;
+        }
+
+        return stats;
+      };
+
+      const result = {};
+
+      // Group lessons by type (only the specified type if provided)
+      const lessonsByType = lessons.reduce((acc, lesson) => {
+        if (!acc[lesson.type]) acc[lesson.type] = [];
+        acc[lesson.type].push(lesson.id);
+        return acc;
+      }, {});
+
+      // Calculate stats for each lessonId within each type
+      for (const lessonType of Object.keys(lessonsByType)) {
+        result[lessonType] = {};
+        for (const lessonId of lessonsByType[lessonType]) {
+          result[lessonType][`lessonId: ${lessonId}`] = {};
+          for (const range of requestedRanges) {
+            const [start, end] = timeRanges[range];
+            const stats = await getPointStatsByLesson(lessonId, start, end);
+            result[lessonType][`lessonId: ${lessonId}`][range] = stats;
+          }
+        }
+      }
+
+      return res.status(200).json({
+        pupilId,
+        grade: gradeNumber,
+        compareByLesson: result,
+      });
+    } catch (err) {
+      console.error("Error:", err);
+      return res.status(500).json({
+        message: {
+          en: err.message,
+          vi: "Đã xảy ra lỗi khi thống kê điểm theo bài học.",
+        },
+      });
+    }
+  };
+
+
   getAnswerStats = async (req, res) => {
     try {
       const { pupilId, lessonId } = req.params;
@@ -1066,6 +1213,123 @@ class TestController {
         return `${year}-${month}`;
       };
 
+      const rangeKeys =
+        typeof ranges === "string"
+          ? ranges.split(",").map((r) => r.trim())
+          : Array.isArray(ranges)
+            ? ranges
+            : [];
+
+      const snapshot = await getDocs(collection(db, "test_questions"));
+      const questions = snapshot.docs;
+
+      const testCache = {};
+      const lessonCache = {};
+      const data = [];
+      const typeStats = {};
+      const retryMap = {};
+      const rangeStats = {};
+      // Lấy danh sách levels
+      const levelSnapshot = await getDocs(collection(db, "levels"));
+      const levels = levelSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      // Khai báo hàm getLevelName
+      const getLevelName = (levelId) => {
+        const level = levels.find((l) => l.id === levelId);
+        return level?.name || { en: levelId };
+      };
+
+      for (const docSnap of questions) {
+        const q = docSnap.data();
+        const qTestId = q.testId;
+        const exerciseId = q.exerciseId;
+        const createdAt = q.createdAt?.toDate?.() || new Date(q.createdAt);
+
+        if (!qTestId || !exerciseId || !createdAt) continue;
+
+        if (!testCache[qTestId]) {
+          const testDoc = await getDoc(doc(db, "tests", qTestId));
+          if (!testDoc.exists()) continue;
+          testCache[qTestId] = { id: testDoc.id, ...testDoc.data() };
+        }
+        const testData = testCache[qTestId];
+        if (testData.pupilId !== pupilId) continue;
+
+        const qLessonId = testData.lessonId || "unknown";
+
+        if (!lessonCache[qLessonId]) {
+          const lessonDoc = await getDoc(doc(db, "lessons", qLessonId));
+          if (!lessonDoc.exists()) continue;
+          lessonCache[qLessonId] = lessonDoc.data();
+        }
+        const lesson = lessonCache[qLessonId];
+        const type = lesson.type;
+
+        if (!expectedTypes.includes(type)) continue;
+        if (skill && type !== skill) continue;
+        if (lessonId && qLessonId !== lessonId) continue;
+
+        const rangeKey = formatRangeKey(createdAt);
+        if (rangeKeys.length > 0 && !rangeKeys.includes(rangeKey)) continue;
+
+        const correctAnswer = q.correctAnswer;
+        const selectedAnswer = q.selectedAnswer;
+        const isCorrect =
+          correctAnswer?.en?.trim() === selectedAnswer?.en?.trim() &&
+          correctAnswer?.vi?.trim() === selectedAnswer?.vi?.trim();
+
+        if (!rangeStats[rangeKey])
+          rangeStats[rangeKey] = { correct: 0, total: 0 };
+        rangeStats[rangeKey].total++;
+        if (isCorrect) rangeStats[rangeKey].correct++;
+
+        if (!retryMap[exerciseId]) {
+          retryMap[exerciseId] = { wrongTimes: 0, meta: null };
+        }
+        retryMap[exerciseId].wrongTimes += isCorrect ? 0 : 1;
+        retryMap[exerciseId].meta = {
+          exerciseId,
+          question: q.question || null,
+          image: q.image || null,
+        };
+
+        if (!typeStats[type]) typeStats[type] = { correct: 0, wrong: 0 };
+        isCorrect ? typeStats[type].correct++ : typeStats[type].wrong++;
+
+        data.push({
+          type,
+          lessonId: qLessonId,
+          testId: qTestId,
+          exerciseId,
+          question: q.question || null,
+          correctAnswer,
+          selectedAnswer,
+          option: q.option || [],
+          image: q.image || null,
+          createdAt: createdAt.toISOString(),
+          isCorrect,
+          levelName: getLevelName(q.levelId),
+          point: testData.point || null,
+        });
+      }
+
+      const total = data.length;
+      const correct = data.filter((q) => q.isCorrect).length;
+      const wrong = total - correct;
+
+      const skillSummary = Object.entries(typeStats).map(([type, stat]) => {
+        const total = stat.correct + stat.wrong;
+        const accuracy = total > 0 ? (stat.correct / total) * 100 : 0;
+        return {
+          type,
+          correct: stat.correct,
+          wrong: stat.wrong,
+          accuracy: Math.round(accuracy * 10) / 10,
+        };
+      });
       const rangeKeys =
         typeof ranges === "string"
           ? ranges.split(",").map((r) => r.trim())
@@ -1183,6 +1447,48 @@ class TestController {
           accuracy: Math.round(accuracy * 10) / 10,
         };
       });
+
+      const weakSkills = skillSummary
+        .filter((s) => s.accuracy < 70)
+        .map((s) => s.type);
+
+      const retryList = Object.entries(retryMap)
+        .filter(([_, r]) => r.wrongTimes >= 2)
+        .map(([exerciseId, r]) => ({
+          exerciseId,
+          question: r.meta?.question,
+          image: r.meta?.image,
+          wrongTimes: r.wrongTimes,
+          shouldRetry: true,
+        }));
+
+      const accuracyByRange = Object.entries(rangeStats)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([range, stat]) => ({
+          range,
+          accuracy:
+            stat.total > 0
+              ? Math.round((stat.correct / stat.total) * 1000) / 10
+              : 0,
+          correct: stat.correct,
+          wrong: stat.total - stat.correct,
+        }));
+      const tests = Object.values(
+        data.reduce((acc, item) => {
+          if (!acc[item.testId]) {
+            const testData = testCache[item.testId]; // Lấy dữ liệu test từ cache
+
+            acc[item.testId] = {
+              testId: item.testId,
+              lessonId: item.lessonId,
+              type: item.type,
+              // levelName: getLevelName(testData?.level),
+              point: testData?.point || null,
+            };
+          }
+          return acc;
+        }, {})
+      );
 
       const weakSkills = skillSummary
         .filter((s) => s.accuracy < 70)
