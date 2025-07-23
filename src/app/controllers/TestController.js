@@ -18,7 +18,11 @@ const {
   Timestamp,
 } = require("firebase/firestore");
 const db = getFirestore();
-
+const chunkArray = (arr, size) =>
+  arr.reduce((acc, _, i) => {
+    if (i % size === 0) acc.push(arr.slice(i, i + size));
+    return acc;
+  }, []);
 class TestController {
   // Create test
   create = async (req, res, next) => {
@@ -949,12 +953,13 @@ class TestController {
         ],
       };
 
-      const requestedRanges = ranges && typeof ranges === "string"
-        ? ranges
-          .split(",")
-          .map((r) => r.trim())
-          .filter((r) => r in timeRanges)
-        : Object.keys(timeRanges);
+      const requestedRanges =
+        ranges && typeof ranges === "string"
+          ? ranges
+              .split(",")
+              .map((r) => r.trim())
+              .filter((r) => r in timeRanges)
+          : Object.keys(timeRanges);
 
       const getPointStatsByType = async (start, end) => {
         const q = query(
@@ -1031,6 +1036,181 @@ class TestController {
       });
     }
   };
+  // Hàm chia mảng thành từng lô nhỏ (mỗi lô tối đa 10 phần tử)
+  getUserPointFullLesson = async (req, res) => {
+    try {
+      const { pupilId } = req.params;
+      const { grade, type, ranges } = req.query;
+
+      // Validate pupilId, grade, and type
+      if (!pupilId || !grade) {
+        return res.status(400).json({
+          message: {
+            en: "Missing pupilId (params) or grade (query).",
+            vi: "Thiếu pupilId (params) hoặc grade (query).",
+          },
+        });
+      }
+
+      const gradeNumber = parseInt(grade);
+      const expectedTypes =
+        gradeNumber === 1
+          ? ["addition", "subtraction"]
+          : ["addition", "subtraction", "multiplication", "division"];
+
+      // Validate type if provided
+      if (type && !expectedTypes.includes(type)) {
+        return res.status(400).json({
+          message: {
+            en: `Invalid type. Expected one of: ${expectedTypes.join(", ")}.`,
+            vi: `Kỹ năng không hợp lệ. Cần là một trong: ${expectedTypes.join(
+              ", "
+            )}.`,
+          },
+        });
+      }
+
+      const now = new Date();
+      const startOfWeek = (d) => {
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+        return new Date(d.getFullYear(), d.getMonth(), diff);
+      };
+
+      const thisWeekStart = startOfWeek(new Date(now));
+      const lastWeekStart = new Date(thisWeekStart);
+      lastWeekStart.setDate(lastWeekStart.getDate() - 7);
+      const lastWeekEnd = new Date(thisWeekStart);
+      lastWeekEnd.setDate(lastWeekEnd.getDate() - 1);
+
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+      const currentQuarter = Math.floor(now.getMonth() / 3);
+      const thisQuarterStart = new Date(
+        now.getFullYear(),
+        currentQuarter * 3,
+        1
+      );
+      const lastQuarterStart = new Date(
+        now.getFullYear(),
+        (currentQuarter - 1) * 3,
+        1
+      );
+      const lastQuarterEnd = new Date(now.getFullYear(), currentQuarter * 3, 0);
+
+      const timeRanges = {
+        thisWeek: [Timestamp.fromDate(thisWeekStart), Timestamp.fromDate(now)],
+        lastWeek: [
+          Timestamp.fromDate(lastWeekStart),
+          Timestamp.fromDate(lastWeekEnd),
+        ],
+        thisMonth: [
+          Timestamp.fromDate(thisMonthStart),
+          Timestamp.fromDate(now),
+        ],
+        lastMonth: [
+          Timestamp.fromDate(lastMonthStart),
+          Timestamp.fromDate(lastMonthEnd),
+        ],
+        thisQuarter: [
+          Timestamp.fromDate(thisQuarterStart),
+          Timestamp.fromDate(now),
+        ],
+        lastQuarter: [
+          Timestamp.fromDate(lastQuarterStart),
+          Timestamp.fromDate(lastQuarterEnd),
+        ],
+      };
+
+      const requestedRanges =
+        ranges && typeof ranges === "string"
+          ? ranges
+              .split(",")
+              .map((r) => r.trim())
+              .filter((r) => r in timeRanges)
+          : Object.keys(timeRanges);
+
+      // Fetch lessons for the given grade and type (if provided)
+      const lessonsQuery = query(
+        collection(db, "lessons"),
+        where("grade", "==", gradeNumber),
+        ...(type ? [where("type", "==", type)] : [])
+      );
+      const lessonsSnapshot = await getDocs(lessonsQuery);
+      const lessons = lessonsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        type: doc.data().type,
+      }));
+
+      const getPointStatsByLesson = async (lessonId, start, end) => {
+        const q = query(
+          collection(db, "tests"),
+          where("pupilId", "==", pupilId),
+          where("lessonId", "==", lessonId),
+          where("createdAt", ">=", start),
+          where("createdAt", "<=", end)
+        );
+        const snapshot = await getDocs(q);
+        const tests = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        if (tests.length === 0) {
+          return { "≥9": 0, "≥7": 0, "≥5": 0, "<5": 0 };
+        }
+
+        const stats = { "≥9": 0, "≥7": 0, "≥5": 0, "<5": 0 };
+        for (const test of tests) {
+          const point = test.point;
+          if (point >= 9) stats["≥9"]++;
+          else if (point >= 7) stats["≥7"]++;
+          else if (point >= 5) stats["≥5"]++;
+          else stats["<5"]++;
+        }
+
+        return stats;
+      };
+
+      const result = {};
+
+      // Group lessons by type (only the specified type if provided)
+      const lessonsByType = lessons.reduce((acc, lesson) => {
+        if (!acc[lesson.type]) acc[lesson.type] = [];
+        acc[lesson.type].push(lesson.id);
+        return acc;
+      }, {});
+
+      // Calculate stats for each lessonId within each type
+      for (const lessonType of Object.keys(lessonsByType)) {
+        result[lessonType] = {};
+        for (const lessonId of lessonsByType[lessonType]) {
+          result[lessonType][`lessonId: ${lessonId}`] = {};
+          for (const range of requestedRanges) {
+            const [start, end] = timeRanges[range];
+            const stats = await getPointStatsByLesson(lessonId, start, end);
+            result[lessonType][`lessonId: ${lessonId}`][range] = stats;
+          }
+        }
+      }
+
+      return res.status(200).json({
+        pupilId,
+        grade: gradeNumber,
+        compareByLesson: result,
+      });
+    } catch (err) {
+      console.error("Error:", err);
+      return res.status(500).json({
+        message: {
+          en: err.message,
+          vi: "Đã xảy ra lỗi khi thống kê điểm theo bài học.",
+        },
+      });
+    }
+  };
   getAnswerStats = async (req, res) => {
     try {
       const { pupilId, lessonId } = req.params;
@@ -1047,15 +1227,17 @@ class TestController {
           : ["addition", "subtraction", "multiplication", "division"];
 
       const getWeekNumber = (date) => {
-        const firstDay = new Date(date.getFullYear(), 0, 1);
-        const pastDays = (date - firstDay) / 86400000;
-        return Math.ceil((pastDays + firstDay.getDay() + 1) / 7);
+        const target = new Date(date.valueOf());
+        const dayNumber = (date.getDay() + 6) % 7;
+        target.setDate(target.getDate() - dayNumber + 3);
+        const firstThursday = new Date(target.getFullYear(), 0, 4);
+        const diff = target - firstThursday;
+        return 1 + Math.round(diff / (7 * 24 * 60 * 60 * 1000));
       };
 
       const formatRangeKey = (date) => {
         const year = date.getFullYear();
         const month = `${date.getMonth() + 1}`.padStart(2, "0");
-
         if (rangeType === "week") {
           const week = getWeekNumber(date);
           return `${year}-W${week}`;
@@ -1073,29 +1255,68 @@ class TestController {
           ? ranges
           : [];
 
-      const snapshot = await getDocs(collection(db, "test_questions"));
-      const questions = snapshot.docs;
+      //Truy vấn tất cả các `tests` thuộc học sinh và bài học
+      const testQuery = query(
+        collection(db, "tests"),
+        where("pupilId", "==", pupilId),
+        where("lessonId", "==", lessonId)
+      );
+      const testSnapshot = await getDocs(testQuery);
+      const testDocs = testSnapshot.docs;
+      if (testDocs.length === 0) {
+        return res.status(200).json({
+          pupilId,
+          grade: gradeNumber,
+          total: 0,
+          correct: 0,
+          wrong: 0,
+          skillSummary: [],
+          weakSkills: [],
+          retryList: [],
+          retryCount: 0,
+          accuracyByRange: [],
+          data: [],
+          tests: [],
+        });
+      }
 
       const testCache = {};
-      const lessonCache = {};
-      const data = [];
-      const typeStats = {};
-      const retryMap = {};
-      const rangeStats = {};
-      // Lấy danh sách levels
+      const testIds = testDocs.map((doc) => {
+        testCache[doc.id] = { id: doc.id, ...doc.data() };
+        return doc.id;
+      });
+
+      // Truy vấn test_questions theo testId (chia batch 10 phần tử)
+      const testIdBatches = chunkArray(testIds, 10);
+      let questionDocs = [];
+      for (const batch of testIdBatches) {
+        const q = query(
+          collection(db, "test_questions"),
+          where("testId", "in", batch)
+        );
+        const qSnapshot = await getDocs(q);
+        questionDocs.push(...qSnapshot.docs);
+      }
+
+      // Load level map
       const levelSnapshot = await getDocs(collection(db, "levels"));
       const levels = levelSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-
-      // Khai báo hàm getLevelName
       const getLevelName = (levelId) => {
         const level = levels.find((l) => l.id === levelId);
         return level?.name || { en: levelId };
       };
 
-      for (const docSnap of questions) {
+      //  Bắt đầu xử lý logic thống kê
+      const lessonCache = {};
+      const data = [];
+      const typeStats = {};
+      const retryMap = {};
+      const rangeStats = {};
+
+      for (const docSnap of questionDocs) {
         const q = docSnap.data();
         const qTestId = q.testId;
         const exerciseId = q.exerciseId;
@@ -1103,13 +1324,8 @@ class TestController {
 
         if (!qTestId || !exerciseId || !createdAt) continue;
 
-        if (!testCache[qTestId]) {
-          const testDoc = await getDoc(doc(db, "tests", qTestId));
-          if (!testDoc.exists()) continue;
-          testCache[qTestId] = { id: testDoc.id, ...testDoc.data() };
-        }
         const testData = testCache[qTestId];
-        if (testData.pupilId !== pupilId) continue;
+        if (!testData || testData.pupilId !== pupilId) continue;
 
         const qLessonId = testData.lessonId || "unknown";
 
@@ -1118,6 +1334,7 @@ class TestController {
           if (!lessonDoc.exists()) continue;
           lessonCache[qLessonId] = lessonDoc.data();
         }
+
         const lesson = lessonCache[qLessonId];
         const type = lesson.type;
 
@@ -1209,16 +1426,15 @@ class TestController {
           correct: stat.correct,
           wrong: stat.total - stat.correct,
         }));
+
       const tests = Object.values(
         data.reduce((acc, item) => {
           if (!acc[item.testId]) {
-            const testData = testCache[item.testId]; // Lấy dữ liệu test từ cache
-
+            const testData = testCache[item.testId];
             acc[item.testId] = {
               testId: item.testId,
               lessonId: item.lessonId,
               type: item.type,
-              // levelName: getLevelName(testData?.level),
               point: testData?.point || null,
             };
           }
@@ -1241,11 +1457,9 @@ class TestController {
         tests,
       });
     } catch (err) {
+      console.error("Lỗi xử lý:", err);
       return res.status(500).json({
-        message: {
-          en: err.message,
-          vi: "",
-        },
+        message: { en: err.message, vi: "" },
       });
     }
   };
