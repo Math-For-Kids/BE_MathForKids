@@ -105,6 +105,11 @@ router.get(
   pupilMiddleware.checkPupilExistById("pupilId"),
   testController.getUserPointStatsComparison
 );
+router.get(
+  "/getUserPointFullLesson/:pupilId",
+  pupilMiddleware.checkPupilExistById("pupilId"),
+  testController.getUserPointFullLesson
+);
 //Get point statistic by pupilId
 router.get(
   "/getAnswerStats/:pupilId/:lessonId",
