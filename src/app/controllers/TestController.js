@@ -18,7 +18,11 @@ const {
   Timestamp,
 } = require("firebase/firestore");
 const db = getFirestore();
-
+const chunkArray = (arr, size) =>
+  arr.reduce((acc, _, i) => {
+    if (i % size === 0) acc.push(arr.slice(i, i + size));
+    return acc;
+  }, []);
 class TestController {
   // Create test
   create = async (req, res, next) => {
@@ -874,12 +878,12 @@ class TestController {
       }
     };
   };
-
   getUserPointStatsComparison = async (req, res) => {
     try {
       const { pupilId } = req.params;
       const { grade, ranges, lessonId } = req.query;
 
+      // Kiểm tra các tham số bắt buộc
       if (!pupilId || !grade || !lessonId) {
         return res.status(400).json({
           message: {
@@ -895,7 +899,10 @@ class TestController {
           ? ["addition", "subtraction"]
           : ["addition", "subtraction", "multiplication", "division"];
 
+      // Tính toán các khoảng thời gian
       const now = new Date();
+      console.log("Current date:", now);
+
       const startOfWeek = (d) => {
         const day = d.getDay();
         const diff = d.getDate() - day + (day === 0 ? -6 : 1);
@@ -913,42 +920,27 @@ class TestController {
       const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
       const currentQuarter = Math.floor(now.getMonth() / 3);
-      const thisQuarterStart = new Date(
-        now.getFullYear(),
-        currentQuarter * 3,
-        1
-      );
-      const lastQuarterStart = new Date(
-        now.getFullYear(),
-        (currentQuarter - 1) * 3,
-        1
-      );
+      const thisQuarterStart = new Date(now.getFullYear(), currentQuarter * 3, 1);
+      const thisQuarterEnd = new Date(now.getFullYear(), (currentQuarter + 1) * 3, 0);
+      const lastQuarterStart = new Date(now.getFullYear(), (currentQuarter - 1) * 3, 1);
       const lastQuarterEnd = new Date(now.getFullYear(), currentQuarter * 3, 0);
+
+      // Log các khoảng thời gian để debug
+      console.log("thisQuarterStart:", thisQuarterStart);
+      console.log("thisQuarterEnd:", thisQuarterEnd);
+      console.log("lastQuarterStart:", lastQuarterStart);
+      console.log("lastQuarterEnd:", lastQuarterEnd);
 
       const timeRanges = {
         thisWeek: [Timestamp.fromDate(thisWeekStart), Timestamp.fromDate(now)],
-        lastWeek: [
-          Timestamp.fromDate(lastWeekStart),
-          Timestamp.fromDate(lastWeekEnd),
-        ],
-        thisMonth: [
-          Timestamp.fromDate(thisMonthStart),
-          Timestamp.fromDate(now),
-        ],
-        lastMonth: [
-          Timestamp.fromDate(lastMonthStart),
-          Timestamp.fromDate(lastMonthEnd),
-        ],
-        thisQuarter: [
-          Timestamp.fromDate(thisQuarterStart),
-          Timestamp.fromDate(now),
-        ],
-        lastQuarter: [
-          Timestamp.fromDate(lastQuarterStart),
-          Timestamp.fromDate(lastQuarterEnd),
-        ],
+        lastWeek: [Timestamp.fromDate(lastWeekStart), Timestamp.fromDate(lastWeekEnd)],
+        thisMonth: [Timestamp.fromDate(thisMonthStart), Timestamp.fromDate(now)],
+        lastMonth: [Timestamp.fromDate(lastMonthStart), Timestamp.fromDate(lastMonthEnd)],
+        thisQuarter: [Timestamp.fromDate(thisQuarterStart), Timestamp.fromDate(now)],
+        lastQuarter: [Timestamp.fromDate(lastQuarterStart), Timestamp.fromDate(lastQuarterEnd)],
       };
 
+      // Xử lý ranges từ query
       const requestedRanges = ranges && typeof ranges === "string"
         ? ranges
           .split(",")
@@ -956,7 +948,9 @@ class TestController {
           .filter((r) => r in timeRanges)
         : Object.keys(timeRanges);
 
-      const getPointStatsByType = async (start, end) => {
+      console.log("Requested ranges:", requestedRanges);
+
+      const getPointStatsByType = async (start, end, label) => {
         const q = query(
           collection(db, "tests"),
           where("pupilId", "==", pupilId),
@@ -970,15 +964,21 @@ class TestController {
           ...doc.data(),
         }));
 
-        if (tests.length === 0) return {};
+        console.log(`Found ${tests.length} tests for ${label} from ${start.toDate()} to ${end.toDate()}`);
+
+        if (tests.length === 0) {
+          return { message: `No tests found for ${label}` };
+        }
 
         const lessonDoc = await getDoc(doc(db, "lessons", lessonId));
         if (!lessonDoc.exists()) {
+          console.log(`Lesson ${lessonId} not found`);
           return {};
         }
         const lessonType = lessonDoc.data().type;
 
         if (!expectedTypes.includes(lessonType)) {
+          console.log(`Invalid lesson type: ${lessonType}`);
           return {};
         }
 
@@ -999,7 +999,12 @@ class TestController {
 
       for (const label of requestedRanges) {
         const [start, end] = timeRanges[label];
-        const stats = await getPointStatsByType(start, end);
+        const stats = await getPointStatsByType(start, end, label);
+
+        if (stats.message) {
+          result[label] = stats;
+          continue;
+        }
 
         const lessonDoc = await getDoc(doc(db, "lessons", lessonId));
         const lessonType = lessonDoc.exists() ? lessonDoc.data().type : null;
@@ -1014,6 +1019,9 @@ class TestController {
           };
         }
       }
+
+      // Log kết quả cuối cùng
+      console.log("Final result:", JSON.stringify(result, null, 2));
 
       return res.status(200).json({
         pupilId,
@@ -1203,7 +1211,6 @@ class TestController {
       const formatRangeKey = (date) => {
         const year = date.getFullYear();
         const month = `${date.getMonth() + 1}`.padStart(2, "0");
-
         if (rangeType === "week") {
           const week = getWeekNumber(date);
           return `${year}-W${week}`;
@@ -1221,29 +1228,68 @@ class TestController {
             ? ranges
             : [];
 
-      const snapshot = await getDocs(collection(db, "test_questions"));
-      const questions = snapshot.docs;
+      //Truy vấn tất cả các `tests` thuộc học sinh và bài học
+      const testQuery = query(
+        collection(db, "tests"),
+        where("pupilId", "==", pupilId),
+        where("lessonId", "==", lessonId)
+      );
+      const testSnapshot = await getDocs(testQuery);
+      const testDocs = testSnapshot.docs;
+      if (testDocs.length === 0) {
+        return res.status(200).json({
+          pupilId,
+          grade: gradeNumber,
+          total: 0,
+          correct: 0,
+          wrong: 0,
+          skillSummary: [],
+          weakSkills: [],
+          retryList: [],
+          retryCount: 0,
+          accuracyByRange: [],
+          data: [],
+          tests: [],
+        });
+      }
 
       const testCache = {};
-      const lessonCache = {};
-      const data = [];
-      const typeStats = {};
-      const retryMap = {};
-      const rangeStats = {};
-      // Lấy danh sách levels
+      const testIds = testDocs.map((doc) => {
+        testCache[doc.id] = { id: doc.id, ...doc.data() };
+        return doc.id;
+      });
+
+      // Truy vấn test_questions theo testId (chia batch 10 phần tử)
+      const testIdBatches = chunkArray(testIds, 10);
+      let questionDocs = [];
+      for (const batch of testIdBatches) {
+        const q = query(
+          collection(db, "test_questions"),
+          where("testId", "in", batch)
+        );
+        const qSnapshot = await getDocs(q);
+        questionDocs.push(...qSnapshot.docs);
+      }
+
+      // Load level map
       const levelSnapshot = await getDocs(collection(db, "levels"));
       const levels = levelSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-
-      // Khai báo hàm getLevelName
       const getLevelName = (levelId) => {
         const level = levels.find((l) => l.id === levelId);
         return level?.name || { en: levelId };
       };
 
-      for (const docSnap of questions) {
+      //  Bắt đầu xử lý logic thống kê
+      const lessonCache = {};
+      const data = [];
+      const typeStats = {};
+      const retryMap = {};
+      const rangeStats = {};
+
+      for (const docSnap of questionDocs) {
         const q = docSnap.data();
         const qTestId = q.testId;
         const exerciseId = q.exerciseId;
@@ -1251,13 +1297,8 @@ class TestController {
 
         if (!qTestId || !exerciseId || !createdAt) continue;
 
-        if (!testCache[qTestId]) {
-          const testDoc = await getDoc(doc(db, "tests", qTestId));
-          if (!testDoc.exists()) continue;
-          testCache[qTestId] = { id: testDoc.id, ...testDoc.data() };
-        }
         const testData = testCache[qTestId];
-        if (testData.pupilId !== pupilId) continue;
+        if (!testData || testData.pupilId !== pupilId) continue;
 
         const qLessonId = testData.lessonId || "unknown";
 
@@ -1266,6 +1307,7 @@ class TestController {
           if (!lessonDoc.exists()) continue;
           lessonCache[qLessonId] = lessonDoc.data();
         }
+
         const lesson = lessonCache[qLessonId];
         const type = lesson.type;
 
@@ -1357,16 +1399,15 @@ class TestController {
           correct: stat.correct,
           wrong: stat.total - stat.correct,
         }));
+
       const tests = Object.values(
         data.reduce((acc, item) => {
           if (!acc[item.testId]) {
-            const testData = testCache[item.testId]; // Lấy dữ liệu test từ cache
-
+            const testData = testCache[item.testId];
             acc[item.testId] = {
               testId: item.testId,
               lessonId: item.lessonId,
               type: item.type,
-              // levelName: getLevelName(testData?.level),
               point: testData?.point || null,
             };
           }
@@ -1389,14 +1430,13 @@ class TestController {
         tests,
       });
     } catch (err) {
+      console.error("Lỗi xử lý:", err);
       return res.status(500).json({
-        message: {
-          en: err.message,
-          vi: "",
-        },
+        message: { en: err.message, vi: "" },
       });
     }
   };
+
 
   getTestsByPupilIdAndLessonId = async (req, res, next) => {
     try {
