@@ -117,4 +117,9 @@ router.get(
   lessonMiddleware.checkLessonExistById("lessonId"),
   testController.getAnswerStats
 );
+router.get(
+  "/getUserPointFullLesson/:pupilId",
+  pupilMiddleware.checkPupilExistById("pupilId"),
+  testController.getUserPointFullLesson
+);
 module.exports = router;

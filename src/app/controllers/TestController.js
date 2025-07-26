@@ -948,6 +948,7 @@ class TestController {
           .filter((r) => r in timeRanges)
         : Object.keys(timeRanges);
 
+
       console.log("Requested ranges:", requestedRanges);
 
       const getPointStatsByType = async (start, end, label) => {
@@ -1039,7 +1040,7 @@ class TestController {
       });
     }
   };
-
+  // Hàm chia mảng thành từng lô nhỏ (mỗi lô tối đa 10 phần tử)
   getUserPointFullLesson = async (req, res) => {
     try {
       const { pupilId } = req.params;
@@ -1066,7 +1067,9 @@ class TestController {
         return res.status(400).json({
           message: {
             en: `Invalid type. Expected one of: ${expectedTypes.join(", ")}.`,
-            vi: `Kỹ năng không hợp lệ. Cần là một trong: ${expectedTypes.join(", ")}.`,
+            vi: `Kỹ năng không hợp lệ. Cần là một trong: ${expectedTypes.join(
+              ", "
+            )}.`,
           },
         });
       }
@@ -1089,22 +1092,49 @@ class TestController {
       const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
       const currentQuarter = Math.floor(now.getMonth() / 3);
-      const thisQuarterStart = new Date(now.getFullYear(), currentQuarter * 3, 1);
-      const lastQuarterStart = new Date(now.getFullYear(), (currentQuarter - 1) * 3, 1);
+      const thisQuarterStart = new Date(
+        now.getFullYear(),
+        currentQuarter * 3,
+        1
+      );
+      const lastQuarterStart = new Date(
+        now.getFullYear(),
+        (currentQuarter - 1) * 3,
+        1
+      );
       const lastQuarterEnd = new Date(now.getFullYear(), currentQuarter * 3, 0);
 
       const timeRanges = {
         thisWeek: [Timestamp.fromDate(thisWeekStart), Timestamp.fromDate(now)],
-        lastWeek: [Timestamp.fromDate(lastWeekStart), Timestamp.fromDate(lastWeekEnd)],
-        thisMonth: [Timestamp.fromDate(thisMonthStart), Timestamp.fromDate(now)],
-        lastMonth: [Timestamp.fromDate(lastMonthStart), Timestamp.fromDate(lastMonthEnd)],
-        thisQuarter: [Timestamp.fromDate(thisQuarterStart), Timestamp.fromDate(now)],
-        lastQuarter: [Timestamp.fromDate(lastQuarterStart), Timestamp.fromDate(lastQuarterEnd)],
+        lastWeek: [
+          Timestamp.fromDate(lastWeekStart),
+          Timestamp.fromDate(lastWeekEnd),
+        ],
+        thisMonth: [
+          Timestamp.fromDate(thisMonthStart),
+          Timestamp.fromDate(now),
+        ],
+        lastMonth: [
+          Timestamp.fromDate(lastMonthStart),
+          Timestamp.fromDate(lastMonthEnd),
+        ],
+        thisQuarter: [
+          Timestamp.fromDate(thisQuarterStart),
+          Timestamp.fromDate(now),
+        ],
+        lastQuarter: [
+          Timestamp.fromDate(lastQuarterStart),
+          Timestamp.fromDate(lastQuarterEnd),
+        ],
       };
 
-      const requestedRanges = ranges && typeof ranges === "string"
-        ? ranges.split(",").map((r) => r.trim()).filter((r) => r in timeRanges)
-        : Object.keys(timeRanges);
+      const requestedRanges =
+        ranges && typeof ranges === "string"
+          ? ranges
+              .split(",")
+              .map((r) => r.trim())
+              .filter((r) => r in timeRanges)
+          : Object.keys(timeRanges);
 
       // Fetch lessons for the given grade and type (if provided)
       const lessonsQuery = query(
@@ -1185,8 +1215,6 @@ class TestController {
       });
     }
   };
-
-
   getAnswerStats = async (req, res) => {
     try {
       const { pupilId, lessonId } = req.params;
@@ -1203,9 +1231,12 @@ class TestController {
           : ["addition", "subtraction", "multiplication", "division"];
 
       const getWeekNumber = (date) => {
-        const firstDay = new Date(date.getFullYear(), 0, 1);
-        const pastDays = (date - firstDay) / 86400000;
-        return Math.ceil((pastDays + firstDay.getDay() + 1) / 7);
+        const target = new Date(date.valueOf());
+        const dayNumber = (date.getDay() + 6) % 7;
+        target.setDate(target.getDate() - dayNumber + 3);
+        const firstThursday = new Date(target.getFullYear(), 0, 4);
+        const diff = target - firstThursday;
+        return 1 + Math.round(diff / (7 * 24 * 60 * 60 * 1000));
       };
 
       const formatRangeKey = (date) => {
@@ -1225,8 +1256,8 @@ class TestController {
         typeof ranges === "string"
           ? ranges.split(",").map((r) => r.trim())
           : Array.isArray(ranges)
-            ? ranges
-            : [];
+          ? ranges
+          : [];
 
       //Truy vấn tất cả các `tests` thuộc học sinh và bài học
       const testQuery = query(
