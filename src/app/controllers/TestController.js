@@ -607,7 +607,8 @@ class TestController {
           collection(db, "lessons"),
           where("grade", "==", parseInt(grade)),
           where("type", "==", type),
-          where("isDisabled", "==", false)
+          where("isDisabled", "==", false),
+          orderBy("order"),
         )
       );
 
@@ -693,7 +694,7 @@ class TestController {
             collection(db, "lessons"),
             where("grade", "==", gradeNumber),
             where("type", "==", type),
-            where("isDisabled", "==", false)
+            where("isDisabled", "==", false),
           )
         );
 
