@@ -75,8 +75,8 @@ class LevelController {
         const startDoc = await getDoc(doc(db, "levels", startAfterId));
         q = query(
           collection(db, "levels"),
-          startAfter(startDoc),
           orderBy("level"),
+          startAfter(startDoc),          
           limit(pageSize)
         );
       } else {

@@ -71,18 +71,10 @@ class GeneralNotificationController {
 
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "general_notifications", startAfterId));
-        if (!startDoc.exists()) {
-          return res.status(400).send({
-            message: {
-              en: "Invalid startAfterId.",
-              vi: "startAfterId không hợp lệ.",
-            },
-          });
-        }
         q = query(
           collection(db, "general_notifications"),
-          startAfter(startDoc),
           orderBy("createdAt", "desc"),
+          startAfter(startDoc),
           limit(pageSize)
         );
       } else {

@@ -28,9 +28,10 @@ const FileController = require("./fileController"); // Đảm bảo path đúng
 class UserController {
   countByDisabledStatus = async (req, res, next) => {
     try {
-      const { isDisabled } = req.query;
+      const { isDisabled, role } = req.query;
       const q = query(
         collection(db, "users"),
+        where("role", "==", role),
         where("isDisabled", "==", isDisabled === "true")
       );
       const snapshot = await getCountFromServer(q);
@@ -80,12 +81,13 @@ class UserController {
     try {
       const pageSize = parseInt(req.query.pageSize) || 10;
       const startAfterId = req.query.startAfterId || null;
-      const { isDisabled } = req.query;
+      const { role, isDisabled } = req.query;
       let q;
       if (startAfterId) {
         const startDoc = await getDoc(doc(db, "users", startAfterId));
         q = query(
           collection(db, "users"),
+          where("role", "==", role),
           where("isDisabled", "==", isDisabled === "true"),
           orderBy("createdAt", "desc"),
           startAfter(startDoc),
@@ -94,6 +96,7 @@ class UserController {
       } else {
         q = query(
           collection(db, "users"),
+          where("role", "==", role),
           where("isDisabled", "==", isDisabled === "true"),
           orderBy("createdAt", "desc"),
           limit(pageSize)

@@ -82,12 +82,19 @@ class UserMiddleware {
   checkUserExistByPhone = async (req, res, next) => {
     try {
       const { phoneNumber } = req.params;
+      const { role } = req.query;
       const querySnapshot = await queryPhoneNumber(phoneNumber);
       if (querySnapshot.empty)
         return res.status(404).json({
           message: {
-            en: "Phone number does not exist. Please register an account before logging in.",
-            vi: "Số điện thoại không tồn tại. Vui lòng đăng ký tài khoản trước khi đăng nhập.",
+            en:
+              role === "admin"
+                ? "Phone number does not exist in system."
+                : "Phone number does not exist. Please register an account before logging in.",
+            vi:
+              role === "admin"
+                ? "Số điện thoại không tồn tại trong hệ thống."
+                : "Số điện thoại không tồn tại. Vui lòng đăng ký tài khoản trước khi đăng nhập.",
           },
         });
       req.user = {
@@ -110,12 +117,19 @@ class UserMiddleware {
   checkUserExistByEmail = async (req, res, next) => {
     try {
       const { email } = req.params;
+      const { role } = req.query;
       const querySnapshot = await queryEmail(email);
       if (querySnapshot.empty)
         return res.status(404).json({
           message: {
-            en: "Email does not exist. Please register an account before logging in.",
-            vi: "Email không tồn tại. Vui lòng đăng ký tài khoản trước khi đăng nhập.",
+            en:
+              role === "admin"
+                ? "Email does not exist in system."
+                : "Email does not exist. Please register an account before logging in.",
+            vi:
+              role === "admin"
+                ? "Email không tồn tại trong hệ thống."
+                : "Email không tồn tại. Vui lòng đăng ký tài khoản trước khi đăng nhập.",
           },
         });
       req.user = {
@@ -221,7 +235,7 @@ class UserMiddleware {
   };
 
   // When update pin, check if oldPin field is similar to the PIN of the user
-checkPin = async (req, res, next) => {
+  checkPin = async (req, res, next) => {
     try {
       const user = req.user;
       const { oldPin, newPin } = req.body;
