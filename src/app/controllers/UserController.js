@@ -622,33 +622,37 @@ class UserController {
   update = async (req, res, next) => {
     try {
       const id = req.params.id;
-      const data = req.body;
+      const { isDisabled, createdAt, dateOfBirth, ...data } = req.body;
 
-      if (data.dateOfBirth) {
-        const date = new Date(data.dateOfBirth);
-        data.dateOfBirth = Timestamp.fromDate(date);
-      }
-      // if (data.email) {
-      //   data.email = data.email.toLowerCase();
-      //   data.newEmail = deleteField();
-      // }
-
-      const userRef = doc(db, "users", id);
-
-      await updateDoc(userRef, {
+      const updateData = {
         ...data,
         updatedAt: serverTimestamp(),
-      });
-
+      };
+      if (dateOfBirth) {
+        const date = new Date(dateOfBirth);
+        if (!isNaN(date)) {
+          updateData.dateOfBirth = Timestamp.fromDate(date);
+        } else {
+          throw new Error("Invalid dateOfBirth format");
+        }
+      }
+      // If only isDisabled is provided, update only that field
+      if (
+        isDisabled !== undefined &&
+        Object.keys(data).length === 0 &&
+        !dateOfBirth
+      ) {
+        updateData.isDisabled = isDisabled;
+      }
+      const userRef = doc(db, "users", id);
+      await updateDoc(userRef, updateData);
       res.status(200).send({
         message: {
-          en: "User information updated successfully!",
-          vi: "Cập nhật thông tin người dùng thành công!",
+          en: "Profile information updated successfully!",
+          vi: "Cập nhật thông tin hồ sơ thành công!",
         },
-        user: data,
       });
     } catch (error) {
-      console.error("Update user error:", error);
       res.status(500).send({
         message: {
           en: error.message,

@@ -100,7 +100,7 @@ class OwnedRewardsController {
       const pupilId = req.params.pupilId;
       const q = query(
         collection(db, "owned_rewards"),
-        where("pupilId", "==", pupilId)
+        where("pupilId", "==", pupilId),
       );
       const snapshot = await getCountFromServer(q);
       res.status(200).send({ count: snapshot.data().count });

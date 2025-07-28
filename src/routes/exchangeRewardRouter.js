@@ -11,6 +11,12 @@ router.get("/getByPupilId/:pupilId",
     pupilMiddleware.checkPupilExistById("pupilId"),
     exchangeRewardController.getByPupilId);
 //
+router.get(
+    "/countRewardByPupilId/:pupilId",
+    pupilMiddleware.checkPupilExistById("pupilId"),
+    exchangeRewardController.countRewardByPupilId
+);
+//
 router.get("/:id", exchangeRewardController.getById);
 //
 router.patch(
