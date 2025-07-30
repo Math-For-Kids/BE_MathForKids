@@ -7,7 +7,11 @@ const multer = require("multer");
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Create pupil
-router.post("/", pupilController.create);
+router.post(
+  "/",
+  pupilMiddleware.checkNicknameExistForCreate,
+  pupilController.create
+);
 // Get count by isDisabled status
 router.get("/countByDisabledStatus", pupilController.countByDisabledStatus);
 // Filter by isDisabled with pagination
@@ -17,9 +21,15 @@ router.get("/countByGrade", pupilController.countByGrade);
 // Filter by grade with pagination
 router.get("/filterByGrade", pupilController.filterByGrade);
 // Get count by grade and isDisabled status
-router.get("/countByGradeAndDisabledStatus", pupilController.countByGradeAndDisabledStatus);
+router.get(
+  "/countByGradeAndDisabledStatus",
+  pupilController.countByGradeAndDisabledStatus
+);
 // Filter by grade and isDisabled with pagination
-router.get("/filterByGradeAndDisabledStatus", pupilController.filterByGradeAndDisabledStatus);
+router.get(
+  "/filterByGradeAndDisabledStatus",
+  pupilController.filterByGradeAndDisabledStatus
+);
 // Get total count of all pupils
 router.get("/countAll", pupilController.countAll);
 
@@ -55,6 +65,7 @@ router.get(
 router.patch(
   "/updateProfile/:id",
   pupilMiddleware.checkPupilExistById(),
+  pupilMiddleware.checkNicknameExistForUpdate,
   pupilController.update
 );
 // Update image profile

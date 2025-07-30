@@ -50,7 +50,7 @@ class RewardController {
         const startDoc = await getDoc(doc(db, "reward", startAfterId));
         q = query(
           collection(db, "reward"),
-          where("isDisabled", "==", isDisabled === 'true'),
+          where("isDisabled", "==", isDisabled === "true"),
           orderBy("createdAt", "desc"),
           startAfter(startDoc),
           limit(pageSize)
@@ -58,7 +58,7 @@ class RewardController {
       } else {
         q = query(
           collection(db, "reward"),
-          where("isDisabled", "==", isDisabled === 'true'),
+          where("isDisabled", "==", isDisabled === "true"),
           orderBy("createdAt", "desc"),
           limit(pageSize)
         );
@@ -224,7 +224,8 @@ class RewardController {
       const id = req.params.id;
       const ref = doc(db, "reward", id);
 
-      const { isDisabled, name, description, exchangePoint } = req.body;
+      const { isDisabled, name, description, exchangePoint, exchangeReward } =
+        req.body;
       console.log("req.files:", req.files);
       const updateData = {
         updatedAt: serverTimestamp(),
@@ -237,13 +238,13 @@ class RewardController {
       const parsedName = typeof name === "string" ? JSON.parse(name) : name;
       const parsedDescription =
         typeof description === "string" ? JSON.parse(description) : description;
-      const parsedExchangePoints = typeof exchangePoint === "string" ? parseInt(exchangePoint) : exchangePoint;
       if (isDisabled !== undefined && !name && !description && !req.files) {
         updateData.isDisabled = isDisabled;
       } else {
         updateData.name = parsedName;
         updateData.description = parsedDescription;
-        updateData.exchangxePoint = parsedExchangePoints;
+        updateData.exchangePoint = exchangePoint;
+        updateData.exchangeReward = exchangeReward;
         // Nếu có files thì xử lý upload ảnh
         if (req.files && Object.keys(req.files).length > 0) {
           const uploadedFiles = await uploadMultipleFiles(req.files);
