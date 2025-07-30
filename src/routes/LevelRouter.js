@@ -4,7 +4,11 @@ const levelMiddleware = require("../app/middlewares/LevelMiddleware");
 const router = express.Router();
 
 // Create level
-router.post("/", levelController.create);
+router.post(
+  "/",
+  levelMiddleware.checkNameExistForCreate,
+  levelController.create
+);
 // Count by disabled state
 router.get("/countByDisabledStatus", levelController.countByDisabledStatus);
 // Filter paginated levels by disabled state
@@ -25,8 +29,8 @@ router.get(
 router.patch(
   "/:id",
   levelMiddleware.checkLevelExistById(),
+  levelMiddleware.checkNameExistForUpdate,
   levelController.update
 );
-
 
 module.exports = router;

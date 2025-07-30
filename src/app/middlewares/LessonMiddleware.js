@@ -72,15 +72,15 @@ class LessonMiddleware {
       if (!snapEn.empty) {
         return res.status(409).json({
           message: {
-            en: "The English lesson name already exists.",
-            vi: "Tên bài học tiếng Anh đã tồn tại.",
+            en: "English lesson name already exists!",
+            vi: "Tên bài học tiếng Anh đã tồn tại!",
           },
         });
       } else if (!snapVi.empty) {
         return res.status(409).json({
           message: {
-            en: "The Vietnamese lesson name already exists.",
-            vi: "Tên bài học tiếng Việt đã tồn tại.",
+            en: "Vietnamese lesson name already exists!",
+            vi: "Tên bài học tiếng Việt đã tồn tại!",
           },
         });
       }
@@ -106,14 +106,14 @@ class LessonMiddleware {
       if (isEnDuplicate) {
         return res.status(409).json({
           message: {
-            en: "The English lesson name already exists.",
+            en: "English lesson name already exists.",
             vi: "Tên bài học tiếng Anh đã tồn tại.",
           },
         });
       } else if (isViDuplicate) {
         return res.status(409).json({
           message: {
-            en: "The Vietnamese lesson name already exists.",
+            en: "Vietnamese lesson name already exists.",
             vi: "Tên bài học tiếng Việt đã tồn tại.",
           },
         });
