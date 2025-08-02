@@ -7,6 +7,11 @@ const router = express.Router();
 
 // Create test
 router.post("/", testController.create);
+// Ranking by grade
+router.get(
+  "/rankingByGrade/:grade",
+  testController.rankingByGrade
+);
 // Count all paginated tests
 router.get("/countAll", testController.countAll);
 router.get(
@@ -75,7 +80,7 @@ router.get(
   "/top10PupilsByAveragePoint",
   testController.top10PupilsByAveragePoint
 );
-// // Get tests by pupil IDAdd commentMore actions
+// // Get tests by pupil ID
 // router.get(
 //   "/getByPupil/:pupilId",
 //   pupilMiddleware.checkPupilExistById("pupilId"),

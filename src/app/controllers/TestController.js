@@ -612,7 +612,7 @@ class TestController {
           where("grade", "==", parseInt(grade)),
           where("type", "==", type),
           where("isDisabled", "==", false),
-          orderBy("order"),
+          orderBy("order")
         )
       );
 
@@ -698,7 +698,7 @@ class TestController {
             collection(db, "lessons"),
             where("grade", "==", gradeNumber),
             where("type", "==", type),
-            where("isDisabled", "==", false),
+            where("isDisabled", "==", false)
           )
         );
 
@@ -921,9 +921,21 @@ class TestController {
       const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
       const currentQuarter = Math.floor(now.getMonth() / 3);
-      const thisQuarterStart = new Date(now.getFullYear(), currentQuarter * 3, 1);
-      const thisQuarterEnd = new Date(now.getFullYear(), (currentQuarter + 1) * 3, 0);
-      const lastQuarterStart = new Date(now.getFullYear(), (currentQuarter - 1) * 3, 1);
+      const thisQuarterStart = new Date(
+        now.getFullYear(),
+        currentQuarter * 3,
+        1
+      );
+      const thisQuarterEnd = new Date(
+        now.getFullYear(),
+        (currentQuarter + 1) * 3,
+        0
+      );
+      const lastQuarterStart = new Date(
+        now.getFullYear(),
+        (currentQuarter - 1) * 3,
+        1
+      );
       const lastQuarterEnd = new Date(now.getFullYear(), currentQuarter * 3, 0);
 
       // Log các khoảng thời gian để debug
@@ -934,21 +946,36 @@ class TestController {
 
       const timeRanges = {
         thisWeek: [Timestamp.fromDate(thisWeekStart), Timestamp.fromDate(now)],
-        lastWeek: [Timestamp.fromDate(lastWeekStart), Timestamp.fromDate(lastWeekEnd)],
-        thisMonth: [Timestamp.fromDate(thisMonthStart), Timestamp.fromDate(now)],
-        lastMonth: [Timestamp.fromDate(lastMonthStart), Timestamp.fromDate(lastMonthEnd)],
-        thisQuarter: [Timestamp.fromDate(thisQuarterStart), Timestamp.fromDate(now)],
-        lastQuarter: [Timestamp.fromDate(lastQuarterStart), Timestamp.fromDate(lastQuarterEnd)],
+        lastWeek: [
+          Timestamp.fromDate(lastWeekStart),
+          Timestamp.fromDate(lastWeekEnd),
+        ],
+        thisMonth: [
+          Timestamp.fromDate(thisMonthStart),
+          Timestamp.fromDate(now),
+        ],
+        lastMonth: [
+          Timestamp.fromDate(lastMonthStart),
+          Timestamp.fromDate(lastMonthEnd),
+        ],
+        thisQuarter: [
+          Timestamp.fromDate(thisQuarterStart),
+          Timestamp.fromDate(now),
+        ],
+        lastQuarter: [
+          Timestamp.fromDate(lastQuarterStart),
+          Timestamp.fromDate(lastQuarterEnd),
+        ],
       };
 
       // Xử lý ranges từ query
-      const requestedRanges = ranges && typeof ranges === "string"
-        ? ranges
-          .split(",")
-          .map((r) => r.trim())
-          .filter((r) => r in timeRanges)
-        : Object.keys(timeRanges);
-
+      const requestedRanges =
+        ranges && typeof ranges === "string"
+          ? ranges
+              .split(",")
+              .map((r) => r.trim())
+              .filter((r) => r in timeRanges)
+          : Object.keys(timeRanges);
 
       console.log("Requested ranges:", requestedRanges);
 
@@ -966,7 +993,11 @@ class TestController {
           ...doc.data(),
         }));
 
-        console.log(`Found ${tests.length} tests for ${label} from ${start.toDate()} to ${end.toDate()}`);
+        console.log(
+          `Found ${
+            tests.length
+          } tests for ${label} from ${start.toDate()} to ${end.toDate()}`
+        );
 
         if (tests.length === 0) {
           return { message: `No tests found for ${label}` };
@@ -1469,7 +1500,6 @@ class TestController {
     }
   };
 
-
   getTestsByPupilIdAndLessonId = async (req, res, next) => {
     try {
       const { pupilId, lessonId } = req.params;
@@ -1527,6 +1557,99 @@ class TestController {
         message: {
           en: error.message,
           vi: "Đã xảy ra lỗi nội bộ.",
+        },
+      });
+    }
+  };
+
+  // Ranking by grade
+  rankingByGrade = async (req, res) => {
+    try {
+      const { grade } = req.params;
+
+      // 1. Lấy tất cả lesson enable theo grade
+      const lessonQuery = query(
+        collection(db, "lessons"),
+        where("grade", "==", parseInt(grade)),
+        where("isDisabled", "==", false),
+        orderBy("order")
+      );
+      const lessonSnapshot = await getDocs(lessonQuery);
+      const lessons = lessonSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        name: doc.get("name"),
+      }));
+
+      // 2. Lấy tất cả pupils enable = true
+      const pupilQuery = query(
+        collection(db, "pupils"),
+        where("isDisabled", "==", false)
+      );
+      const pupilSnapshot = await getDocs(pupilQuery);
+      const pupils = pupilSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        fullName: doc.get("fullName"),
+      }));
+
+      const ranking = [];
+
+      // 3. Duyệt từng pupil
+      for (const pupil of pupils) {
+        let totalPoint = 0;
+        let totalDuration = 0;
+        let lessonTestList = [];
+
+        // 4. Duyệt từng lesson
+        for (const lesson of lessons) {
+          const testsQuery = query(
+            collection(db, "tests"),
+            where("lessonId", "==", lesson.id),
+            where("pupilId", "==", pupil.id),
+            orderBy("createdAt", "desc"),
+            limit(1)
+          );
+
+          const testSnapshot = await getDocs(testsQuery);
+          const latestTest = testSnapshot.docs[0];
+
+          if (latestTest) {
+            const testData = Tests.fromFirestore(latestTest);
+            lessonTestList.push({
+              lessonId: lesson.id,
+              lessonName: lesson.name,
+              point: testData.point,
+              duration: testData.duration,
+            });
+
+            totalPoint += Number(testData.point || 0);
+            totalDuration += Number(testData.duration || 0);
+          }
+        }
+
+        ranking.push({
+          pupil: {
+            id: pupil.id,
+            fullName: pupil.fullName,
+          },
+          lessonTestList: lessonTestList,
+          point: totalPoint,
+          duration: totalDuration,
+        });
+      }
+
+      // 5. Sắp xếp: point giảm dần, duration tăng dần
+      ranking.sort((a, b) => {
+        if (b.point !== a.point) return b.point - a.point;
+        return a.duration - b.duration;
+      });
+
+      res.status(200).send(ranking);
+    } catch (error) {
+      console.error("Ranking error:", error);
+      res.status(500).send({
+        message: {
+          en: error.message,
+          vi: "Đã xảy ra lỗi khi tính xếp hạng.",
         },
       });
     }
