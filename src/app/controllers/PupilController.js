@@ -20,7 +20,7 @@ const db = getFirestore();
 const { PutObjectCommand } = require("@aws-sdk/client-s3");
 const { s3 } = require("../services/AwsService");
 const { v4: uuidv4 } = require("uuid");
-const FileController = require("./fileController");
+const FileController = require("./FileController");
 class PupilController {
   countByGrade = async (req, res, next) => {
     try {

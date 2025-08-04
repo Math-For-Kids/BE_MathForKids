@@ -14,7 +14,7 @@ const {
 } = require("firebase/firestore");
 
 const db = getFirestore();
-const { uploadMultipleFiles } = require("./fileController");
+const { uploadMultipleFiles } = require("./FileController");
 
 class AssessmentController {
   // Create assessment

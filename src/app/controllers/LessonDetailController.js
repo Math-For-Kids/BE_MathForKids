@@ -18,7 +18,7 @@ const {
 
 const LessonDetail = require("../models/LessonDetail");
 const db = getFirestore();
-const { uploadMultipleFiles } = require("./fileController");
+const { uploadMultipleFiles } = require("./FileController");
 
 class LessonDetailController {
   static fromFirestore(doc) {

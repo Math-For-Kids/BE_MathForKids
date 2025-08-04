@@ -16,7 +16,7 @@ const {
   query,
   where,
 } = require("firebase/firestore");
-const { uploadMultipleFiles } = require("./fileController");
+const { uploadMultipleFiles } = require("./FileController");
 const db = getFirestore();
 
 class RewardController {
