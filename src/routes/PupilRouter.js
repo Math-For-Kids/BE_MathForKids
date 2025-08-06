@@ -65,7 +65,7 @@ router.get(
 router.patch(
   "/updateProfile/:id",
   pupilMiddleware.checkPupilExistById(),
-  pupilMiddleware.checkNicknameExistForUpdate,
+  // pupilMiddleware.checkNicknameExistForUpdate,
   pupilController.update
 );
 // Update image profile
