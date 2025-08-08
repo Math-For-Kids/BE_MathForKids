@@ -410,14 +410,42 @@ class CompletedLessonController {
       } else {
         if (grade < 3) {
           const nextGrade = grade + 1;
-          const firstLessonNextGradeQuery = query(
-            collection(db, "lessons"),
-            where("grade", "==", nextGrade),
-            where("type", "in", ["multiplication", "division"]), // Tìm phép nhân hoặc chia
-            where("isDisabled", "==", false),
-            orderBy("order"),
-            limit(2) // Lấy tối đa hai bài học
-          );
+          let firstLessonNextGradeQuery;
+
+          if (grade === 1) {
+            // Từ lớp 1 lên lớp 2
+            if (type === "addition") {
+              // Mở bài đầu tiên của phép cộng và một bài phép nhân lớp 2
+              firstLessonNextGradeQuery = query(
+                collection(db, "lessons"),
+                where("grade", "==", nextGrade),
+                where("type", "in", ["addition", "multiplication"]),
+                where("isDisabled", "==", false),
+                orderBy("order"),
+                limit(2)
+              );
+            } else if (type === "subtraction") {
+              // Mở bài đầu tiên của phép trừ và một bài phép chia lớp 2
+              firstLessonNextGradeQuery = query(
+                collection(db, "lessons"),
+                where("grade", "==", nextGrade),
+                where("type", "in", ["subtraction", "division"]),
+                where("isDisabled", "==", false),
+                orderBy("order"),
+                limit(2)
+              );
+            }
+          } else if (grade === 2) {
+            // Từ lớp 2 lên lớp 3: Chỉ mở bài đầu tiên của cùng loại phép toán
+            firstLessonNextGradeQuery = query(
+              collection(db, "lessons"),
+              where("grade", "==", nextGrade),
+              where("type", "==", type),
+              where("isDisabled", "==", false),
+              orderBy("order"),
+              limit(1)
+            );
+          }
           const firstLessonNextGradeSnapshot = await getDocs(firstLessonNextGradeQuery);
           if (!firstLessonNextGradeSnapshot.empty) {
             const unlockedLessons = [];
