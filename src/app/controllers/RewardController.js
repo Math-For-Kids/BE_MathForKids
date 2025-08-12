@@ -86,7 +86,7 @@ class RewardController {
   // Create reward
   create = async (req, res, next) => {
     try {
-      const { name, description, exchangePoint } = req.body;
+      const { name, description, exchangePoint, exchangeReward } = req.body;
       if (!req.files || req.files.length === 0) {
         return res.status(400).send({ message: "Image file is required." });
       }
@@ -96,11 +96,13 @@ class RewardController {
       const parsedName = JSON.parse(name);
       const parsedDescription = JSON.parse(description);
       const exchangePoints = Number(exchangePoint);
+      const exchangeRewards = Number(exchangeReward);
       const rewardRef = await addDoc(collection(db, "reward"), {
         name: parsedName,
         description: parsedDescription,
         image,
         exchangePoint: exchangePoints,
+        exchangeReward: exchangeRewards,
         isDisabled: false,
         createdAt: serverTimestamp(),
       });
