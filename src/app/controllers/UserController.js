@@ -586,7 +586,7 @@ class UserController {
         email: data.email ? data.email.toLowerCase() : "",
         dateOfBirth: dateOfBirthTimestamp,
         role: data.role ? data.role : "user",
-        isVerify: false,
+        isVerify: data.isVerify ? true : false,
         otpCode: null,
         otpExpiration: null,
         volume: 100,

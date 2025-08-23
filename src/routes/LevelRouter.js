@@ -33,4 +33,10 @@ router.patch(
   levelController.update
 );
 
+router.patch(
+  "/updateOrder/:id",
+  levelMiddleware.checkLevelExistById(),
+  levelController.update
+);
+
 module.exports = router;

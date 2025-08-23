@@ -972,9 +972,9 @@ class TestController {
       const requestedRanges =
         ranges && typeof ranges === "string"
           ? ranges
-              .split(",")
-              .map((r) => r.trim())
-              .filter((r) => r in timeRanges)
+            .split(",")
+            .map((r) => r.trim())
+            .filter((r) => r in timeRanges)
           : Object.keys(timeRanges);
 
       console.log("Requested ranges:", requestedRanges);
@@ -994,8 +994,7 @@ class TestController {
         }));
 
         console.log(
-          `Found ${
-            tests.length
+          `Found ${tests.length
           } tests for ${label} from ${start.toDate()} to ${end.toDate()}`
         );
 
@@ -1163,9 +1162,9 @@ class TestController {
       const requestedRanges =
         ranges && typeof ranges === "string"
           ? ranges
-              .split(",")
-              .map((r) => r.trim())
-              .filter((r) => r in timeRanges)
+            .split(",")
+            .map((r) => r.trim())
+            .filter((r) => r in timeRanges)
           : Object.keys(timeRanges);
 
       // Fetch lessons for the given grade and type (if provided)
@@ -1288,8 +1287,8 @@ class TestController {
         typeof ranges === "string"
           ? ranges.split(",").map((r) => r.trim())
           : Array.isArray(ranges)
-          ? ranges
-          : [];
+            ? ranges
+            : [];
 
       //Truy vấn tất cả các `tests` thuộc học sinh và bài học
       const testQuery = query(
@@ -1635,6 +1634,7 @@ class TestController {
           pupil: {
             id: pupil.id,
             fullName: pupil.fullName,
+            image: pupil.image,
             image: pupil.image,
           },
           lessonTestList: lessonTestList,
