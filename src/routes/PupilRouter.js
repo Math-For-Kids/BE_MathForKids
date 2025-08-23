@@ -9,7 +9,7 @@ const upload = multer({ storage: multer.memoryStorage() });
 // Create pupil
 router.post(
   "/",
-  pupilMiddleware.checkNicknameExistForCreate,
+  // pupilMiddleware.checkNicknameExistForCreate,
   pupilController.create
 );
 // Get count by isDisabled status
@@ -65,7 +65,7 @@ router.get(
 router.patch(
   "/updateProfile/:id",
   pupilMiddleware.checkPupilExistById(),
-  pupilMiddleware.checkNicknameExistForUpdate,
+  // pupilMiddleware.checkNicknameExistForUpdate,
   pupilController.update
 );
 // Update image profile
