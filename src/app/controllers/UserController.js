@@ -23,7 +23,7 @@ const db = getFirestore();
 const { PutObjectCommand } = require("@aws-sdk/client-s3");
 const { s3 } = require("../services/AwsService");
 const { v4: uuidv4 } = require("uuid");
-const FileController = require("./fileController"); // Đảm bảo path đúng
+const FileController = require("./FileController"); // Đảm bảo path đúng
 
 class UserController {
   countByDisabledStatus = async (req, res, next) => {

@@ -99,6 +99,7 @@ class AuthController {
   sendOTPByEmail = async (req, res, next) => {
     try {
       const { email } = req.params;
+      console.log("email", email);
       const id = req.user.id || req.params.id;
 
       const otpCode = generateOTPCode();

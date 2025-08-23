@@ -20,7 +20,7 @@ const db = getFirestore();
 const { PutObjectCommand } = require("@aws-sdk/client-s3");
 const { s3 } = require("../services/AwsService");
 const { v4: uuidv4 } = require("uuid");
-const FileController = require("./fileController");
+const FileController = require("./FileController");
 class PupilController {
   countByGrade = async (req, res, next) => {
     try {
@@ -366,48 +366,65 @@ class PupilController {
   };
 
   // Update pupil information
-  update = async (req, res, next) => {
-    try {
-      const id = req.params.id;
-      const { isDisabled, createdAt, dateOfBirth, ...data } = req.body;
+update = async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    const { isDisabled, createdAt, dateOfBirth, ...data } = req.body;
 
-      const updateData = {
-        ...data,
-        updatedAt: serverTimestamp(),
-      };
-      if (dateOfBirth) {
-        const date = new Date(dateOfBirth);
-        if (!isNaN(date)) {
-          updateData.dateOfBirth = Timestamp.fromDate(date);
-        } else {
-          throw new Error("Invalid dateOfBirth format");
-        }
+    console.log("Received ID:", id);
+    console.log("Received body:", req.body);
+
+    const updateData = {
+      ...data,
+      updatedAt: serverTimestamp(),
+    };
+
+    if (dateOfBirth) {
+      const date = new Date(dateOfBirth);
+      console.log("Parsed dateOfBirth:", date);
+
+      if (!isNaN(date)) {
+        updateData.dateOfBirth = Timestamp.fromDate(date);
+      } else {
+        throw new Error("Invalid dateOfBirth format");
       }
-      // If only isDisabled is provided, update only that field
-      if (
-        isDisabled !== undefined &&
-        Object.keys(data).length === 0 &&
-        !dateOfBirth
-      ) {
-        updateData.isDisabled = isDisabled;
-      }
-      const pupilRef = doc(db, "pupils", id);
-      await updateDoc(pupilRef, updateData);
-      res.status(200).send({
-        message: {
-          en: "Profile information updated successfully!",
-          vi: "Cập nhật thông tin hồ sơ thành công!",
-        },
-      });
-    } catch (error) {
-      res.status(500).send({
-        message: {
-          en: error.message,
-          vi: "Đã xảy ra lỗi nội bộ.",
-        },
-      });
     }
-  };
+
+    if (
+      isDisabled !== undefined &&
+      Object.keys(data).length === 0 &&
+      !dateOfBirth
+    ) {
+      updateData.isDisabled = isDisabled;
+    }
+
+    console.log("Data to be updated:", updateData);
+
+    const pupilRef = doc(db, "pupils", id);
+    console.log("Updating document with ID:", id);
+
+    await updateDoc(pupilRef, updateData);
+
+    console.log("Update successful!");
+
+    res.status(200).send({
+      message: {
+        en: "Profile information updated successfully!",
+        vi: "Cập nhật thông tin hồ sơ thành công!",
+      },
+    });
+  } catch (error) {
+    console.error("Update profile error:", error);
+
+    res.status(500).send({
+      message: {
+        en: error.message,
+        vi: "Đã xảy ra lỗi nội bộ.",
+      },
+    });
+  }
+};
+
 
   // Count all pupils
   countPupils = async (req, res, next) => {
